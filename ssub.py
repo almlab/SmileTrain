@@ -33,7 +33,7 @@ to create and run pipelines:
 
 # set global variables
 config = ConfigParser.ConfigParser()
-config.read('train.cfg')
+config.read("%s/train.cfg" %(os.path.dirname(os.path.abspath(__file__))))
 username = config.get('User', 'username')
 temp_dir = config.get('User', 'tmp_directory')
 cluster= config.get('User', 'cluster')
