@@ -1,0 +1,5 @@
+ssub: put in a check for available clusters
+
+test: make unit tests for all the utilities
+
+generally: why this error thing and not raising runtimerrors?

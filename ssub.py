@@ -32,13 +32,14 @@ to create and run pipelines:
 '''
 
 # set global variables
-username = 'csmillie'
-temp_dir = '/home/csmillie/tmp'
-cluster = 'coyote'
+config = ConfigParser.ConfigParser()
+config.read('train.cfg')
+username = config.get('User', 'username')
+temp_dir = config.get('User', 'tmp_directory')
+cluster= config.get('User', 'cluster')
 
 
 def parse_args():
-    
     # print usage statement
     usage = "cat list_of_commands.txt | ssub -n 100 -q hour -G gscidfolk -m 8 --io 10\n"
     usage +="ssub -n 100 -q week -G broadfolk -m 8 --io 10 'command 1; command 2; command 3;"

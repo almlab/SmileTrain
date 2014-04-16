@@ -1,7 +1,10 @@
-import argparse, os
+import argparse, os, ConfigParser
 import ssub
 from util import *
 ssub = ssub.Ssub()
+
+config = ConfigParser.ConfigParser()
+config.read('train.cfg')
 
 def parse_args():
     
@@ -63,7 +66,7 @@ class OTU_Caller():
     def __init__(self):
         # initialize variables
         self.usearch = 'usearch'
-        self.ggdb = '/net/radiodurans/alm/lab/db/gg_13_5/gg_13_8_otus/rep_set'
+        self.ggdb = config.get('Data', 'greengenes')
         # copy command line arguments
         self.__dict__.update(parse_args().__dict__)
         # create filenames
