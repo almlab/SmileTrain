@@ -1,3 +1,7 @@
+'''
+Script that removes primers from reads in fastq files.
+'''
+
 import argparse, itertools, sys
 import usearch_python.primer_tools
 from util import *
