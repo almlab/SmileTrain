@@ -2,4 +2,8 @@ ssub: put in a check for available clusters
 
 test: make unit tests for all the utilities
 
-generally: why this error thing and not raising runtimerrors?
+make a dependency map so we can see what calls what. Is there a way to automate this?
+
+generally:
+* why this error thing and not raising runtimerrors?
+* put a sensible hashbang at the top? I don't like saying python whatever.py
