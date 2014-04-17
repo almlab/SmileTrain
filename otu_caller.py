@@ -4,10 +4,9 @@ from util import *
 ssub = ssub.Ssub()
 
 config = ConfigParser.ConfigParser()
-config.read('train.cfg')
+config.read(os.path.join(__file__, 'train.cfg'))
 
 def parse_args():
-    
     # create argument parser
     parser = argparse.ArgumentParser()
     
@@ -42,10 +41,10 @@ def parse_args():
     group5.add_argument('--b_mismatch', default = 1, type = int, help = 'Number of mismatches allowed in barcodes')
     group6.add_argument('--truncqual', default = 2, type = int, help = '')
     group6.add_argument('--maxee', default = 2., type = float, help = 'Maximum expected error (UPARSE)')
-    group8.add_argument('--gold_db', default = '~/db/gold.broad.fa', help = 'Gold 16S database')
+    group8.add_argument('--gold_db', default=config.get('Data', 'gold'), help='Gold 16S database')
     group9.add_argument('--sids', default='91,94,97,99', help='Sequence identities for clustering')
-    group10.add_argument('-n', default = 1, type = int, help = 'Number of CPUs')
-    group10.add_argument('-z', default = False, action = 'store_true', help = 'Print output commands')
+    group10.add_argument('-n', default = 1, type = int, help='Number of CPUs')
+    group10.add_argument('-z', default = False, action = 'store_true', help='Print output commands')
     
     # parse arguments
     if __name__ == '__main__':
@@ -164,7 +163,7 @@ class OTU_Caller():
         # Demultiplex samples using index and barcodes
         cmds = []
         for i in range(self.n):
-            cmd = 'python ~/box/map_barcodes.py %s %s %s %d > %s' %(self.ci[i], self.b, self.x, self.b_mismatch, self.Ci[i])
+            cmd = 'python %s/map_barcodes.py %s %s %s %d > %s' %(self.library, self.ci[i], self.b, self.x, self.b_mismatch, self.Ci[i])
             cmds.append(cmd)
         ssub.submit_and_wait(cmds, self.z)
         ssub.validate_output(self.Ci, self.z)
@@ -189,7 +188,7 @@ class OTU_Caller():
         ssub.validate_output(['q.fst'], self.z)
         cmd = 'rm %s' %(' '.join(self.ci))
         ssub.run_local([cmd], out = self.z)
-        cmd = 'python ~/box/derep_fulllength.py q.fst q.derep.fst'
+        cmd = 'python %s/derep_fulllength.py q.fst q.derep.fst' %(self.library)
         ssub.submit_and_wait([cmd], self.z)
         ssub.validate_output(['q.derep.fst'], self.z)
     
@@ -210,7 +209,7 @@ class OTU_Caller():
             cmds = []
             for i in range(len(self.sids)):
                 sid = self.sids[i]
-                cmd = 'python ~/bin/usearch_python/fasta_number.py %s OTU%d_ > %s' %(self.oi[i], sid, self.Oi[i])
+                cmd = 'python %s/usearch_python/fasta_number.py %s OTU%d_ > %s' %(self.library, self.oi[i], sid, self.Oi[i])
                 cmds.append(cmd)
             ssub.submit_and_wait(cmds, self.z)
             ssub.validate_output(self.Oi, self.z)
@@ -243,7 +242,7 @@ class OTU_Caller():
         # Make OTU tables from UC file
         cmds = []
         for i in range(len(self.sids)):
-            cmd = 'python ~/usearch_python/uc2otutab.py %s %s' %(self.uc[i], self.xi[i])
+            cmd = 'python %s/usearch_python/uc2otutab.py %s %s' %(self.library, self.uc[i], self.xi[i])
             cmds.append(cmd)
         ssub.submit_and_wait(cmds, self.z)
         ssub.validate_output(self.xi, self.z)
