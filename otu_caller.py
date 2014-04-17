@@ -4,7 +4,7 @@ from util import *
 ssub = ssub.Ssub()
 
 config = ConfigParser.ConfigParser()
-config.read(os.path.join(__file__, 'train.cfg'))
+config.read(os.path.join(os.path.dirname(__file__), 'train.cfg'))
 
 def parse_args():
     # create argument parser

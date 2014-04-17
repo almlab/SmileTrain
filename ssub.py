@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, os, re, select, stat, subprocess, sys, tempfile, time
+import argparse, os, re, select, stat, subprocess, sys, tempfile, time, ConfigParser
 from util import *
 
 '''
@@ -33,7 +33,7 @@ to create and run pipelines:
 
 # set global variables
 config = ConfigParser.ConfigParser()
-config.read(os.path.join(os.path.dirname(os.path.abspath(__file__)), "train.cfg")
+config.read(os.path.join(os.path.dirname(__file__), "train.cfg"))
 username = config.get('User', 'username')
 temp_dir = config.get('User', 'tmp_directory')
 cluster= config.get('User', 'cluster')
