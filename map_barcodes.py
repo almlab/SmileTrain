@@ -1,4 +1,4 @@
-import primer_tools
+import usearch_python.primer
 import sys
 from string import maketrans
 
@@ -11,7 +11,7 @@ def mismatches(seq, subseq, w):
     I = 0
     D = len(seq)
     for i in range(w):
-        d = primer.MatchPrefix(seq[i:], subseq)
+        d = usearch_python.primer.MatchPrefix(seq[i:], subseq)
         if d < D:
             I = i
             D = d
