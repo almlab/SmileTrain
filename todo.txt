@@ -1,5 +1,7 @@
 ssub: put in a check for available clusters
 
+remove_primers.py: What's with the wacky indenting?
+
 test: make unit tests for all the utilities
 
 make a dependency map so we can see what calls what. Is there a way to automate this?

@@ -3,7 +3,7 @@ Script that removes primers from reads in fastq files.
 '''
 
 import argparse, itertools, sys
-import usearch_python.primer_tools
+import usearch_python.primer
 from util import *
 
 def mismatches(seq, primer, w):
@@ -14,7 +14,7 @@ def mismatches(seq, primer, w):
     I = 0
     D = len(seq)
     for i in range(w):
-        d = usearch_python.primer_tools.MatchPrefix(seq[i:], primer)
+        d = usearch_python.primer.MatchPrefix(seq[i:], primer)
         if d < D:
             I = i
             D = d
@@ -53,11 +53,11 @@ def remove_primers(fastq, primer, max_primer_diffs):
         assert(len(seq_line) == len(quality_line))
 
         # find the primer position in the sequence
-        primer_start_index, primer_diffs = mismatches(seq_line, primer, 15)
+        primer_start_index, n_primer_diffs = mismatches(seq_line, primer, 15)
 
         # if we don't find a good match, move on. otherwise, trim the sequence and the
         # quality line and print a new fastq entry.
-        if primer_diffs <= max_primer_diffs:
+        if n_primer_diffs <= max_primer_diffs:
             primer_end_index = primer_start_index + primer_length
             trimmed_seq = seq_line[primer_end_index:]
             trimmed_quality = quality_line[primer_end_index:]

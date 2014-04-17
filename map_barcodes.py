@@ -1,4 +1,4 @@
-import primer
+import primer_tools
 import sys
 from string import maketrans
 

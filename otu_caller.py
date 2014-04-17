@@ -67,6 +67,8 @@ class OTU_Caller():
         # initialize variables
         self.usearch = 'usearch'
         self.ggdb = config.get('Data', 'greengenes')
+        self.library = config.get('Scripts', 'library')
+
         # copy command line arguments
         self.__dict__.update(parse_args().__dict__)
         # create filenames
@@ -106,10 +108,10 @@ class OTU_Caller():
         # Get list of commands
         cmds = []
         if self.f:
-            cmd = 'python ~/box/split_fastq.py %s %s' %(self.f, self.n)
+            cmd = 'python %s/split_fastq.py %s %s' %(self.library, self.f, self.n)
             cmds.append(cmd)
         if self.r:
-            cmd = 'python ~/box/split_fastq.py %s %s' %(self.r, self.n)
+            cmd = 'python %s/split_fastq.py %s %s' %(self.library, self.r, self.n)
             cmds.append(cmd)
         
         # Submit commands and validate output
@@ -124,10 +126,10 @@ class OTU_Caller():
         cmds = []
         for i in range(self.n):
             if self.f:
-                cmd = '~/box/remove_primers.py %s %s %d > %s' %(self.fi[i], self.p, self.p_mismatch, self.Fi[i])
+                cmd = '%s/remove_primers.py %s %s %d > %s' %(self.library, self.fi[i], self.p, self.p_mismatch, self.Fi[i])
                 cmds.append(cmd)
             if self.r:
-                cmd = '~/box/remove_primers.py %s %s %d > %s' %(self.ri[i], self.q, self.p_mismatch, self.Ri[i])
+                cmd = '%s/remove_primers.py %s %s %d > %s' %(self.library, self.ri[i], self.q, self.p_mismatch, self.Ri[i])
                 cmds.append(cmd)
         
         # Submit commands and validate output
@@ -142,7 +144,7 @@ class OTU_Caller():
         # Intersect forward and reverse reads
         cmds = []
         for i in range(self.n):
-            cmd = 'python ~/box/intersect_reads.py %s %s %s %s' %(self.fi[i], self.ri[i], self.Fi[i], self.Ri[i])
+            cmd = 'python %s/intersect_reads.py %s %s %s %s' %(self.library, self.fi[i], self.ri[i], self.Fi[i], self.Ri[i])
             cmds.append(cmd)
         ssub.submit_and_wait(cmds, out = self.z)
         ssub.validate_output(self.Fi + self.Ri, out = self.z)
