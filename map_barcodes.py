@@ -1,86 +1,152 @@
+'''
+Demultiplex reads by mapping the barcode read to the sample names from a barcode mapping
+file.
+
+Given a tab-separated barcode mapping file like
+    ACGT    sample1 
+
+input like
+    @OURSEQ:lolapalooza1234#ACGT/1
+    AACCGGTT
+    +
+    abcdefgh
+
+becomes output like
+    @sample=sample1;1
+    AACCGGTT
+    +
+    abcdefgh
+'''
+
 import usearch_python.primer
-import sys
-from string import maketrans
+import sys, argparse, string, itertools, re
 
-rctab = maketrans('ACGTacgt','TGCAtgca')
+# swo> this code should probably be moved into a separate module
+from remove_primers import mismatches
 
+rctab = string.maketrans('ACGTacgt','TGCAtgca')
 def reverse_complement(x):
     return x[::-1].translate(rctab)
 
-def mismatches(seq, subseq, w):
-    I = 0
-    D = len(seq)
-    for i in range(w):
-        d = usearch_python.primer.MatchPrefix(seq[i:], subseq)
-        if d < D:
-            I = i
-            D = d
-    return [I, D]
+def barcode_file_to_dictionary(barcode_lines):
+    '''parse a barcode mapping file into a dictionary {barcode: sample}'''
+    barcode_map = {}
+    for line in barcode_lines:
+        sample, barcode = line.split()
+        barcode_map[barcode] = sample
+        barcode_map[reverse_complement(barcode)] = sample
 
-# Read input arguments
-fasta = sys.argv[1]
-bcode = sys.argv[2]
-index = sys.argv[3]
-MAX_BARCODE_DIFFS = int(sys.argv[4])
+    return barcode_map
 
-# Map each barcode to a sample
-b2s = {}
-for line in open(bcode):
-    s, b = line.rstrip().split()
-    b2s[reverse_complement(b)] = s
+def best_barcode_match(known_barcodes, barcode):
+    '''
+    Find the best match between a known barcode a list of known barcodes
 
-# Get list of reads
-reads = {}
-k = 0
-for line in open(fasta):
-    line = line.rstrip()
-    k += 1
-    if k%4 == 1:
-        reads[line[1:]] = {}
+    Parameters
+    known_barcodes : sequence of iterator of sequences
+        list of known barcodes
+    barcode : string
+        the barcode read to be matched against the known barcodes
 
-# Map each read to a sample
-# (read -> index -> barcode -> sample)
-r2s = {}
-k = 0
-for line in open(index):
-    line = line.rstrip()
-    k += 1
-    if k%4 == 1:
-        r = line[1:]
-        if r not in reads:
-            r = ''
-    elif r != '' and k%4 == 2:
-        s = line
+    Returns
+    min_mismatches : int
+        number of mismatches in the best alignment
+    best_known_barcode : string
+        known barcode that aligned best
+    '''
+    
+    # get a list of pairs (n_mismatches, known_barcode)
+    n_mismatches = lambda known_barcode: mismatches(barcode, known_barcode, 1)[1]
 
-        # map to best barcode
-        B = ''
-        D = ''
-        for b in b2s.keys():
-            q, d = mismatches(s, b, 1)
-            if d < D:
-                B = b
-                D = d
-        if D <= MAX_BARCODE_DIFFS:
-            r2s[r] = b2s[B]
+    alignments = [(n_mismatches(known_barcode), known_barcode) for known_barcode in known_barcodes]
 
-count = {}
+    # find the alignment that has the minimum number of mismatches
+    min_mismatches, best_known_barcode = min(alignments, key=lambda x: x[0])
 
-success = 0
-fail = 0
+    return min_mismatches, best_known_barcode
 
-for line in open(fasta):
-    line = line.rstrip()
-    if line.startswith('>'):
-        read = line[1:]
-        if read not in r2s:
-            read = ''
-            fail += 1
-            continue
-        sample = r2s[read]
-        if sample not in count:
-            count[sample] = 0
-        count[sample] += 1
-    elif read != '':
-        print '>barcode=%s;%d' %(sample, count[sample])
-        print line
-        success += 1
+# swo> this code is duplicated in remove_primers
+def rename_fastq_ids_with_sample_names(fastq_lines, barcode_map, max_barcode_diffs):
+    '''
+    Rename the read IDs in a fastq file with the corresponding sample name. Get the barcode
+    read right from the ID line, look it up in the barcode map, and pick the best match.
+
+
+
+    Parameters
+    fastq_lines : sequence or iterator of strings
+        the lines in the fastq file to be processed
+    barcode_map : dictionary
+        entries are {barcode: sample_name}
+    max_barcode_diffs : int
+        maximum number of mismatches between a barcode read and known barcode before throwing
+        out that read
+
+    Returns nothing. Everything is printed.
+    '''
+
+    # keep track of the computations where we align the barcode read to the known barcodes
+    barcode_read_to_sample = {}
+    sample_counts = {}
+
+    # get the fastq lines four at a time
+    for at_line, seq_line, plus_line, quality_line in itertools.izip(*[iter(fastq_lines)] * 4):
+        at_line = at_line.rstrip()
+        seq_line = seq_line.rstrip()
+        plus_line = plus_line.rstrip()
+        quality_line = quality_line.rstrip()
+
+        # check that the two lines with identifiers match our expectations
+        assert(at_line.startswith('@'))
+        assert(plus_line.startswith('+'))
+        assert(len(seq_line) == len(quality_line))
+
+        # look for the barcode from the read ID line
+        # match, e.g. @any_set_of_chars#ACGT/1 -> ACGT
+        m = re.match("@.*#([ACGTN]+)/\d+", at_line)
+
+        if m is None:
+            raise RuntimeError("couldn't find barcode in fastq line: %s" %(at_line))
+
+        # if we've already aligned this barcode read, just use the same sample we found before.
+        # otherwise, look through all the barcodes for the best match.
+        barcode_read = m.group(1)
+        if barcode_read in barcode_read_to_sample:
+            sample = barcode_read_to_sample[barcode_read]
+            sample_counts[sample] += 1
+        else:
+            # try aligning to every known barcode
+            n_mismatches, best_known_barcode = best_barcode_match(barcode_map.keys(), barcode_read)
+
+            # if the match was good, assign that barcode read to the sample that the best read
+            # matches
+            if n_mismatches > max_barcode_diffs:
+                continue
+            else:
+                # get the name for this sample; record which sample we mapped this barcode
+                # read to
+                sample = barcode_map[best_known_barcode]
+                barcode_read_to_sample[barcode_read] = sample
+                sample_counts[sample] = 1
+
+        print "@sample=%s;%d" %(sample, sample_counts[sample])
+        print seq_line
+        print "+"
+        print quality_line
+
+
+if __name__ == '__main__':
+    # parse command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('fastq', help='input fastq file')
+    parser.add_argument('barcode', help='barcode mapping file')
+    parser.add_argument('-m', '--max_barcode_diffs', default=0, type=int, help='maximum number of nucleotide mismatches in the barcode (default: 0)')
+    args = parser.parse_args()
+
+    # parse the barcode mapping file
+    with open(args.barcode, 'r') as f:
+        barcode_map = barcode_file_to_dictionary(f)
+
+    # get a set of reads
+    with open(args.fastq, 'r') as f:
+        rename_fastq_ids_with_sample_names(f, barcode_map, args.max_barcode_diffs)
