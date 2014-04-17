@@ -8,7 +8,8 @@ from util import *
 
 def mismatches(seq, primer, w):
     '''
-    Calculate mismatches between a sequence and primer with window size w
+    Calculate mismatches between a sequence and primer with window size w.
+    Returns the starting index and number of mismatches for the best match.
     '''
 
     I = 0
