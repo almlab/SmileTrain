@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import unittest, tempfile, subprocess, os
 
 import util, derep_fulllength
