@@ -31,32 +31,7 @@ number of counts are dropped.
 '''
 
 import sys
-
-def fasta_entries(lines):
-    '''
-    Yield [id, sequence] pairs from a fasta file. Sequence allowed to run over multiple
-    lines.
-
-    Parameters
-    lines : sequence or iterator of strings
-        lines from the fasta file
-
-    Yields [id (without the >), sequence] pairs
-    '''
-
-    entry = ''
-    for line in lines:
-        line = line.rstrip()
-        if line.startswith('>'):
-            if entry != '':
-                yield [sid, sequence]
-            else:
-                sid = line[1:]
-                sequence = ''
-        else:
-            sequence += line
-
-    yield [sid, sequence]
+import util
 
 def sequence_abundances(entries):
     '''fasta entries to dictionary {sequence: # reads}'''
@@ -100,7 +75,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     with open(args.input, 'r') as f:
-        abundance_map = sequence_abundances(fasta_entries(f))
+        abundance_map = sequence_abundances(util.fasta_entries(f))
 
     sorted_seqs = sorted_abundant_keys(abundance_map, args.minimum_counts)
 

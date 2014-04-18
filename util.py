@@ -1,5 +1,39 @@
 import re, string, sys, time
 
+def fasta_entries(lines):
+    '''
+    Yield [id, sequence] pairs from a fasta file. Sequence allowed to run over multiple
+    lines.
+
+    Parameters
+    lines : sequence or iterator of strings
+        lines from the fasta file
+
+    Yields [id (without the >), sequence] pairs
+    '''
+
+    sid = None
+    sequence = ''
+    for line in lines:
+        line = line.rstrip()
+
+        # check if this is the first line
+        if sid is None:
+            assert(line.startswith('>'))
+            sid = line[1:]
+        else:
+            if line.startswith('>'):
+                assert(sid != '')
+                assert(sequence != '')
+
+                yield [sid, sequence]
+                sid = line[1:]
+                sequence = ''
+            else:
+                sequence += line
+
+    yield [sid, sequence]
+
 rctab = string.maketrans('ACGTacgt','TGCAtgca')
 
 def message(text, indent=2):
@@ -40,6 +74,7 @@ def read_tseries(fn):
 
 def iter_fst(fn):
     # generator that iterates through [sid, seq] pairs in a fasta file
+    sid = ''
     seq = ''
     for line in open(fn):
         line = line.rstrip()
