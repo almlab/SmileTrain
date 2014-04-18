@@ -4,7 +4,7 @@ import util, derep_fulllength
 
 class TestFastaUtilities(unittest.TestCase):
 	'''tests for scripts and functions that do simple fasta manipulations'''
-	
+
 	def setUp(self):
 		self.good_fasta_content = ">foo\nAAA\nAAA\n>bar\nCCC\n>baz\nGGG"
 		self.bad_fasta_content = ">foo\nAAA\nAAA\n>bar\n>baz\nGGG"
@@ -31,6 +31,8 @@ class TestFastaUtilities(unittest.TestCase):
 
 	def test_split_fasta(self):
 		'''split_fasta.py should split content as expected'''
+
+		os.mkdir('tests')
 		fasta_fh, fasta_fn = tempfile.mkstemp(suffix='.fasta', dir='tests')
 		os.write(fasta_fh, self.good_fasta_content)
 		os.close(fasta_fh)
@@ -41,9 +43,12 @@ class TestFastaUtilities(unittest.TestCase):
 
 		self.assertEqual(fasta_out0, ">foo\nAAAAAA\n")
 
-		# clean up temporary files
+		os.remove(fasta_fn)
 		for i in range(3):
 			os.remove("%s.%d" %(fasta_fn, i))
+
+		os.rmdir('tests')
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
