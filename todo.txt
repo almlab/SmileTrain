@@ -3,6 +3,8 @@ ssub: put in a check for available clusters
 map_barcodes: include an option for reverse primers?
 on length checking, raise assertion error and give the line number where the problem happened
 
+intersect: fastq_entries is in here. It should be put somewhere else, and map_barcodes and remove_primers can both refer to it.
+
 remove_primers.py: What's with the wacky indenting?
 
 test: make unit tests for all the utilities
