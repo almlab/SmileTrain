@@ -1,12 +1,20 @@
+'''
+Main script in the pipeline. Produces lists of commands and submits them using ssub.
+Options allow the user to run individual parts of the pipeline or the entire thing.
+'''
+
 import argparse, os, ConfigParser
 import ssub
 from util import *
 ssub = ssub.Ssub()
 
+# open the config file sister to this script
 config = ConfigParser.ConfigParser()
 config.read(os.path.join(os.path.dirname(__file__), 'train.cfg'))
 
 def parse_args():
+    '''arguments to be parsed and passed to the OTU_Caller object'''
+
     # create argument parser
     parser = argparse.ArgumentParser()
     
@@ -61,6 +69,11 @@ def parse_args():
 
 
 class OTU_Caller():
+    '''
+    A namespace and method container for the parsed command line options. Submitted jobs
+    refer to other scripts in the library.
+    '''
+
     def __init__(self):
         # initialize variables
         self.usearch = 'usearch'
@@ -73,7 +86,8 @@ class OTU_Caller():
         self.get_filenames()
     
     def get_filenames(self):
-        # Generate filenames to use in pipeline
+        '''Generate filenames to use in pipeline'''
+
         if self.f:
             f_base = os.path.basename(self.f)
         if self.r:
@@ -98,7 +112,7 @@ class OTU_Caller():
             self.db = ['%s/%d_otus.fasta' %(self.ggdb, sid) for sid in self.sids]
     
     def split_fastq(self):
-        # Split forward and reverse reads (for parallel processing)
+        '''Split forward and reverse reads (for parallel processing)'''
         
         # Get list of commands
         cmds = []
@@ -114,7 +128,7 @@ class OTU_Caller():
         ssub.validate_output(self.fi + self.ri, out = self.z)
     
     def remove_primers(self):
-        # Remove diversity region + primer and discard reads with > 2 mismatches
+        '''Remove diversity region + primer and discard reads with > 2 mismatches'''
         
         # Get list of commands
         cmds = []
@@ -132,7 +146,7 @@ class OTU_Caller():
         sub.move_files(self.Fi + self.Ri, self.fi + self.ri, out = self.z)
     
     def merge_reads(self):
-        # Merge forward and reverse reads using USEARCH
+        '''Merge forward and reverse reads using USEARCH'''
         
         # Intersect forward and reverse reads
         cmds = []
@@ -153,7 +167,8 @@ class OTU_Caller():
         ssub.remove_files(self.fi + self.ri, out = self.z)
     
     def demultiplex_reads(self):
-        # Demultiplex samples using index and barcodes
+        '''Demultiplex samples using index and barcodes'''
+
         cmds = []
         for i in range(self.n):
             cmd = 'python %s/map_barcodes.py %s %s %s %d > %s' %(self.library, self.ci[i], self.b, self.x, self.b_mismatch, self.Ci[i])
@@ -163,7 +178,8 @@ class OTU_Caller():
         ssub.move_files(self.Ci, self.ci, self.z)
     
     def quality_filter(self):
-        # Quality filter with truncqual and maximum expected error
+        '''Quality filter with truncqual and maximum expected error'''
+
         cmds = []
         for i in range(self.n):
             cmd = '%s -fastq_filter %s -fastq_truncqual %d -fastq_maxee %f -fastaout %s' %(self.usearch, self.ci[i], self.truncqual, self.maxee, self.Ci[i])
@@ -173,7 +189,8 @@ class OTU_Caller():
         ssub.move_files(self.Ci, self.ci, self.z)
     
     def dereplicate(self):
-        # Concatenate files and dereplicate
+        '''Concatenate files and dereplicate'''
+
         cmd = 'cat %s > q.fst' %(' '.join(self.ci))
         ssub.run_local([cmd], out = self.z)
         ssub.validate_output(['q.fst'], self.z)
@@ -184,7 +201,8 @@ class OTU_Caller():
         ssub.validate_output(['q.derep.fst'], self.z)
     
     def denovo_clustering(rename=True):
-        # Denovo clustering with USEARCH
+        '''Denovo clustering with USEARCH'''
+
         cmds = []
         for i in range(len(self.sids)):
             sid = self.sids[i]
@@ -205,7 +223,8 @@ class OTU_Caller():
             ssub.move_files(self.Oi, self.oi, self.z)
     
     def remove_chimeras(self):
-        # Remove chimeras using gold database
+        '''Remove chimeras using gold database'''
+
         cmds = []
         for i in range(len(self.sids)):
             sid = self.sids[i]
@@ -216,7 +235,8 @@ class OTU_Caller():
         ssub.move_files(self.Oi, self.oi, self.z)
     
     def reference_mapping(self):
-        # Map reads to reference databases
+        '''Map reads to reference databases'''
+
         cmds = []
         for i in range(len(self.sids)):
             cmd = '%s -usearch_global q.derep.fst -db %s -uc %s -strand both -id .%d' %(self.usearch, self.db[i], self.uc[i], self.sids[i])
@@ -225,7 +245,8 @@ class OTU_Caller():
         ssub.validate_output(self.uc, self.z)
     
     def make_otu_tables(self):
-        # Make OTU tables from UC file
+        '''Make OTU tables from UC file'''
+
         cmds = []
         for i in range(len(self.sids)):
             cmd = 'python %s/usearch_python/uc2otutab.py %s %s' %(self.library, self.uc[i], self.xi[i])
