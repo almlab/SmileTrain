@@ -61,7 +61,6 @@ def parse_args():
 
 
 class OTU_Caller():
-    
     def __init__(self):
         # initialize variables
         self.usearch = 'usearch'
@@ -73,9 +72,7 @@ class OTU_Caller():
         # create filenames
         self.get_filenames()
     
-    
     def get_filenames(self):
-        
         # Generate filenames to use in pipeline
         if self.f:
             f_base = os.path.basename(self.f)
@@ -100,7 +97,6 @@ class OTU_Caller():
         elif self.ref_gg == True:
             self.db = ['%s/%d_otus.fasta' %(self.ggdb, sid) for sid in self.sids]
     
-    
     def split_fastq(self):
         # Split forward and reverse reads (for parallel processing)
         
@@ -116,7 +112,6 @@ class OTU_Caller():
         # Submit commands and validate output
         ssub.submit_and_wait(cmds, out = self.z)
         ssub.validate_output(self.fi + self.ri, out = self.z)
-    
     
     def remove_primers(self):
         # Remove diversity region + primer and discard reads with > 2 mismatches
@@ -134,8 +129,7 @@ class OTU_Caller():
         # Submit commands and validate output
         ssub.submit_and_wait(cmds, out = self.z)
         ssub.validate_output(self.Fi + self.Ri, out = self.z)
-        ssub.move_files(self.Fi + self.Ri, self.fi + self.ri, out = self.z)
-    
+        sub.move_files(self.Fi + self.Ri, self.fi + self.ri, out = self.z)
     
     def merge_reads(self):
         # Merge forward and reverse reads using USEARCH
@@ -158,7 +152,6 @@ class OTU_Caller():
         ssub.validate_output(self.mi, out = self.z)
         ssub.remove_files(self.fi + self.ri, out = self.z)
     
-    
     def demultiplex_reads(self):
         # Demultiplex samples using index and barcodes
         cmds = []
@@ -169,7 +162,6 @@ class OTU_Caller():
         ssub.validate_output(self.Ci, self.z)
         ssub.move_files(self.Ci, self.ci, self.z)
     
-    
     def quality_filter(self):
         # Quality filter with truncqual and maximum expected error
         cmds = []
@@ -179,7 +171,6 @@ class OTU_Caller():
         ssub.submit_and_wait(cmds, self.z)
         ssub.validate_output(self.Ci, self.z)
         ssub.move_files(self.Ci, self.ci, self.z)
-    
     
     def dereplicate(self):
         # Concatenate files and dereplicate
@@ -192,9 +183,7 @@ class OTU_Caller():
         ssub.submit_and_wait([cmd], self.z)
         ssub.validate_output(['q.derep.fst'], self.z)
     
-    
-    def denovo_clustering(rename = True):
-        
+    def denovo_clustering(rename=True):
         # Denovo clustering with USEARCH
         cmds = []
         for i in range(len(self.sids)):
@@ -215,7 +204,6 @@ class OTU_Caller():
             ssub.validate_output(self.Oi, self.z)
             ssub.move_files(self.Oi, self.oi, self.z)
     
-    
     def remove_chimeras(self):
         # Remove chimeras using gold database
         cmds = []
@@ -227,7 +215,6 @@ class OTU_Caller():
         ssub.validate_output(self.Oi, self.z)
         ssub.move_files(self.Oi, self.oi, self.z)
     
-    
     def reference_mapping(self):
         # Map reads to reference databases
         cmds = []
@@ -236,7 +223,6 @@ class OTU_Caller():
             cmds.append(cmd)
         ssub.submit_and_wait(cmds, self.z)
         ssub.validate_output(self.uc, self.z)
-    
     
     def make_otu_tables(self):
         # Make OTU tables from UC file
@@ -248,9 +234,7 @@ class OTU_Caller():
         ssub.validate_output(self.xi, self.z)
     
 
-
-def main():
-    
+if __name__ == '__main__':
     # Initialize OTU caller
     oc = OTU_Caller()
     
@@ -300,7 +284,3 @@ def main():
     # Make OTU tables
     message('Making OTU tables')
     oc.make_otu_tables()
-
-
-if __name__ == '__main__':
-    main()
