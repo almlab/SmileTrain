@@ -34,7 +34,6 @@ def barcode_file_to_dictionary(barcode_lines):
     for line in barcode_lines:
         sample, barcode = line.split()
         barcode_map[barcode] = sample
-        barcode_map[reverse_complement(barcode)] = sample
 
     return barcode_map
 
