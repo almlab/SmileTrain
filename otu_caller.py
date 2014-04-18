@@ -37,8 +37,10 @@ def parse_args():
     group1.add_argument('--demultiplex', default = False, action = 'store_true', help = 'Demultiplex?')
     group1.add_argument('--qfilter', default = False, action = 'store_true', help = 'Quality filter?')
     group1.add_argument('--chimeras', default = False, action = 'store_true', help = 'Chimera slay?')
+    group1.add_argument('--dereplicate', action='store_true', help='Dereplicate?')
     group1.add_argument('--denovo', default = False, action = 'store_true', help = 'Denovo clustering (UPARSE)?')
     group1.add_argument('--ref_gg', default = False, action = 'store_true', help = 'Reference mapping (Greengenes)?')
+    group1.add_argument('--otu_table', action='store_true', help='Make OTU table?')
     group2.add_argument('-f', help = 'Input fastq (forward)')
     group2.add_argument('-r', help = 'Input fastq (reverse)')
     group2.add_argument('-p', help = 'Primer sequence (forward)')
@@ -143,7 +145,7 @@ class OTU_Caller():
         # Submit commands and validate output
         ssub.submit_and_wait(cmds, out = self.z)
         ssub.validate_output(self.Fi + self.Ri, out = self.z)
-        sub.move_files(self.Fi + self.Ri, self.fi + self.ri, out = self.z)
+        ssub.move_files(self.Fi + self.Ri, self.fi + self.ri, out = self.z)
     
     def merge_reads(self):
         '''Merge forward and reverse reads using USEARCH'''
@@ -290,8 +292,9 @@ if __name__ == '__main__':
         oc.quality_filter()
     
     # Dereplicate reads
-    message('Dereplicating sequences')
-    oc.dereplicate()
+    if oc.dereplicate == True:
+        message('Dereplicating sequences')
+        oc.dereplicate()
     
     # Denovo clustering
     if oc.denovo == True:
@@ -299,9 +302,11 @@ if __name__ == '__main__':
         oc.denovo_clustering(rename = True)
     
     # Map to reference database
-    message('Mapping to reference')
-    oc.reference_mapping()
+    if oc.ref_gg == True:
+        message('Mapping to reference')
+        oc.reference_mapping()
     
     # Make OTU tables
-    message('Making OTU tables')
-    oc.make_otu_tables()
+    if oc.otu_table == True:
+        message('Making OTU tables')
+        oc.make_otu_tables()
