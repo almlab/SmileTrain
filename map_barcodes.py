@@ -14,7 +14,7 @@ input like
 becomes output like
     @sample=sample1;1
     AACCGGTT
-    +
+    +whatever
     abcdefgh
 '''
 

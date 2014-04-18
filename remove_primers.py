@@ -1,5 +1,20 @@
 '''
 Script that removes primers from reads in fastq files.
+
+With a primer
+    AAAAA
+
+entries like
+    @lolapolooza
+    TAAAACATCATCATCAT
+    +whatever
+    abcdefghijklmnopq
+
+become entries like
+    @lolapolooza
+    CATCATCATCAT
+    +
+    fghijklmnopq
 '''
 
 import argparse, itertools, sys
