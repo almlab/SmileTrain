@@ -1,4 +1,5 @@
-import re, string, sys, time
+import re, string, sys, time, itertools
+import usearch_python.primer
 
 def fasta_entries(lines):
     '''
@@ -34,7 +35,50 @@ def fasta_entries(lines):
 
     yield [sid, sequence]
 
-rctab = string.maketrans('ACGTacgt','TGCAtgca')
+def fastq_iterator(lines, check_sigils=True, check_lengths=True):
+    '''
+    Yield [at line, seq line, quality line] entries from a fastq file. All lines are right-
+    trimmed, and the plus line (line 3) is dropped.
+
+    Parameters
+    lines : sequence or iterator of strings
+        lines from the fastq file
+    check_sigils : bool (default true)
+        assert that the first line starts with @ and the third with +?
+    check_lengths : bool (default true)
+        assert that the sequence and quality lines are the same length
+    '''
+
+    for at_line, seq_line, plus_line, quality_line in itertools.izip(*[iter(lines)] * 4):
+        # chomp all newlines
+        at_line = at_line.rstrip()
+        seq_line = seq_line.rstrip()
+        plus_line = plus_line.rstrip()
+        quality_line = quality_line.rstrip()
+
+        # check that the two lines with identifiers match our expectations
+        assert(at_line.startswith('@'))
+        assert(plus_line.startswith('+'))
+
+        # check that the sequence and quality lines have the same number of nucleotides
+        assert(len(seq_line) == len(quality_line))
+
+        yield [at_line, seq_line, quality_line]
+
+def mismatches(seq, primer, w):
+    '''
+    Calculate mismatches between a sequence and primer with window size w.
+    Returns the starting index and number of mismatches for the best match.
+    '''
+
+    I = 0
+    D = len(seq)
+    for i in range(w):
+        d = usearch_python.primer.MatchPrefix(seq[i:], primer)
+        if d < D:
+            I = i
+            D = d
+    return [I, D]
 
 def message(text, indent=2):
     # print message to stderr
@@ -130,7 +174,7 @@ class timer():
         self.t.append(time.time())
         return self.t[-1] - self.t.pop(0)
 
-
+rctab = string.maketrans('ACGTacgt','TGCAtgca')
 def reverse_complement(x):
     return x[::-1].translate(rctab)
 
