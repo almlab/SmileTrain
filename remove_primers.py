@@ -72,6 +72,10 @@ class PrimerRemover():
             print entry
         self.elapsed_time = timer.next()
 
+    def diagnostic_message(self):
+        '''return a string about how the trimming went'''
+        return "Primer removal:\n%s successes and %s failures (?? failure rate)\n%f seconds elapsed\n" %(self.n_successes, self.n_failures, self.elapsed_time)
+
 
 if __name__ == '__main__':
     # parse command line arguments
@@ -79,7 +83,12 @@ if __name__ == '__main__':
     parser.add_argument('fastq', help='input fastq file')
     parser.add_argument('primer', help='primer sequence')
     parser.add_argument('-m', '--max_primer_diffs', default=0, type=int, help='maximum number of nucleotide mismatches in the primer (default: 0)')
+    parser.add_argument('-l', '--log', default=None, type=str, help='log file for successes, failures, and time elapsed')
     args = parser.parse_args()
 
     r = PrimerRemover(open(args.fastq), args.primer, args.max_primer_diffs)
     r.print_entries()
+
+    if args.log is not None:
+        with open(args.log, 'w') as f:
+            f.write(r.diagnostic_message())
