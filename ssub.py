@@ -36,7 +36,8 @@ config = ConfigParser.ConfigParser()
 config.read(os.path.join(os.path.dirname(__file__), "train.cfg"))
 username = config.get('User', 'username')
 temp_dir = config.get('User', 'tmp_directory')
-cluster= config.get('User', 'cluster')
+bash_rc = config.get('User', 'bash_rc')
+cluster = config.get('User', 'cluster')
 
 
 def parse_args():
@@ -190,7 +191,7 @@ class Ssub():
         fh.write('#BSUB -G %s\n' %(self.G))
         fh.write('#BSUB -R "rusage[mem=%s:argon_io=%s]"\n' %(self.m, self.io))
         fh.write('#BSUB -P %s\n' %(array_fn))
-        fh.write('source /home/unix/%s/.bashrc\n' %(self.username))
+        fh.write('source \n' %(bash_rc))
         fh.write('cd $LS_SUBCWD\n')
         
         # write job array
