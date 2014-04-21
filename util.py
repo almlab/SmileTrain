@@ -1,4 +1,4 @@
-import re, string, sys, time, itertools
+import re, string, sys, time, itertools, os
 import usearch_python.primer
 
 def fasta_entries(lines):
@@ -91,6 +91,17 @@ def mismatches(seq, primer, w):
             I = i
             D = d
     return [I, D]
+
+def check_for_collisions(filenames):
+    '''assert that each of filenames does not exist'''
+
+    # correct a string into a list if needed
+    if isinstance(filenames, str):
+        filenames = [filenames]
+
+    for filename in filenames:
+        if os.path.isfile(filename):
+            raise RuntimeError("output collision with existing file %s" % filename)
 
 def message(text, indent=2):
     # print message to stderr

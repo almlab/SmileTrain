@@ -7,6 +7,7 @@ Options allow the user to run individual parts of the pipeline or the entire thi
 
 import argparse, os, ConfigParser
 import ssub
+import util
 from util import *
 
 # open the config file sister to this script
@@ -122,6 +123,9 @@ class OTU_Caller():
     
     def split_fastq(self):
         '''Split forward and reverse reads (for parallel processing)'''
+
+        # check that the destinations are empty
+        util.check_for_collisions(['%s.%s' %(self.f, i) for i in range(self.n_cpus)])
         
         # Get list of commands
         cmds = []
@@ -138,21 +142,43 @@ class OTU_Caller():
     
     def remove_primers(self):
         '''Remove diversity region + primer and discard reads with > 2 mismatches'''
+
+        # do forward only if there is a forward read file and a forward primer
+        # similar for reverse
+        do_forward = self.f and self.p
+        do_reverse = self.r and self.q
+
+        # check that something is being done
+        if not (do_forward or do_reverse):
+            raise RuntimeError("remove primers called with bad input: a file or primer is missing")
+
+        # check that destinations are empty
+        util.check_for_collisions(self.Fi)
+        util.check_for_collisions(self.Ri)
         
-        # Get list of commands
+        # get list of commands using forward, reverse, or both
         cmds = []
         for i in range(self.n_cpus):
-            if self.f:
+            if do_forward:
+                assert(self.p != '')
                 cmd = 'python %s/remove_primers.py %s %s --max_primer_diffs %d > %s' %(self.library, self.fi[i], self.p, self.p_mismatch, self.Fi[i])
                 cmds.append(cmd)
-            if self.r:
+            if do_reverse:
+                assert(self.r != '')
                 cmd = 'python %s/remove_primers.py %s %s --max_primer_diffs %d > %s' %(self.library, self.ri[i], self.q, self.p_mismatch, self.Ri[i])
                 cmds.append(cmd)
         
-        # Submit commands and validate output
+        # submit commands
         self.ssub.submit_and_wait(cmds, out=self.dry_run)
-        self.ssub.validate_output(self.Fi + self.Ri, out = self.dry_run)
-        self.ssub.move_files(self.Fi + self.Ri, self.fi + self.ri, out = self.dry_run)
+
+        # validate output and move files
+        if do_forward:
+            self.ssub.validate_output(self.Fi, out=self.dry_run)
+            self.ssub.move_files(self.Fi, self.fi, out=self.dry_run)
+
+        if do_reverse:
+            self.ssub.validate_output(self.Ri, out=self.dry_run)
+            self.ssub.move_files(self.Ri, self.ri, out=self.dry_run)
     
     def merge_reads(self):
         '''Merge forward and reverse reads using USEARCH'''
