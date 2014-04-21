@@ -2,11 +2,15 @@ smile_train
 ===========
 
 # Dependencies
-* Python 2.?, numpy, pandas
+* Python 2.7, numpy, pandas
 
 # Usage
 * Enter your user information in the config file before use.
+* Make sure your .bash_rc loads python 2.7. Otherwise, argparse will die. At the start of my .bash_rc, I have
+    - source /etc/profile.d/modules.sh
+    - module add python/2.7.3
 * Run the tests.
+* Run otu_caller.py with the command line option --dry_run before you actually submit any jobs. Check that the output commands look like what you actually want to submit to the cluster!
 
 # Documentation
 Scripts are annotated with docstrings that can be read using pydoc. To view documentation for script.py, run
