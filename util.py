@@ -35,7 +35,7 @@ def fasta_entries(lines):
 
     yield [sid, sequence]
 
-def fastq_iterator(lines, check_sigils=True, check_lengths=True, output='list'):
+def fastq_iterator(lines, check_sigils=True, check_lengths=True, output_type='list'):
     '''
     Yield [at line, seq line, quality line] entries from a fastq file. All lines are right-
     trimmed, and the plus line (line 3) is dropped.
