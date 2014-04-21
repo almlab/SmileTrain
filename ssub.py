@@ -63,7 +63,6 @@ def parse_args():
 
 
 class Ssub():
-    
     def __init__(self, cluster = 'coyote'):
         
         # get command line arguments
@@ -352,8 +351,8 @@ def initialize():
         commands += [line.rstrip() for line in sys.stdin.readlines()]
     
     # calculate number of cpus
-    if ssub.n < 0:
-        ssub.n = len(commands)
+    if ssub.n_cpus < 0:
+        ssub.n_cpus = len(commands)
     
     return ssub, commands
 
