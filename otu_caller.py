@@ -124,21 +124,35 @@ class OTU_Caller():
     def split_fastq(self):
         '''Split forward and reverse reads (for parallel processing)'''
 
-        # check that the destinations are empty
-        util.check_for_collisions(['%s.%s' %(self.f, i) for i in range(self.n_cpus)])
+        # do forward only if there is a forward file; similar for reverse
+        do_forward = self.f
+        do_reverse = self.r
+
+        # check for inputs and collisions of output
+        if do_forward:
+            util.check_for_existence(self.f)
+            util.check_for_collisions(['%s.%s' %(self.f, i) for i in range(self.n_cpus)])
+        if do_reverse:
+            util.check_for_existence(self.r)
+            util.check_for_collisions(['%s.%s' %(self.r, i) for i in range(self.n_cpus)])
         
         # Get list of commands
         cmds = []
-        if self.f:
+        if do_forward:
             cmd = 'python %s/split_fastq.py %s %s' %(self.library, self.f, self.n_cpus)
             cmds.append(cmd)
-        if self.r:
+        if do_reverse:
             cmd = 'python %s/split_fastq.py %s %s' %(self.library, self.r, self.n_cpus)
             cmds.append(cmd)
         
-        # Submit commands and validate output
+        # submit commands
         self.ssub.submit_and_wait(cmds, out=self.dry_run)
-        self.ssub.validate_output(self.fi + self.ri, out=self.dry_run)
+
+        # validate output
+        if do_forward:
+            self.ssub.validate_output(self.fi, out=self.dry_run)
+        if do_reverse:
+            self.ssub.validate_output(self.ri, out=self.dry_run)
     
     def remove_primers(self):
         '''Remove diversity region + primer and discard reads with > 2 mismatches'''
@@ -152,19 +166,21 @@ class OTU_Caller():
         if not (do_forward or do_reverse):
             raise RuntimeError("remove primers called with bad input: a file or primer is missing")
 
-        # check that destinations are empty
-        util.check_for_collisions(self.Fi)
-        util.check_for_collisions(self.Ri)
+        # check for inputs and collisions of output
+        if do_forward:
+            util.check_for_existence(self.fi)
+            util.check_for_collisions(self.Fi)
+        if do_reverse:
+            util.check_for_existence(self.ri)
+            util.check_for_collisions(self.Ri)
         
         # get list of commands using forward, reverse, or both
         cmds = []
         for i in range(self.n_cpus):
             if do_forward:
-                assert(self.p != '')
                 cmd = 'python %s/remove_primers.py %s %s --max_primer_diffs %d > %s' %(self.library, self.fi[i], self.p, self.p_mismatch, self.Fi[i])
                 cmds.append(cmd)
             if do_reverse:
-                assert(self.r != '')
                 cmd = 'python %s/remove_primers.py %s %s --max_primer_diffs %d > %s' %(self.library, self.ri[i], self.q, self.p_mismatch, self.Ri[i])
                 cmds.append(cmd)
         

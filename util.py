@@ -92,6 +92,16 @@ def mismatches(seq, primer, w):
             D = d
     return [I, D]
 
+def check_for_existence(filenames):
+    '''assert that each of filenames does exist'''
+
+    if isinstance(filenames, str):
+        filenames = [filenames]
+
+    for filename in filenames:
+        if not os.path.isfile(filename):
+            raise RuntimeError("input file missing: %s" % filename)
+
 def check_for_collisions(filenames):
     '''assert that each of filenames does not exist'''
 
