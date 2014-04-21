@@ -36,7 +36,7 @@ config = ConfigParser.ConfigParser()
 config.read(os.path.join(os.path.dirname(__file__), "train.cfg"))
 username = config.get('User', 'username')
 temp_dir = config.get('User', 'tmp_directory')
-bash_rc = config.get('User', 'bash_rc')
+bashrc = config.get('User', 'bashrc')
 cluster = config.get('User', 'cluster')
 
 
@@ -191,7 +191,7 @@ class Ssub():
         fh.write('#BSUB -G %s\n' %(self.G))
         fh.write('#BSUB -R "rusage[mem=%s:argon_io=%s]"\n' %(self.m, self.io))
         fh.write('#BSUB -P %s\n' %(array_fn))
-        fh.write('source %s\n' %(bash_rc))
+        fh.write('source %s\n' %(bashrc))
         fh.write('cd $LS_SUBCWD\n')
         
         # write job array
@@ -218,7 +218,7 @@ class Ssub():
         fh.write('#PBS -t 1-%d%%%s\n' %(len(fns), min(len(fns), int(self.l))))
         fh.write('#PBS -e %s.e\n' %(array_fn))
         fh.write('#PBS -o %s.o\n' %(array_fn))
-        fh.write('source /home/%s/.bashrc\n' %(self.username))
+        fh.write('source %s\n' %(bashrc))
         fh.write('cd $PBS_O_WORKDIR\n')
         
         # write job array
