@@ -198,6 +198,10 @@ class OTU_Caller():
     
     def merge_reads(self):
         '''Merge forward and reverse reads using USEARCH'''
+
+        # check for inputs and collisions
+        util.check_for_existence(self.fi + self.ri)
+        util.check_for_collisions(self.Fi + self.Ri)
         
         # Intersect forward and reverse reads
         cmds = []
