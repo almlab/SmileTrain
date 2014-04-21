@@ -84,6 +84,8 @@ class Ssub():
         
         # broad parameters
         if cluster == 'broad':
+            error('broad may not be supported')
+            # swo> stat_cmd should be a list of words passed to terminal
             self.submit_cmd = 'bsub'
             self.stat_cmd = 'bjobs -w'
             self.parse_job = lambda x: re.search('Job <(\d+)>', x).group(1)
@@ -91,8 +93,8 @@ class Ssub():
         # coyote parameters
         elif cluster == 'coyote':
             self.submit_cmd = 'qsub'
-            self.stat_cmd = 'qstat -l'
-            self.parse_job = lambda x: x.rstrip()
+            self.stat_cmd = ['qstat', '-u', username]
+            self.parse_job = lambda x: re.match('\d+', x).group()
         
         # unrecognized cluster
         else:
@@ -119,10 +121,15 @@ class Ssub():
     
     
     def job_status(self):
-        # return job status
-        process = subprocess.Popen([self.stat_cmd], stdout = subprocess.PIPE, shell=True)
-        [out, err] = process.communicate()
-        out = [line for line in out.split('\n') if self.username in line]
+        '''check if this user has submitted jobs'''
+
+        try:
+            out = subprocess.check_output(self.stat_cmd)
+            err = ''
+        except subprocess.CalledProcessError as e:
+            out = ''
+            err = e.output
+
         return [out, err]
     
     
