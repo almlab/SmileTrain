@@ -2,11 +2,7 @@ smile_train
 ===========
 
 # Documentation
-The full documentation is in the `doc` subfolder. To compile on Linux or Mac,
-
-    make html
-
-On Windows, you need to use make.bat somehow.
+The full documentation is in the `doc` subfolder. To compile on Linux or Mac, run `make` (or use `make help` if you want to see your options). On Windows, you need to use make.bat somehow.
 
 Then you can open `index.html` and read away!
 
