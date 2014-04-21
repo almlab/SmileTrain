@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 '''
 Script that removes primers from reads in fastq files.
 

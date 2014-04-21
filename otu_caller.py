@@ -143,10 +143,10 @@ class OTU_Caller():
         cmds = []
         for i in range(self.n_cpus):
             if self.f:
-                cmd = '%s/remove_primers.py %s %s --max_primer_diffs %d > %s' %(self.library, self.fi[i], self.p, self.p_mismatch, self.Fi[i])
+                cmd = 'python %s/remove_primers.py %s %s --max_primer_diffs %d > %s' %(self.library, self.fi[i], self.p, self.p_mismatch, self.Fi[i])
                 cmds.append(cmd)
             if self.r:
-                cmd = '%s/remove_primers.py %s %s --max_primer_diffs %d > %s' %(self.library, self.ri[i], self.q, self.p_mismatch, self.Ri[i])
+                cmd = 'python %s/remove_primers.py %s %s --max_primer_diffs %d > %s' %(self.library, self.ri[i], self.q, self.p_mismatch, self.Ri[i])
                 cmds.append(cmd)
         
         # Submit commands and validate output
