@@ -191,7 +191,7 @@ class Ssub():
         fh.write('#BSUB -G %s\n' %(self.G))
         fh.write('#BSUB -R "rusage[mem=%s:argon_io=%s]"\n' %(self.m, self.io))
         fh.write('#BSUB -P %s\n' %(array_fn))
-        fh.write('source \n' %(bash_rc))
+        fh.write('source %s\n' %(bash_rc))
         fh.write('cd $LS_SUBCWD\n')
         
         # write job array
