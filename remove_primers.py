@@ -22,7 +22,7 @@ import util
 #from util import *
 
 class PrimerRemover():
-    def __init__(self, fastq, primer, max_primer_diffs):
+    def __init__(self, fastq, primer, max_primer_diffs, output_type='string'):
         '''
         Remove well-matched primers from sequences in a fastq file
 
@@ -33,21 +33,28 @@ class PrimerRemover():
             the primer sequence to be removed
         max_primer_diffs : int
             the maximum number of mismatches allowed before throwing out the read
+        output_type : string 'string' or 'list' (default 'string')
+            output format for iterator. string is a single string; list is the 3-element list
         '''
 
-        self.iterator = util.fastq_iterator(fastq)
+        self.fastq_iterator = util.fastq_iterator(fastq)
         self.primer = primer
         self.primer_length = len(self.primer)
         self.max_primer_diffs = max_primer_diffs
+
+        self.output_type = output_type
         
         self.n_successes = 0
         self.n_failures = 0
 
-    def entries(self):
+    def __iter__(self):
+        return self
+
+    def next(self):
         '''iterator over successfully trimmed input fastq entries'''
 
-        for entry in self.iterator:
-            [at_line, seq_line, quality_line] = self.iterator.next()
+        while True:
+            [at_line, seq_line, quality_line] = self.fastq_iterator.next()
 
             # find the best primer position in the sequence
             primer_start_index, n_primer_diffs = util.mismatches(seq_line, self.primer, 15)
@@ -60,7 +67,10 @@ class PrimerRemover():
                 trimmed_quality = quality_line[primer_end_index:]
                 self.n_successes += 1
 
-                yield "\n".join([at_line, trimmed_seq, '+', trimmed_quality])
+                if self.output_type == 'string':
+                    return "\n".join([at_line, trimmed_seq, '+', trimmed_quality])
+                elif self.output_type == 'list':
+                    return [at_line, trimmed_seq, trimmed_quality]
             else:
                 self.n_failures += 1
 
@@ -68,7 +78,7 @@ class PrimerRemover():
         '''print the successfully trimmed entries'''
 
         timer = util.timer()
-        for entry in self.entries():
+        for entry in self:
             print entry
         self.elapsed_time = timer.next()
 
