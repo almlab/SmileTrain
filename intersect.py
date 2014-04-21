@@ -4,52 +4,11 @@ Output those reads.
 '''
 
 import sys
-
-def fastq_entries(lines, strip=True, check_sigils=True, check_lengths=True, sequence=True):
-    '''
-    Reads lines from a fastq file and record them record-by-record.
-
-    Parameters
-    lines : sequence or iterator of strings
-        lines from the fastq file
-    strip : bool (default: true)
-        rstrip all the lines?
-    check_sigils : bool (default: true)
-        assert that the @ and + lines begin with those symbols?
-    check_lengths : bool (default: true)
-        assert that the sequence and quality lines are the same length?
-    sequence : bool (default: true)
-        yield a sequence of four strings; otherwise, a single newline-separated string
-
-    iterator
-    '''
-
-    for at_line, seq_line, plus_line, quality_line in itertools.izip(*[iter(lines)] * 4):
-        if strip:
-            # chomp all newlines
-            at_line = at_line.rstrip()
-            seq_line = seq_line.rstrip()
-            plus_line = plus_line.rstrip()
-            quality_line = quality_line.rstrip()
-
-        if check_sigils:
-            # check that the two lines with identifiers match our expectations
-            assert(at_line.startswith('@'))
-            assert(plus_line.startswith('+'))
-
-        if check_lengths:
-            # check that the sequence and quality lines have the same number of nucleotides
-            assert(len(seq_line) == len(quality_line))
-
-        # return a list or a single string
-        if sequence:
-            yield [at_line, seq_line, plus_line, quality_line]
-        else:
-            yield "\n".join([at_line, seq_line, plus_line, quality_line])
+import util
 
 def fastq_ids(lines):
     '''Extract the read IDs (with no @) from a fastq file'''
-    return [at_line[1:] for at_line, seq_line, plus_line, quality_line in fastq_entries(lines)]
+    return [at_line[1:] for at_line, seq_line, quality_line in util.fastq_iterator(lines)]
 
 def common_ids(fastq1, fastq2):
     '''
@@ -76,11 +35,11 @@ def fastq_entries_with_matching_ids(fastq, rids):
     Each entry is a single string.
     '''
 
-    for at_line, seq_line, plus_line, quality_line in fastq_entries(fastq):
+    for at_line, plus_line, quality_line in util.fastq_iterator(fastq):
         rid = at_line[1:]
 
         if rid in rids:
-            yield "\n".join([at_line, seq_line, plus_line, quality_line]) 
+            yield fastq_entry_list_to_string([at_line, seq_line, quality_line]) 
 
 
 if __name__ == '__main__':

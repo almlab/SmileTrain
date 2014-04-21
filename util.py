@@ -35,7 +35,7 @@ def fasta_entries(lines):
 
     yield [sid, sequence]
 
-def fastq_iterator(lines, check_sigils=True, check_lengths=True):
+def fastq_iterator(lines, check_sigils=True, check_lengths=True, output='list'):
     '''
     Yield [at line, seq line, quality line] entries from a fastq file. All lines are right-
     trimmed, and the plus line (line 3) is dropped.
@@ -47,6 +47,11 @@ def fastq_iterator(lines, check_sigils=True, check_lengths=True):
         assert that the first line starts with @ and the third with +?
     check_lengths : bool (default true)
         assert that the sequence and quality lines are the same length
+    output_type : string 'string' or 'list' (default 'list')
+        output format
+
+    Returns
+    if 'string', return a single string; if 'list', return a list [at line, sequence line, quality line]
     '''
 
     for at_line, seq_line, plus_line, quality_line in itertools.izip(*[iter(lines)] * 4):
@@ -57,13 +62,24 @@ def fastq_iterator(lines, check_sigils=True, check_lengths=True):
         quality_line = quality_line.rstrip()
 
         # check that the two lines with identifiers match our expectations
-        assert(at_line.startswith('@'))
-        assert(plus_line.startswith('+'))
+        if check_sigils:
+            assert(at_line.startswith('@'))
+            assert(plus_line.startswith('+'))
 
         # check that the sequence and quality lines have the same number of nucleotides
-        assert(len(seq_line) == len(quality_line))
+        if check_lengths:
+            assert(len(seq_line) == len(quality_line))
 
-        yield [at_line, seq_line, quality_line]
+        entry = [at_line, seq_line, quality_line]
+        if output_type == 'list':
+            yield entry
+        elif output_type == 'string':
+            yield fastq_entry_list_to_string(entry)
+
+def fastq_entry_list_to_string(entry):
+    '''[at line, sequence line, quality line] -> new-line separated fastq entry'''
+    at_line, seq_line, quality_line = entry
+    return "\n".join([at_line, seq_line, '+', quality_line])
 
 def mismatches(seq, primer, w):
     '''
