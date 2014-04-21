@@ -146,8 +146,9 @@ class Ssub():
         Returns : bool
             were any of the ids found in the job status output?
         '''
-        
+
         [out, err] = self.job_status()
+        print "swo> job status:", [out, err]
         for job in out:
             for job_id in job_ids:
                 if job_id in job:
@@ -285,6 +286,7 @@ class Ssub():
     def submit_and_wait(self, commands, out=False):
         # submit job array and wait for it to finish
         job_ids = self.submit(commands, out=out)
+        print "swo> submitted job ids=", job_ids
         self.wait(job_ids, out = out)
     
     def submit_pipeline(self, pipeline, out = False):
