@@ -104,12 +104,10 @@ class Ssub():
     def __repr__(self):
         return '\ncluster: %s\nusername: %s\ntemp_dir: %s\nn: %d\nm: %d\nq: %s\nG: %s\nio: %s\n' %(self.cluster, self.username, self.temp_dir, self.n_cpus, self.m, self.q, self.G, self.io)
     
-    
     def __str__(self):
         a = self.__repr__()
         a = re.sub('\n', '\n  ', a)
         return a
-    
     
     def mktemp(self, suffix = '.tmp'):
         # make temporary file and return [fh, fn]
@@ -119,9 +117,14 @@ class Ssub():
         fh.write(self.header)
         return fh, fn
     
-    
     def job_status(self):
-        '''check if this user has submitted jobs'''
+        '''
+        Check if this user has submitted jobs. Calls the command specified by the words
+        in stat_cmd and looks for the output. If there is an error, get no output and 
+        only the standard error result.
+
+        Returns : [output message or '', error message or '']
+        '''
 
         try:
             out = subprocess.check_output(self.stat_cmd)
@@ -134,7 +137,16 @@ class Ssub():
     
     
     def jobs_finished(self, job_ids):
-        # check if jobs are finished
+        '''
+        Check if jobs are finished
+
+        job_ids : list of strings
+            ids to search for in the output of job status command
+
+        Returns : bool
+            were any of the ids found in the job status output?
+        '''
+        
         [out, err] = self.job_status()
         for job in out:
             for job_id in job_ids:
