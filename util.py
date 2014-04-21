@@ -3,10 +3,8 @@ import usearch_python.primer
 
 def fasta_entries(lines):
     '''
-    Yield [id, sequence] pairs from a fasta file. Sequence allowed to run over multiple
-    lines.
+    Yield [id, sequence] pairs from a fasta file. Sequence allowed to run over multiple lines.
 
-    Parameters
     lines : sequence or iterator of strings
         lines from the fasta file
 
@@ -40,7 +38,6 @@ def fastq_iterator(lines, check_sigils=True, check_lengths=True, output_type='li
     Yield [at line, seq line, quality line] entries from a fastq file. All lines are right-
     trimmed, and the plus line (line 3) is dropped.
 
-    Parameters
     lines : sequence or iterator of strings
         lines from the fastq file
     check_sigils : bool (default true)
@@ -50,8 +47,7 @@ def fastq_iterator(lines, check_sigils=True, check_lengths=True, output_type='li
     output_type : string 'string' or 'list' (default 'list')
         output format
 
-    Returns
-    if 'string', return a single string; if 'list', return a list [at line, sequence line, quality line]
+    Returns : if 'string', return a single string; if 'list', return a list [at line, sequence line, quality line]
     '''
 
     for at_line, seq_line, plus_line, quality_line in itertools.izip(*[iter(lines)] * 4):

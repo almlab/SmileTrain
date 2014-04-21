@@ -1,6 +1,18 @@
 smile_train
 ===========
 
+# Documentation
+The full documentation is in the `doc` subfolder. To compile on Linux or Mac,
+
+    make html
+
+On Windows, you need to use make.bat somehow.
+
+Then you can open `index.html` and read away!
+
+Scripts are annotated with docstrings that can be read using pydoc. To view documentation for script.py, run
+    pydoc script
+
 # Dependencies
 * Python 2.7, numpy, pandas
 
@@ -11,10 +23,6 @@ smile_train
     - module add python/2.7.3
 * Run the tests.
 * Run otu_caller.py with the command line option --dry_run before you actually submit any jobs. Check that the output commands look like what you actually want to submit to the cluster!
-
-# Documentation
-Scripts are annotated with docstrings that can be read using pydoc. To view documentation for script.py, run
-    pydoc script
 
 # Code standards
 * Indentation is 4 spaces
