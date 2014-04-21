@@ -23,23 +23,19 @@ def common_ids(fastq1, fastq2):
         ids (not including the @)
     '''
 
-    ids1 = fastq_ids(fastq1)
-    ids2 = fastq_ids(fastq2)
+    ids1 = set(fastq_ids(fastq1))
+    ids2 = set(fastq_ids(fastq2))
 
-    common_ids = set([id1 for id1 in ids1 if id1 in ids2])
-    return common_ids
+    return ids1.intersection(ids2)
 
 def fastq_entries_with_matching_ids(fastq, rids):
-    '''
-    Yield a series of fastq entries drawn from the input whose IDs match those in the list.
-    Each entry is a single string.
-    '''
+    '''yield a series of fastq entry strings drawn from the input whose IDs match those in the list'''
 
     for at_line, plus_line, quality_line in util.fastq_iterator(fastq):
         rid = at_line[1:]
 
         if rid in rids:
-            yield fastq_entry_list_to_string([at_line, seq_line, quality_line]) 
+            yield util.fastq_entry_list_to_string([at_line, seq_line, quality_line]) 
 
 
 if __name__ == '__main__':
