@@ -33,7 +33,7 @@ def parse_args():
     
     # add arguments
     group1.add_argument('--all', default = False, action = 'store_true', help = 'Run all steps of pipeline?')
-    group1.add_argument('--dont_split', action='store_true', help='Fastq files already split?')
+    group1.add_argument('--split', action='store_true', help='Split the fastq files?')
     group1.add_argument('--primers', default = False, action = 'store_true', help = 'Remove primers?')
     group1.add_argument('--merge', default = False, action = 'store_true', help = 'Merge forward and reverse reads?')
     group1.add_argument('--demultiplex', default = False, action = 'store_true', help = 'Demultiplex?')
@@ -66,7 +66,7 @@ def parse_args():
     
     # process arguments
     if args.all == True:
-        args.primers = args.merge = args.demultiplex = args.qfilter = args.chimeras = args.ref_gg = True
+        args.split = args.primers = args.merge = args.demultiplex = args.qfilter = args.chimeras = args.ref_gg = True
     args.sids = map(int, args.sids.split(','))
         
     return args
@@ -269,7 +269,7 @@ if __name__ == '__main__':
     oc = OTU_Caller()
     
     # Split fastq
-    if not oc.dont_split:
+    if oc.split:
         message('Splitting fastq')
         oc.split_fastq()
     
