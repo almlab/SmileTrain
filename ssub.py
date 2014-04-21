@@ -46,7 +46,7 @@ def parse_args():
     
     # add command line arguments
     parser = argparse.ArgumentParser(usage = usage)
-    parser.add_argument('-n', default = -1, type = int, help = 'number of cpus')
+    parser.add_argument('--n_cpus', '-n', default=1, type=int, help='number of cpus')
     parser.add_argument('-q', default = 'hour', help = 'queue')
     parser.add_argument('-G', default = 'gscidfolk', help = 'group')
     parser.add_argument('-m', default = 4, help = 'memory (gb)')
@@ -75,7 +75,7 @@ class Ssub():
         self.temp_dir = temp_dir
         self.header = '#!/bin/bash\n'
         self.l = args.l
-        self.n = args.n
+        self.n_cpus = args.n_cpus
         self.m = args.m
         self.q = args.q
         self.G = args.G
@@ -100,7 +100,7 @@ class Ssub():
     
             
     def __repr__(self):
-        return '\ncluster: %s\nusername: %s\ntemp_dir: %s\nn: %d\nm: %d\nq: %s\nG: %s\nio: %s\n' %(self.cluster, self.username, self.temp_dir, self.n, self.m, self.q, self.G, self.io)
+        return '\ncluster: %s\nusername: %s\ntemp_dir: %s\nn: %d\nm: %d\nq: %s\nG: %s\nio: %s\n' %(self.cluster, self.username, self.temp_dir, self.n_cpus, self.m, self.q, self.G, self.io)
     
     
     def __str__(self):
@@ -140,7 +140,7 @@ class Ssub():
         # write job scripts from a list of commands
         
         # initialize output files
-        fhs, fns = zip(*[self.mktemp(suffix='.sh') for i in range(min(self.n, len(commands)))])
+        fhs, fns = zip(*[self.mktemp(suffix='.sh') for i in range(min(self.n_cpus, len(commands)))])
         fhs_cycle = cycle(fhs)
         
         # write commands to file
@@ -263,12 +263,10 @@ class Ssub():
                 if self.jobs_finished(job_ids):
                     break 
     
-    
-    def submit_and_wait(self, commands, out = False):
+    def submit_and_wait(self, commands, out=False):
         # submit job array and wait for it to finish
-        job_ids = self.submit(commands, out = out)
+        job_ids = self.submit(commands, out=out)
         self.wait(job_ids, out = out)
-    
     
     def submit_pipeline(self, pipeline, out = False):
         # a pipeline is a list of lists of commands

@@ -8,7 +8,6 @@ Options allow the user to run individual parts of the pipeline or the entire thi
 import argparse, os, ConfigParser
 import ssub
 from util import *
-ssub = ssub.Ssub()
 
 # open the config file sister to this script
 config = ConfigParser.ConfigParser()
@@ -88,6 +87,11 @@ class OTU_Caller():
         self.__dict__.update(parse_args().__dict__)
         # create filenames
         self.get_filenames()
+
+        # create an internal ssub object. this way we can set ssub's options without
+        # relying on the command line.
+        self.ssub = ssub.Ssub()
+        self.ssub.n_cpus = self.n_cpus
     
     def get_filenames(self):
         '''Generate filenames to use in pipeline'''
@@ -128,8 +132,8 @@ class OTU_Caller():
             cmds.append(cmd)
         
         # Submit commands and validate output
-        ssub.submit_and_wait(cmds, out = self.dry_run)
-        ssub.validate_output(self.fi + self.ri, out = self.dry_run)
+        self.ssub.submit_and_wait(cmds, out=self.dry_run)
+        self.ssub.validate_output(self.fi + self.ri, out=self.dry_run)
     
     def remove_primers(self):
         '''Remove diversity region + primer and discard reads with > 2 mismatches'''
@@ -145,9 +149,9 @@ class OTU_Caller():
                 cmds.append(cmd)
         
         # Submit commands and validate output
-        ssub.submit_and_wait(cmds, out = self.dry_run)
-        ssub.validate_output(self.Fi + self.Ri, out = self.dry_run)
-        ssub.move_files(self.Fi + self.Ri, self.fi + self.ri, out = self.dry_run)
+        self.ssub.submit_and_wait(cmds, out=self.dry_run)
+        self.ssub.validate_output(self.Fi + self.Ri, out = self.dry_run)
+        self.ssub.move_files(self.Fi + self.Ri, self.fi + self.ri, out = self.dry_run)
     
     def merge_reads(self):
         '''Merge forward and reverse reads using USEARCH'''
@@ -157,18 +161,18 @@ class OTU_Caller():
         for i in range(self.n_cpus):
             cmd = 'python %s/intersect_reads.py %s %s %s %s' %(self.library, self.fi[i], self.ri[i], self.Fi[i], self.Ri[i])
             cmds.append(cmd)
-        ssub.submit_and_wait(cmds, out = self.dry_run)
-        ssub.validate_output(self.Fi + self.Ri, out = self.dry_run)
-        ssub.move_files(self.Fi + self.Ri, self.fi + self.ri, out = self.dry_run)
+        self.ssub.submit_and_wait(cmds, out = self.dry_run)
+        self.ssub.validate_output(self.Fi + self.Ri, out = self.dry_run)
+        self.ssub.move_files(self.Fi + self.Ri, self.fi + self.ri, out = self.dry_run)
         
         # Merge reads
         cmds = []
         for i in range(self.n_cpus):
             cmd = '%s -fastq_mergepairs %s -reverse %s -fastq_truncqual %d -fastqout %s' %(self.usearch, self.fi[i], self.ri[i], self.truncqual, self.mi[i])
             cmds.append(cmd)
-        ssub.submit_and_wait(cmds, out = self.dry_run)
-        ssub.validate_output(self.mi, out = self.dry_run)
-        ssub.remove_files(self.fi + self.ri, out = self.dry_run)
+        self.ssub.submit_and_wait(cmds, out = self.dry_run)
+        self.ssub.validate_output(self.mi, out = self.dry_run)
+        self.ssub.remove_files(self.fi + self.ri, out = self.dry_run)
     
     def demultiplex_reads(self):
         '''Demultiplex samples using index and barcodes'''
@@ -177,9 +181,9 @@ class OTU_Caller():
         for i in range(self.n_cpus):
             cmd = 'python %s/map_barcodes.py %s %s %s %d > %s' %(self.library, self.ci[i], self.b, self.x, self.b_mismatch, self.Ci[i])
             cmds.append(cmd)
-        ssub.submit_and_wait(cmds, self.dry_run)
-        ssub.validate_output(self.Ci, self.dry_run)
-        ssub.move_files(self.Ci, self.ci, self.dry_run)
+        self.ssub.submit_and_wait(cmds, self.dry_run)
+        self.ssub.validate_output(self.Ci, self.dry_run)
+        self.ssub.move_files(self.Ci, self.ci, self.dry_run)
     
     def quality_filter(self):
         '''Quality filter with truncqual and maximum expected error'''
@@ -188,21 +192,21 @@ class OTU_Caller():
         for i in range(self.n_cpus):
             cmd = '%s -fastq_filter %s -fastq_truncqual %d -fastq_maxee %f -fastaout %s' %(self.usearch, self.ci[i], self.truncqual, self.maxee, self.Ci[i])
             cmds.append(cmd)
-        ssub.submit_and_wait(cmds, self.dry_run)
-        ssub.validate_output(self.Ci, self.dry_run)
-        ssub.move_files(self.Ci, self.ci, self.dry_run)
+        self.ssub.submit_and_wait(cmds, self.dry_run)
+        self.ssub.validate_output(self.Ci, self.dry_run)
+        self.ssub.move_files(self.Ci, self.ci, self.dry_run)
     
     def dereplicate(self):
         '''Concatenate files and dereplicate'''
 
         cmd = 'cat %s > q.fst' %(' '.join(self.ci))
-        ssub.run_local([cmd], out = self.dry_run)
-        ssub.validate_output(['q.fst'], self.dry_run)
+        self.ssub.run_local([cmd], out = self.dry_run)
+        self.ssub.validate_output(['q.fst'], self.dry_run)
         cmd = 'rm %s' %(' '.join(self.ci))
-        ssub.run_local([cmd], out = self.dry_run)
+        self.ssub.run_local([cmd], out = self.dry_run)
         cmd = 'python %s/derep_fulllength.py q.fst q.derep.fst' %(self.library)
-        ssub.submit_and_wait([cmd], self.dry_run)
-        ssub.validate_output(['q.derep.fst'], self.dry_run)
+        self.ssub.submit_and_wait([cmd], self.dry_run)
+        self.ssub.validate_output(['q.derep.fst'], self.dry_run)
     
     def denovo_clustering(rename=True):
         '''Denovo clustering with USEARCH'''
@@ -212,8 +216,8 @@ class OTU_Caller():
             sid = self.sids[i]
             cmd = '%s -cluster_otus q.derep.fst -otus %s -otuid .%d' %(self.usearch, self.oi[i], sid)
             cmds.append(cmd)
-        ssub.submit_and_wait(cmds, self.dry_run)
-        ssub.validate_output(self.oi, self.dry_run)
+        self.ssub.submit_and_wait(cmds, self.dry_run)
+        self.ssub.validate_output(self.oi, self.dry_run)
         
         # Rename OTUs
         if rename == True:
@@ -222,9 +226,9 @@ class OTU_Caller():
                 sid = self.sids[i]
                 cmd = 'python %s/usearch_python/fasta_number.py %s OTU%d_ > %s' %(self.library, self.oi[i], sid, self.Oi[i])
                 cmds.append(cmd)
-            ssub.submit_and_wait(cmds, self.dry_run)
-            ssub.validate_output(self.Oi, self.dry_run)
-            ssub.move_files(self.Oi, self.oi, self.dry_run)
+            self.ssub.submit_and_wait(cmds, self.dry_run)
+            self.ssub.validate_output(self.Oi, self.dry_run)
+            self.ssub.move_files(self.Oi, self.oi, self.dry_run)
     
     def remove_chimeras(self):
         '''Remove chimeras using gold database'''
@@ -234,9 +238,9 @@ class OTU_Caller():
             sid = self.sids[i]
             cmd = '%s -uchime_ref %s -db %s -nonchimeras %s -strand plus' %(self.usearch, self.oi[i], self.gold_db, self.Oi[i])
             cmds.append(cmd)
-        ssub.submit_and_wait(cmds, self.dry_run)
-        ssub.validate_output(self.Oi, self.dry_run)
-        ssub.move_files(self.Oi, self.oi, self.dry_run)
+        self.ssub.submit_and_wait(cmds, self.dry_run)
+        self.ssub.validate_output(self.Oi, self.dry_run)
+        self.ssub.move_files(self.Oi, self.oi, self.dry_run)
     
     def reference_mapping(self):
         '''Map reads to reference databases'''
@@ -245,8 +249,8 @@ class OTU_Caller():
         for i in range(len(self.sids)):
             cmd = '%s -usearch_global q.derep.fst -db %s -uc %s -strand both -id .%d' %(self.usearch, self.db[i], self.uc[i], self.sids[i])
             cmds.append(cmd)
-        ssub.submit_and_wait(cmds, self.dry_run)
-        ssub.validate_output(self.uc, self.dry_run)
+        self.ssub.submit_and_wait(cmds, self.dry_run)
+        self.ssub.validate_output(self.uc, self.dry_run)
     
     def make_otu_tables(self):
         '''Make OTU tables from UC file'''
@@ -255,8 +259,8 @@ class OTU_Caller():
         for i in range(len(self.sids)):
             cmd = 'python %s/usearch_python/uc2otutab.py %s %s' %(self.library, self.uc[i], self.xi[i])
             cmds.append(cmd)
-        ssub.submit_and_wait(cmds, self.dry_run)
-        ssub.validate_output(self.xi, self.dry_run)
+        self.ssub.submit_and_wait(cmds, self.dry_run)
+        self.ssub.validate_output(self.xi, self.dry_run)
     
 
 if __name__ == '__main__':
