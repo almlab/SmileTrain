@@ -2,7 +2,7 @@
 
 import unittest, tempfile, subprocess, os
 
-import util, derep_fulllength
+import util, remove_primers, derep_fulllength
 
 class TestFastaUtilities(unittest.TestCase):
 	'''tests for scripts and functions that do simple fasta manipulations'''
@@ -50,6 +50,22 @@ class TestFastaUtilities(unittest.TestCase):
 			os.remove("%s.%d" %(fasta_fn, i))
 
 		os.rmdir('tests')
+
+class TestRemovePrimers(unittest.TestCase):
+	'''tests for the remove primers step'''
+
+	def setUp(self):
+		self.fastq = "@lolapolooza\nTAAAACATCATCATCAT\n+whatever\nabcdefghijklmnopq\n"
+		self.fastq_lines = self.fastq.split()
+		self.primer = "AAAA"
+		self.max_primer_diffs = 1
+
+		self.primer_remover = remove_primers.PrimerRemover(self.fastq_lines, self.primer, self.max_primer_diffs)
+
+	def test_correct_output(self):
+		'''the primer remover should trim the match as expected'''
+		self.assertEqual(self.primer_remover.next(), "@lolapolooza\nCATCATCATCAT\n+\nfghijklmnopq")
+		self.assertEqual(self.primer_remover.n_successes, 1)
 
 
 if __name__ == '__main__':
