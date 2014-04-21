@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 '''
 Main script in the pipeline. Produces lists of commands and submits them using ssub.
 Options allow the user to run individual parts of the pipeline or the entire thing.
@@ -47,8 +49,8 @@ def parse_args():
     group2.add_argument('-q', help = 'Primer sequence (reverse)')
     group2.add_argument('-b', help = 'Barcodes list')
     group2.add_argument('-x', help = 'Index fastq')
-    group3.add_argument('--p_mismatch', default = 1, type = int, help = 'Number of mismatches allowed in primers')
-    group5.add_argument('--b_mismatch', default = 1, type = int, help = 'Number of mismatches allowed in barcodes')
+    group3.add_argument('--p_mismatch', default=1, type=int, help='Number of mismatches allowed in primers')
+    group5.add_argument('--b_mismatch', default=1, type=int, help='Number of mismatches allowed in barcodes')
     group6.add_argument('--truncqual', default = 2, type = int, help = '')
     group6.add_argument('--maxee', default = 2., type = float, help = 'Maximum expected error (UPARSE)')
     group8.add_argument('--gold_db', default=config.get('Data', 'gold'), help='Gold 16S database')
@@ -136,10 +138,10 @@ class OTU_Caller():
         cmds = []
         for i in range(self.n_cpus):
             if self.f:
-                cmd = '%s/remove_primers.py %s %s %d > %s' %(self.library, self.fi[i], self.p, self.p_mismatch, self.Fi[i])
+                cmd = '%s/remove_primers.py %s %s --max_primer_diffs %d > %s' %(self.library, self.fi[i], self.p, self.p_mismatch, self.Fi[i])
                 cmds.append(cmd)
             if self.r:
-                cmd = '%s/remove_primers.py %s %s %d > %s' %(self.library, self.ri[i], self.q, self.p_mismatch, self.Ri[i])
+                cmd = '%s/remove_primers.py %s %s --max_primer_diffs %d > %s' %(self.library, self.ri[i], self.q, self.p_mismatch, self.Ri[i])
                 cmds.append(cmd)
         
         # Submit commands and validate output
