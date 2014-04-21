@@ -35,8 +35,7 @@ where the barcode is now at the very end of the line.
 Splitting FASTQs
 ----------------
 
-to preserve memory
-
+Primer removal and quality filtering are both embarrassingly parallel computing tasks: every FASTQ entry can be processed independent of all the others. The pipeline might split up the FASTQ files to utilize all available CPUs for this part of the job.
 
 Removing primers
 ----------------
@@ -61,3 +60,22 @@ The primer ended on the nucleotide just below the ``#`` on the previous line, so
 
 Demultiplexing
 --------------
+
+Every forward and reverse read has a barcode associated with it. If a read doesn't match a known barcode, that read should be thrown out. If a barcode matches a known barcode, the read is assigned to that sample.
+
+For example, if there is a line in the barcode mapping file
+
+::
+
+	HSD_group2_day15_animal7	CTAGAATC
+
+then we can tell that the above read came from that sample, so after demultiplexing that FASTQ entry will read
+
+::
+
+	@sample=HSD_group2_day15_animal7;234
+	TACGTAGGGGGCAAGCGTTATCCGGATTTATTGGGTGTAAAGGGTGCGTAGACGGCATGGCAAGTCTGATGTGAAAACCCGCGGCTCAACCCCGGCACTGCATTGCATCCTGCCAGCCTTGAGTGCCGGTGTGGCAAGTGGAATTCCTTGTGTACCGGTGAAATGCGTACATTTCCCGAGGAACTCCAGTTCCGAAGCCGGCTTCCTGCACGATCTCTGACGTTCT
+	+
+	ecefePO``d^dN`baddd^efedbNdd_eQcfgddN]_QQQPNONNN^]NNP^dN][aOO[PNaaaPPaPaBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+
+where ``234`` indicates that this was the 234th read associated with that sample. Only the first line has changed.
