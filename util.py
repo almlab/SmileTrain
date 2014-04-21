@@ -98,9 +98,10 @@ def check_for_existence(filenames):
     if isinstance(filenames, str):
         filenames = [filenames]
 
-    for filename in filenames:
-        if not os.path.isfile(filename):
-            raise RuntimeError("input file missing: %s" % filename)
+    tests = [os.path.isfile(filename) for filename in filenames]
+    if False in tests:
+        bad_names = " ".join([filename for filename, test in zip(filenames, tests) if test == False])
+        raise RuntimeError("input file(s) missing: %s" % bad_names)
 
 def check_for_collisions(filenames):
     '''assert that each of filenames does not exist'''
@@ -109,9 +110,10 @@ def check_for_collisions(filenames):
     if isinstance(filenames, str):
         filenames = [filenames]
 
-    for filename in filenames:
-        if os.path.isfile(filename):
-            raise RuntimeError("output collision with existing file %s" % filename)
+    tests = [os.path.isfile(filename) for filename in filenames]
+    if True in tests:
+        bad_names = " ".join([filename for filename, test in zip(filenames, tests) if test == True])
+        raise RuntimeError("output file(s) already exist: %s" % bad_names)
 
 def message(text, indent=2):
     # print message to stderr
