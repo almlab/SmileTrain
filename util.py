@@ -114,6 +114,10 @@ def check_for_collisions(filenames):
     if True in tests:
         bad_names = " ".join([filename for filename, test in zip(filenames, tests) if test == True])
         raise RuntimeError("output file(s) already exist: %s" % bad_names)
+    
+def is_executable(filename):
+    '''check if a filename exists and is executable'''
+    return os.path.isfile(filename) and os.access(filename, os.X_OK)
 
 def message(text, indent=2):
     # print message to stderr

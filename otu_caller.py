@@ -81,7 +81,7 @@ class OTU_Caller():
 
     def __init__(self):
         # initialize variables
-        self.usearch = 'usearch'
+        self.usearch = config.get('User', 'usearch')
         self.ggdb = config.get('Data', 'greengenes')
         self.library = config.get('Scripts', 'library')
 
@@ -203,6 +203,9 @@ class OTU_Caller():
         util.check_for_existence(self.fi + self.ri)
         util.check_for_collisions(self.Fi + self.Ri)
         
+        # check that usearch is ready to go
+        assert(util.is_executable(self.usearch))
+        
         # Intersect forward and reverse reads
         cmds = []
         for i in range(self.n_cpus):
@@ -234,6 +237,13 @@ class OTU_Caller():
     
     def quality_filter(self):
         '''Quality filter with truncqual and maximum expected error'''
+        
+        # validate input/output
+        util.check_for_existence(self.ci)
+        util.check_for_collisions(self.Ci)
+        
+        # check that usearch is ready to go
+        assert(util.is_executable(self.usearch))
 
         cmds = []
         for i in range(self.n_cpus):
