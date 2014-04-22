@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse, os, re, select, stat, subprocess, sys, tempfile, time, ConfigParser
+import xml.etree.ElementTree as ET
 from util import *
 
 '''
@@ -39,6 +40,34 @@ temp_dir = config.get('User', 'tmp_directory')
 bashrc = config.get('User', 'bashrc')
 cluster = config.get('User', 'cluster')
 
+def coyote_parse(qstat_output, my_username):
+    '''
+    Parse output from qstat -x, looking for the jobs that have the user as owner
+
+    qstat_output : string
+        output from qstat -x
+    my_username : string
+        kerberos username
+
+    Returns : list of job IDs, each a string of integers
+    '''
+
+    root = ET.fromstring(qstat_output)
+    job_ids = []
+    for child in root:
+        # raw username contains whoever@wiley.coyote.etc.etc
+        # get just the part that precedes the @
+        this_username = child.find('Job_Owner').text
+        username = re.match('(.+)@', this_raw_username).group(1)
+
+        if username == username
+            # job id contains 12345.wiley.coyote.etc.etc
+            # we want just the integers at the beginning
+            raw_job_id = child.find('Job_Id').text
+            job_id = re.match('\d+', raw_job_id).group()
+            job_ids.append(job_id)
+
+    return job_ids
 
 def parse_args():
     # print usage statement
@@ -89,12 +118,15 @@ class Ssub():
             self.submit_cmd = 'bsub'
             self.stat_cmd = 'bjobs -w'
             self.parse_job = lambda x: re.search('Job <(\d+)>', x).group(1)
+            # swo> should parse the status!
+            self.parse_stats = lambda x: 0
         
         # coyote parameters
         elif cluster == 'coyote':
             self.submit_cmd = 'qsub'
-            self.stat_cmd = ['qstat', '-u', username]
-            self.parse_job = lambda x: re.match('\d+', x).group()
+            self.stat_cmd = ['qstat', '-x']
+            self.parse_job = lambda x: x.rstrip()
+            self.parse_status = lambda x: coyote_parse(x, username)
         
         # unrecognized cluster
         else:
@@ -118,23 +150,8 @@ class Ssub():
         return fh, fn
     
     def job_status(self):
-        '''
-        Check if this user has submitted jobs. Calls the command specified by the words
-        in stat_cmd and looks for the output. If there is an error, get no output and 
-        only the standard error result.
-
-        Returns : [output message or '', error message or '']
-        '''
-
-        try:
-            out = subprocess.check_output(self.stat_cmd)
-            err = ''
-        except subprocess.CalledProcessError as e:
-            out = ''
-            err = e.output
-
-        return [out, err]
-    
+        '''call the command specified by the words in stat_cmd'''
+        return subprocess.check_output(self.stat_cmd)
     
     def jobs_finished(self, job_ids):
         '''
@@ -147,12 +164,15 @@ class Ssub():
             were any of the ids found in the job status output?
         '''
 
-        [out, err] = self.job_status()
-        print "swo> job status:", [out, err]
-        for job in out:
-            for job_id in job_ids:
-                if job_id in job:
-                    return False
+        status = self.job_status()
+        running_jobs = self.parse_status(status)
+        print "swo> job ids:", job_ids
+
+        for job in running_jobs:
+            if job in job_ids:
+                print "swo> job %s found in" % job_id, job
+                return False
+        print "swo> job not found"
         return True
     
     
