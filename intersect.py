@@ -5,7 +5,7 @@ Compare the forward and reverse fastq files. Find pairs of reads that occur in b
 Output those reads.
 '''
 
-import sys
+import sys, argparse
 import util
 
 def fastq_ids(lines):
