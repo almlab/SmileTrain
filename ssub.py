@@ -148,7 +148,6 @@ class Ssub():
         os.close(fh)
         fh = open(fn, 'w')
         fh.write(self.header)
-        fh.write(self.source_line)
         return fh, fn
     
     def job_status(self):
@@ -233,7 +232,7 @@ class Ssub():
         fh.write('#BSUB -G %s\n' %(self.G))
         fh.write('#BSUB -R "rusage[mem=%s:argon_io=%s]"\n' %(self.m, self.io))
         fh.write('#BSUB -P %s\n' %(array_fn))
-        fh.write(self.source_line)
+        fh.write('source %s\n' % bashrc)
         fh.write('cd $LS_SUBCWD\n')
         
         # write job array
@@ -260,7 +259,7 @@ class Ssub():
         fh.write('#PBS -t 1-%d%%%s\n' %(len(fns), min(len(fns), int(self.l))))
         fh.write('#PBS -e %s.e\n' %(array_fn))
         fh.write('#PBS -o %s.o\n' %(array_fn))
-        fh.write(self.source_line)
+        fh.write('source %s\n' % bashrc)
         fh.write('cd $PBS_O_WORKDIR\n')
         
         # write job array
