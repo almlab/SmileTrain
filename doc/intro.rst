@@ -57,6 +57,14 @@ The input entry above was from a run with primer sequence
 
 The primer ended on the nucleotide just below the ``#`` on the previous line, so that's where the trimmed begins.
 
+See also: :doc:`primers`
+
+Merging reads
+-------------
+
+Forward and reverse reads that came from the same molecule should have the same sequence ID. If they are long enough to overlap, they can be *intersected* or *merged*. In some cases, the merged read allows improved confidence of nucleotide values in the middle of the read where qualities are typically most poor.
+
+The pipeline currently supports merging with usearch. It should aim to also use Sonia's SHE-RA.
 
 Demultiplexing
 --------------
@@ -79,3 +87,26 @@ then we can tell that the above read came from that sample, so after demultiplex
 	ecefePO``d^dN`baddd^efedbNdd_eQcfgddN]_QQQPNONNN^]NNP^dN][aOO[PNaaaPPaPaBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 
 where ``234`` indicates that this was the 234th read associated with that sample. Only the first line has changed.
+
+Quality filtering
+-----------------
+
+Every nucleotide in a read has an associated quality score. If we have low confidence in a nucleotide, we should throw it out. Reads that have poor quality overall should also be thrown out.
+
+The pipeline currently supports quality filtering using usearch.
+
+Dereplication
+-------------
+
+OTU calling
+-----------
+
+Reference-based
+~~~~~~~~~~~~~~~
+
+De novo
+~~~~~~~
+
+Making OTU tables
+-----------------
+
