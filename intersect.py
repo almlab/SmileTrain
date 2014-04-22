@@ -3,14 +3,27 @@
 '''
 Compare the forward and reverse fastq files. Find pairs of reads that occur in both files.
 Output those reads.
+
+All @ lines are being parsed in the same way. Depending on the file types that we have
+being fed into the pipeline, that naming convention would need to change.
 '''
 
-import sys, argparse
+import sys, argparse, re
 import util
+
+def fastq_at_line_to_id(line):
+    '''"@lolapolooza/1" -> "lolapolooza"'''
+    m = re.match('@(.+)/[12]', line)
+    if m is None:
+        raise RuntimeError("fastq at line did not parse: %s" % line)
+    else:
+        rid = m.group(1)
+        
+    return rid
 
 def fastq_ids(lines):
     '''Extract the read IDs (with no @) from a fastq file'''
-    return [at_line[1:] for at_line, seq_line, quality_line in util.fastq_iterator(lines)]
+    return [fastq_at_line_to_id(at_line) for at_line, seq_line, quality_line in util.fastq_iterator(lines)]
 
 def common_ids(fastq1, fastq2):
     '''
@@ -53,6 +66,9 @@ if __name__ == '__main__':
     with open(args.forward_in, 'r') as f:
         with open(args.reverse_in, 'r') as r:
             rids = common_ids(f, r)
+            
+    # make sure that we are actually looking for something
+    assert(len(rids) > 0)
 
     # write the forward entries with reads with ids in the reverse entries
     with open(args.forward_in, 'r') as i:
