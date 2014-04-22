@@ -19,9 +19,3 @@ Scripts are annotated with docstrings that can be read using pydoc. To view docu
     - module add python/2.7.3
 * Run the tests.
 * Run otu_caller.py with the command line option --dry_run before you actually submit any jobs. Check that the output commands look like what you actually want to submit to the cluster!
-
-# Code standards
-* Indentation is 4 spaces
-* Functions have a docstring. Functions with multiple inputs or multiple outputs should have a multiline docstring specifying the type of each input and output value.
-* Scripts have a docstring.
-* Scripts that read input from the command line use argparse.

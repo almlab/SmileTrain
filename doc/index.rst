@@ -15,6 +15,7 @@ Contents:
    primers
    util
    ssub
+   standards
 
 
 

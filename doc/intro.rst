@@ -9,7 +9,7 @@ Input data
 ----------
 
 Input data should be in FASTQ format. A FASTQ file has entries of four lines each:
-	* the sequence ID (or "read ID") line, which is required to start with the symbol ``@``
+	* the *sequence ID* or *read ID* line, which is required to start with the symbol ``@``
 	* the sequence line, which contains the sequence using the characters ACGT
 	* a line that must begin with ``+`` and which can be empty of be a copy of the ID line
 	* the quality line, whose alphabet can differ
@@ -23,7 +23,7 @@ New data from the BMC looks like this, so that's how I'm rolling right now.
 	+MISEQ:1:1101:19196:1927#CTAGAATC/1
 	P]]PP``cecP_`PPePPO`d``OecefePO``d^dN`baddd^efedbNdd_eQcfgddN]_QQQPNONNN^]NNP^dN][aOO[PNaaaPPaPaBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 
-This format includes the barcode read (or "index read" or "multiplex tag") on the ID line after a ``#``. This is (apparently) how the Illumina pipeline exports its data for Cassava versions 1.4 through 1.8, at which time the ID line will look like
+This format includes the *barcode read* (or *index read* or *multiplex tag*) on the ID line after a ``#``. This is (apparently) how the Illumina pipeline exports its data for Cassava versions 1.4 through 1.8, at which time the ID line will look like
 
 ::
 
@@ -65,6 +65,8 @@ Merging reads
 Forward and reverse reads that came from the same molecule should have the same sequence ID. If they are long enough to overlap, they can be *intersected* or *merged*. In some cases, the merged read allows improved confidence of nucleotide values in the middle of the read where qualities are typically most poor.
 
 The pipeline currently supports merging with usearch. It should aim to also use Sonia's SHE-RA.
+
+The usearch page has a `decent explanation <http://www.drive5.com/usearch/manual/merge_pair.html>`_ of quality scores of merged reads.
 
 Demultiplexing
 --------------
