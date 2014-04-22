@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, os, re, select, stat, subprocess, sys, tempfile, time, ConfigParser
+import argparse, os, re, select, stat, subprocess, sys, tempfile, time, ConfigParser, re
 import xml.etree.ElementTree as ET
 from util import *
 
@@ -57,10 +57,10 @@ def coyote_parse(qstat_output, my_username):
     for child in root:
         # raw username contains whoever@wiley.coyote.etc.etc
         # get just the part that precedes the @
-        this_username = child.find('Job_Owner').text
-        username = re.match('(.+)@', this_raw_username).group(1)
+        raw_username = child.find('Job_Owner').text
+        username = re.match('(.+)@', raw_username).group(1)
 
-        if username == username
+        if username == my_username:
             # job id contains 12345.wiley.coyote.etc.etc
             # we want just the integers at the beginning
             raw_job_id = child.find('Job_Id').text
@@ -125,7 +125,7 @@ class Ssub():
         elif cluster == 'coyote':
             self.submit_cmd = 'qsub'
             self.stat_cmd = ['qstat', '-x']
-            self.parse_job = lambda x: x.rstrip()
+            self.parse_job = lambda x: re.match('\d+', x).group()
             self.parse_status = lambda x: coyote_parse(x, username)
         
         # unrecognized cluster
@@ -166,13 +166,10 @@ class Ssub():
 
         status = self.job_status()
         running_jobs = self.parse_status(status)
-        print "swo> job ids:", job_ids
 
         for job in running_jobs:
             if job in job_ids:
-                print "swo> job %s found in" % job_id, job
                 return False
-        print "swo> job not found"
         return True
     
     
@@ -315,10 +312,10 @@ class Ssub():
             self.submit_and_wait(commands, out = out)
     
     
-    def validate_output(self, fns, out = False):
+    def validate_output(self, fns, out=False):
         # make sure files exist
         if out == False:
-            test = [os.path.exists(fn) for fn in fns]
+            test = [os.path.isfile(fn) for fn in fns]
             if False in test:
                 error('file %s does not exist' %(fns[test.index(False)]))
     
