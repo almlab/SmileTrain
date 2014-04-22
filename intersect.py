@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 '''
 Compare the forward and reverse fastq files. Find pairs of reads that occur in both files.
 Output those reads.

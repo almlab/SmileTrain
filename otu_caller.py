@@ -206,7 +206,7 @@ class OTU_Caller():
         # Intersect forward and reverse reads
         cmds = []
         for i in range(self.n_cpus):
-            cmd = 'python %s/intersect_reads.py %s %s %s %s' %(self.library, self.fi[i], self.ri[i], self.Fi[i], self.Ri[i])
+            cmd = 'python %s/intersect.py %s %s %s %s' %(self.library, self.fi[i], self.ri[i], self.Fi[i], self.Ri[i])
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, out = self.dry_run)
         self.ssub.validate_output(self.Fi + self.Ri, out = self.dry_run)
