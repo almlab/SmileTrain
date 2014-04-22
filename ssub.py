@@ -103,6 +103,7 @@ class Ssub():
         self.username = username
         self.temp_dir = temp_dir
         self.header = '#!/bin/bash\n'
+        self.source_line = 'source %s\n' % bashrc
         self.l = args.l
         self.n_cpus = args.n_cpus
         self.m = args.m
@@ -147,6 +148,7 @@ class Ssub():
         os.close(fh)
         fh = open(fn, 'w')
         fh.write(self.header)
+        fh.write(self.source_line)
         return fh, fn
     
     def job_status(self):
@@ -208,8 +210,11 @@ class Ssub():
             else:
                 quit()
             [out, error] = process.communicate()
-            job_ids.append(self.parse_job(out))
-            message('Submitting job %s' %(fn))
+
+            job_id = self.parse_job(out)
+
+            job_ids.append(job_id)
+            message('Submitting job %s as ID %s' %(fn, job_id))
         return job_ids
     
     
@@ -228,7 +233,7 @@ class Ssub():
         fh.write('#BSUB -G %s\n' %(self.G))
         fh.write('#BSUB -R "rusage[mem=%s:argon_io=%s]"\n' %(self.m, self.io))
         fh.write('#BSUB -P %s\n' %(array_fn))
-        fh.write('source %s\n' %(bashrc))
+        fh.write(self.source_line)
         fh.write('cd $LS_SUBCWD\n')
         
         # write job array
@@ -255,7 +260,7 @@ class Ssub():
         fh.write('#PBS -t 1-%d%%%s\n' %(len(fns), min(len(fns), int(self.l))))
         fh.write('#PBS -e %s.e\n' %(array_fn))
         fh.write('#PBS -o %s.o\n' %(array_fn))
-        fh.write('source %s\n' %(bashrc))
+        fh.write(self.source_line)
         fh.write('cd $PBS_O_WORKDIR\n')
         
         # write job array
@@ -303,7 +308,6 @@ class Ssub():
     def submit_and_wait(self, commands, out=False):
         # submit job array and wait for it to finish
         job_ids = self.submit(commands, out=out)
-        print "swo> submitted job ids=", job_ids
         self.wait(job_ids, out = out)
     
     def submit_pipeline(self, pipeline, out = False):
