@@ -92,16 +92,44 @@ def mismatches(seq, primer, w):
             D = d
     return [I, D]
 
+def listify(inp):
+    '''Ensure that input is a list
+    
+    inp : string or list
+    
+    returns : list
+        if input is a list, return that; otherwise return [string]
+    '''
+    
+    if isinstance(filenames, str):
+        return [inp]
+    elif isinstance(filenames, list):
+        return inp
+    else:
+        raise RuntimeError("don't know how to stringify input: " + inp)
+
+
 def check_for_existence(filenames):
     '''assert that each of filenames does exist'''
 
-    if isinstance(filenames, str):
-        filenames = [filenames]
+    filenames = listify(filenames)
 
     tests = [os.path.isfile(filename) for filename in filenames]
     if False in tests:
         bad_names = " ".join([filename for filename, test in zip(filenames, tests) if test == False])
         raise RuntimeError("input file(s) missing: %s" % bad_names)
+    
+def check_for_nonempty(filenames):
+    '''assert that each file exists and is nonempty'''
+    
+    filenames = listify(filenames)
+    
+    check_for_existence(filenames)
+    
+    tests = [os.stat(fn).st_size > 0 for fn in filenames]
+    if False in tests:
+        bad_names = " ".join([fn for fn, t in zip(filenames, tests) if t == False])
+        raise RuntimeError("file(s) empty: " + bad_names)
 
 def check_for_collisions(filenames):
     '''assert that each of filenames does not exist'''

@@ -130,10 +130,10 @@ class OTU_Caller():
 
         # check for inputs and collisions of output
         if do_forward:
-            util.check_for_existence(self.f)
+            util.check_for_nonempty(self.f)
             util.check_for_collisions(['%s.%s' %(self.f, i) for i in range(self.n_cpus)])
         if do_reverse:
-            util.check_for_existence(self.r)
+            util.check_for_nonempty(self.r)
             util.check_for_collisions(['%s.%s' %(self.r, i) for i in range(self.n_cpus)])
         
         # Get list of commands
@@ -168,10 +168,10 @@ class OTU_Caller():
 
         # check for inputs and collisions of output
         if do_forward:
-            util.check_for_existence(self.fi)
+            util.check_for_nonempty(self.fi)
             util.check_for_collisions(self.Fi)
         if do_reverse:
-            util.check_for_existence(self.ri)
+            util.check_for_nonempty(self.ri)
             util.check_for_collisions(self.Ri)
         
         # get list of commands using forward, reverse, or both
@@ -200,7 +200,7 @@ class OTU_Caller():
         '''Merge forward and reverse reads using USEARCH'''
 
         # check for inputs and collisions
-        util.check_for_existence(self.fi + self.ri)
+        util.check_for_nonempty(self.fi + self.ri)
         util.check_for_collisions(self.Fi + self.Ri)
         
         # check that usearch is ready to go
@@ -239,7 +239,7 @@ class OTU_Caller():
         '''Quality filter with truncqual and maximum expected error'''
         
         # validate input/output
-        util.check_for_existence(self.ci)
+        util.check_for_nonempty(self.ci)
         util.check_for_collisions(self.Ci)
         
         # check that usearch is ready to go
