@@ -1,30 +1,59 @@
 '''
-split fastq into k files
+Split an input fastq file into multiple fastq files by
+    * opening a cycling set of output file handles
+    * iterating over each entry in the input
+    * write the entry an output filehandle
+    * cycle the output filehandle.
 
-usage:
-  python split_fastq.py in.fsq 3
+The plus line is stripped of content.
 
-creates 3 files:
-  in.fsq.1
-  in.fsq.2
-  in.fsq.3
-  
+Used for early steps in the pipeline that are embarrassingly parallel.  
 '''
 
-import itertools, os.path, sys
-from util import *
+import itertools, os, os.path, sys, argparse, itertools, shutil
+import util
 
-fst_fn = sys.argv[1]
-k = int(sys.argv[2])
+def output_filenames(input_filename, k):
+    '''destination filenames foo.fastq.0, etc.'''
+    return ['%s.%d' % (input_filename, i) for i in range(k)]
 
-fns = ['%s.%d' %(fst_fn, i) for i in range(k)]
+def split_fastq_entries(fastq, filenames):
+    '''
+    Send entries in the input to filenames, cycling over each filename.
+    
+    fastq : list or iterator of strings
+        lines in the input fastq file
+    filenames : list or iterator of strings
+        output filenames
+        
+    returns : nothing
+    '''
+    
+    # open all the filehandles
+    fhs = [open(filename, 'w') for filename in filenames]
+    fh_cycler = util.cycle(fhs)
+    
+    # prepare an iterator over the fastq entries
+    fastqs = util.fastq_iterator(fastq, output_type='string')
+    
+    for entry, fh in itertools.izip(fastqs, fh_cycler):
+        fh.write("%s\n" % entry)
+        
 
-for fn in fns:
-    if os.path.exists(fn):
-        exit('file %s exists' %(fn))
-
-fhs = cycle([open(fn, 'w') for fn in fns])
-
-for entry in iter_fsq(fst_fn):
-    fh = fhs.next()
-    fh.write('%s\n' %('\n'.join(entry)))
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Split a fastq file foo.fastq into multiple fastq files foo.fastq.0, foo.fastq.1, etc.')
+    parser.add_argument('fastq', help='input fastq')
+    parser.add_argument('n_files', type=int, help='number of split files to output')
+    args = parser.parse_args()
+    
+    filenames = output_filenames(args.fastq, args.n_files)
+    
+    util.check_for_collisions(filenames)
+    
+    if len(filenames) == 1:
+        # just copy the file
+        shutil.copy(args.fastq, filenames[0])
+    else:
+        # split the file entry by entry
+        with open(args.fastq) as f:
+            split_fastq_entries(f, filenames)

@@ -57,6 +57,35 @@ class TestFastaUtilities(TestWithFiles):
             os.remove("%s.%d" %(fasta_fn, i))
 
 
+class TestFastqUtilities(TestWithFiles):
+    '''tests for functions and scripts that do fastq manipulations'''
+    def setUp(self):
+        self.good_fastq_content = "@foo\nAAA\n+foo\n!!!\n@bar\nCCC\n+bar\n###"
+        
+    def test_split_fastq(self):
+        '''split_fastq.py should split and trim content as expected'''
+        
+        os.mkdir('tests')
+        fastq_fh, fastq_fn = tempfile.mkstemp(suffix='.fastq', dir='tests')
+        os.write(fastq_fh, self.good_fastq_content)
+        os.close(fastq_fh)
+        
+        subprocess.call(['python', 'split_fastq.py', fastq_fn, '2'])
+        
+        with open("%s.0" % fastq_fn) as f:
+            fastq_out0 = f.read()
+        # the plus line has been expunged
+        self.assertEqual(fastq_out0, "@foo\nAAA\n+\n!!!\n")
+        
+        with open("%s.1" % fastq_fn) as f:
+            fastq_out1 = f.read()    
+        self.assertEqual(fastq_out1, "@bar\nCCC\n+\n###\n")
+        
+        os.remove(fastq_fn)
+        for i in range(2):
+            os.remove("%s.%d" % (fastq_fn, i))
+
+
 class TestRemovePrimers(unittest.TestCase):
     '''tests for the remove primers step'''
 
