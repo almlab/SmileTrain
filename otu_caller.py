@@ -23,18 +23,20 @@ def parse_args():
     # add groups
     group1 = parser.add_argument_group('Pipeline')
     group2 = parser.add_argument_group('Input files')
-    group3 = parser.add_argument_group('Remove primers')
-    group4 = parser.add_argument_group('Merge reads')
-    group5 = parser.add_argument_group('Demultiplex')
-    group6 = parser.add_argument_group('Quality filtering')
-    group7 = parser.add_argument_group('Dereplicate')
-    group8 = parser.add_argument_group('Chimeras')
-    group9 = parser.add_argument_group('Clustering')
-    group10 = parser.add_argument_group('Options')
+    group3 = parser.add_argument_group('Convert format')
+    group4 = parser.add_argument_group('Remove primers')
+    group5 = parser.add_argument_group('Merge reads')
+    group6 = parser.add_argument_group('Demultiplex')
+    group7 = parser.add_argument_group('Quality filtering')
+    group8 = parser.add_argument_group('Dereplicate')
+    group9 = parser.add_argument_group('Chimeras')
+    group10 = parser.add_argument_group('Clustering')
+    group11 = parser.add_argument_group('Options')
     
     # add arguments
     group1.add_argument('--all', default = False, action = 'store_true', help = 'Run all steps of pipeline?')
     group1.add_argument('--split', action='store_true', help='Split the fastq files?')
+    group1.add_argument('--convert', action='store_true', help='Convert fastq format?')
     group1.add_argument('--primers', default = False, action = 'store_true', help = 'Remove primers?')
     group1.add_argument('--merge', default = False, action = 'store_true', help = 'Merge forward and reverse reads?')
     group1.add_argument('--demultiplex', default = False, action = 'store_true', help = 'Demultiplex?')
@@ -44,20 +46,20 @@ def parse_args():
     group1.add_argument('--denovo', default = False, action = 'store_true', help = 'Denovo clustering (UPARSE)?')
     group1.add_argument('--ref_gg', default = False, action = 'store_true', help = 'Reference mapping (Greengenes)?')
     group1.add_argument('--otu_table', action='store_true', help='Make OTU table?')
-    group2.add_argument('-f', help = 'Input fastq (forward)')
-    group2.add_argument('-r', help = 'Input fastq (reverse)')
-    group2.add_argument('-p', help = 'Primer sequence (forward)')
-    group2.add_argument('-q', help = 'Primer sequence (reverse)')
-    group2.add_argument('-b', help = 'Barcodes list')
-    group2.add_argument('-x', help = 'Index fastq')
-    group3.add_argument('--p_mismatch', default=1, type=int, help='Number of mismatches allowed in primers')
-    group5.add_argument('--b_mismatch', default=1, type=int, help='Number of mismatches allowed in barcodes')
-    group6.add_argument('--truncqual', default = 2, type = int, help = '')
-    group6.add_argument('--maxee', default = 2., type = float, help = 'Maximum expected error (UPARSE)')
-    group8.add_argument('--gold_db', default=config.get('Data', 'gold'), help='Gold 16S database')
-    group9.add_argument('--sids', default='91,94,97,99', help='Sequence identities for clustering')
-    group10.add_argument('--n_cpus', '-n', default = 1, type = int, help='Number of CPUs')
-    group10.add_argument('--dry_run', '-z', action='store_true', help='Submit no jobs; just print output commands')
+    group2.add_argument('-f', help='Input fastq (forward)')
+    group2.add_argument('-r', help='Input fastq (reverse)')
+    group2.add_argument('-p', help='Primer sequence (forward)')
+    group2.add_argument('-q', help='Primer sequence (reverse)')
+    group2.add_argument('-b', help='Barcodes list')
+    group2.add_argument('-x', help='Index fastq')
+    group4.add_argument('--p_mismatch', default=1, type=int, help='Number of mismatches allowed in primers')
+    group6.add_argument('--b_mismatch', default=1, type=int, help='Number of mismatches allowed in barcodes')
+    group7.add_argument('--truncqual', default = 2, type = int, help = '')
+    group7.add_argument('--maxee', default = 2., type = float, help = 'Maximum expected error (UPARSE)')
+    group9.add_argument('--gold_db', default=config.get('Data', 'gold'), help='Gold 16S database')
+    group10.add_argument('--sids', default='91,94,97,99', help='Sequence identities for clustering')
+    group11.add_argument('--n_cpus', '-n', default = 1, type = int, help='Number of CPUs')
+    group11.add_argument('--dry_run', '-z', action='store_true', help='Submit no jobs; just print output commands')
     
     # parse arguments
     if __name__ == '__main__':
@@ -153,6 +155,39 @@ class OTU_Caller():
             self.ssub.validate_output(self.fi, out=self.dry_run)
         if do_reverse:
             self.ssub.validate_output(self.ri, out=self.dry_run)
+            
+    def convert_format(self):
+        '''Convert to compatible fastq format'''
+        
+        if self.f:
+            util.check_for_nonempty(self.fi)
+            util.check_for_collisions(self.Fi)
+            
+        if self.r:
+            util.check_for_nonempty(self.ri)
+            util.check_for_collisions(self.Fi)
+            
+        cmds = []
+        for i in range(self.n_cpus):
+            if self.f:
+                cmd = 'python %s/convert_fastq.py %s %s' %(self.library, self.fi[i], self.Fi[i])
+                cmds.append(cmd)
+            if self.r:
+                cmd = 'python %s/convert_fastq.py %s %s' %(self.library, self.ri[i], self.Ri[i])
+                cmds.append(cmd)
+                
+        self.ssub.submit_and_wait(cmds, out=self.dry_run)
+        
+        # validate output and move files
+        if self.f:
+            util.check_for_nonempty(self.Fi, dry_run=self.dry_run)
+            self.ssub.move_files(self.Fi, self.fi, out=self.dry_run)
+            util.check_for_nonempty(self.fi, dry_run=self.dry_run)
+
+        if self.r:
+            util.check_for_nonempty(self.Ri, dry_run=self.dry_run)
+            self.ssub.move_files(self.Ri, self.ri, out=self.dry_run)
+            util.check_for_nonempty(self.ri, dry_run=self.dry_run)
     
     def remove_primers(self):
         '''Remove diversity region + primer and discard reads with > 2 mismatches'''
@@ -333,6 +368,10 @@ if __name__ == '__main__':
     if oc.split:
         message('Splitting fastq')
         oc.split_fastq()
+        
+    if oc.convert:
+        message('Converting format')
+        oc.convert_format()
     
     # Remove primers
     if oc.primers == True:
