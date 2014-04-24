@@ -46,8 +46,8 @@ def common_ids(fastq1, fastq2):
 def fastq_entries_with_matching_ids(fastq, rids):
     '''yield a series of fastq entry strings drawn from the input whose IDs match those in the list'''
 
-    for at_line, plus_line, quality_line in util.fastq_iterator(fastq):
-        rid = at_line[1:]
+    for at_line, seq_line, quality_line in util.fastq_iterator(fastq):
+        rid = fastq_at_line_to_id(at_line)
 
         if rid in rids:
             yield util.fastq_entry_list_to_string([at_line, seq_line, quality_line]) 
@@ -68,16 +68,17 @@ if __name__ == '__main__':
             rids = common_ids(f, r)
             
     # make sure that we are actually looking for something
-    assert(len(rids) > 0)
+    if len(rids) == 0:
+        raise RuntimeError("no common IDs found in %s and %s" % (args.forward_in, args.reverse_in))
 
     # write the forward entries with reads with ids in the reverse entries
     with open(args.forward_in, 'r') as i:
         with open(args.forward_out, 'w') as o:
             for entry in fastq_entries_with_matching_ids(i, rids):
-                o.write(entry)
+                o.write("%s\n" % entry)
 
     # ditto for the revere reads
     with open(args.reverse_in, 'r') as i:
         with open(args.reverse_out, 'w') as o:
             for entry in fastq_entries_with_matching_ids(i, rids):
-                o.write(entry)
+                o.write("%s\n" % entry)
