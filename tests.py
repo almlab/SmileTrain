@@ -84,6 +84,33 @@ class TestFastqUtilities(TestWithFiles):
         os.remove(fastq_fn)
         for i in range(2):
             os.remove("%s.%d" % (fastq_fn, i))
+            
+class TestFileChecks(TestWithFiles):
+    '''tests for utilities that make queries about files'''
+    
+    def setUp(self):
+        os.mkdir('tests')
+        
+        empty_fh, self.empty_fn = tempfile.mkstemp(dir='tests')
+        
+        full_fh, self.full_fn = tempfile.mkstemp(dir='tests')
+        os.write(full_fh, "hello world")
+        os.close(full_fh)
+        
+        no_fh, self.no_fn = tempfile.mkstemp(dir='tests')
+        os.close(no_fh)
+        os.unlink(self.no_fn)
+        
+    def test_check_for_existence(self):
+        '''should identify files as existing or not'''
+        
+        # the empty and full files should exist
+        util.check_for_existence(self.empty_fn)
+        util.check_for_existence(self.full_fn)
+        
+        # but the file we deleted shouldn't
+        with self.assertRaises(RuntimeError):
+            util.check_for_existence(self.no_fn)
 
 
 class TestRemovePrimers(unittest.TestCase):

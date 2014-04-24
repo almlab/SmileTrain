@@ -189,19 +189,21 @@ class OTU_Caller():
 
         # validate output and move files
         if do_forward:
-            self.ssub.validate_output(self.Fi, out=self.dry_run)
+            util.check_for_nonempty(self.Fi, dry_run=self.dry_run)
             self.ssub.move_files(self.Fi, self.fi, out=self.dry_run)
+            util.check_for_nonempty(self.fi, dry_run=self.dry_run)
 
         if do_reverse:
-            self.ssub.validate_output(self.Ri, out=self.dry_run)
+            util.check_for_nonempty(self.Ri, dry_run=self.dry_run)
             self.ssub.move_files(self.Ri, self.ri, out=self.dry_run)
+            util.check_for_nonempty(self.ri, dry_run=self.dry_run)
     
     def merge_reads(self):
         '''Merge forward and reverse reads using USEARCH'''
 
         # check for inputs and collisions
-        util.check_for_nonempty(self.fi + self.ri)
-        util.check_for_collisions(self.Fi + self.Ri)
+        util.check_for_nonempty(self.fi + self.ri, dry_run=self.dry_run)
+        util.check_for_collisions(self.Fi + self.Ri, dry_run=self.dry_run)
         
         # check that usearch is ready to go
         assert(util.is_executable(self.usearch))
@@ -212,8 +214,11 @@ class OTU_Caller():
             cmd = 'python %s/intersect.py %s %s %s %s' %(self.library, self.fi[i], self.ri[i], self.Fi[i], self.Ri[i])
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, out = self.dry_run)
-        self.ssub.validate_output(self.Fi + self.Ri, out = self.dry_run)
+        
+        # make sure there was a nonempty result. copy to new location, and make sure the copy worked
+        util.check_for_nonempty(self.Fi + self.Ri, dry_run=self.dry_run)
         self.ssub.move_files(self.Fi + self.Ri, self.fi + self.ri, out = self.dry_run)
+        util.check_for_nonempty(self.fi + self.ri, dry_run=self.dry_run)
         
         # Merge reads
         cmds = []
