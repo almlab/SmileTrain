@@ -2,7 +2,7 @@
 
 import unittest, tempfile, subprocess, os, shutil
 
-import util, remove_primers, derep_fulllength, intersect, check_fastq_format
+import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq
 
 class TestWithFiles(unittest.TestCase):
     
@@ -101,6 +101,14 @@ class TestFastqUtilities(TestWithFiles):
         ids = intersect.fastq_ids(fastq_lines)
         self.assertEqual(ids, ["lolapolooza:1234#ACGT", "lolapolooza:7890#TGCA"])
         
+    def test_fastq_id_match(self):
+        fastq1 = "@lolapolooza:1234#ACGT/1\nTAAAACATCATCATCAT\n+whatever\nabcdefghijklmnopq\n"
+        fastq2 = "@lolapolooza:7890#TGCA/1\nGAATACTACGGGAGAGAAA\n+whatever\nabcdefghijklmnopqrs\n"
+        fastq_lines = (fastq1 + fastq2).split('\n')
+        
+        out = intersect.fastq_entries_with_matching_ids(fastq_lines, ['lolapolooza:7890#TGCA']).next()
+        self.assertEqual(out, '@lolapolooza:7890#TGCA/1\nGAATACTACGGGAGAGAAA\n+\nabcdefghijklmnopqrs')
+        
     def test_format_identification(self):
         '''should discriminate Illumina 1.3-1.7 against 1.8 against trash'''
         fastq13_quality = "AJ[h"
@@ -122,13 +130,13 @@ class TestFastqUtilities(TestWithFiles):
     def test_format_conversion(self):
         '''should convert Illumina 1.4-1.7 to our mixed format'''
         
-        fastq13 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGTA\n+lolapolooza:1234#ACGT/1\nABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghh"""
-        fastq18 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGTA\n+\n"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJ"""
+        fastq13 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+lolapolooza:1234#ACGT/1\nABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefgh"""
+        fastq18 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+\n"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHJ"""
         
         entry13 = util.fastq_iterator(fastq13.split("\n")).next()
         entry18 = util.fastq_iterator(fastq18.split("\n")).next()
         
-        self.assertEqual(convert_fastq(entry13), entry18)
+        self.assertEqual(convert_fastq.convert_entry(entry13), entry18)
     
             
 class TestFileChecks(TestWithFiles):

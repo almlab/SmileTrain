@@ -88,7 +88,7 @@ def fastq_at_line_to_id(line):
         
     return rid
 
-# Note that the 1.8 code J (score 41) has not equivalent in 1.3, so I map it to h (score 40)
+# Note that the 1.8 code J (score 41) has not equivalent in 1.3, so I just map h to J
 illumina13_codes = '''ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghh'''
 illumina18_codes = '''"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJ'''
 illumina_code_table = string.maketrans(illumina13_codes, illumina18_codes)

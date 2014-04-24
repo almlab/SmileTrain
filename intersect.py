@@ -38,7 +38,7 @@ def fastq_entries_with_matching_ids(fastq, rids):
     '''yield a series of fastq entry strings drawn from the input whose IDs match those in the list'''
 
     for at_line, seq_line, quality_line in util.fastq_iterator(fastq):
-        rid = fastq_at_line_to_id(at_line)
+        rid = util.fastq_at_line_to_id(at_line)
 
         if rid in rids:
             yield util.fastq_entry_list_to_string([at_line, seq_line, quality_line]) 
