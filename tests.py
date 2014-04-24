@@ -2,7 +2,7 @@
 
 import unittest, tempfile, subprocess, os, shutil
 
-import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq
+import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes
 
 class TestWithFiles(unittest.TestCase):
     
@@ -219,6 +219,28 @@ class TestIntersect(TestWithFiles):
             
         self.assertEqual(out_fastq, "@foo/1\nGTTTTCTTCGCTTTATGGTGGTGGTAAAAGTGCTTCGATCTGCTAGATATCCCTCAGGAAAGTTTATGCCCGTGTCCGTTTGTTTGGGTAGATCTCTCACCCTTGGAATTCCAAGCGTTCAGGTATCCCACAATCGCTTCGATGACTCCGCCTCCTTATTATATACTTCGCCGATACGCAGCGCATGAAGAGTCATCGGGAGGGTTGAGTAGTAATCTCTTCGTGAGCTCGCCCTTTAATCTACCCAGGGAGACCTTGACTGCTCTGCAAAATCGCATATAGCTTAAGCCACGGATATCG\n+\n####################################################################################################$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$###################################################################################################\n")
 
+
+class TestDemultiplex(unittest.TestCase):
+    '''tests for demultiplexing'''
+    
+    def test_barcode_dictionary(self):
+        '''should parse a tab-separated mapping file'''
+        
+        mapping_lines = ['donor1\tACGT', 'donor2\tTACA']
+        d = map_barcodes.barcode_file_to_dictionary(mapping_lines)
+        
+        self.assertEqual(d, {'ACGT': 'donor1', 'TACA': 'donor2'})
+        
+    def test_best_barcode(self):
+        '''should find the best barcode out of a list'''
+        
+        barcodes = ['AAAATT', 'TACACC', 'ACGTAA']
+        target = 'TACTCC'
+        
+        n_mismatches, best = map_barcodes.best_barcode_match(barcodes, target)
+        
+        self.assertEqual(n_mismatches, 1)
+        self.assertEqual(best, 'TACACC')
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

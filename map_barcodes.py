@@ -3,30 +3,25 @@ Demultiplex reads by mapping the barcode read to the sample names from a barcode
 file.
 
 Given a tab-separated barcode mapping file like
-    ACGT    sample1 
+    ACGT    donor1_day5
 
-input like
+the first read mapping to that barcode, say
     @OURSEQ:lolapalooza1234#ACGT/1
     AACCGGTT
     +
     abcdefgh
 
 becomes output like
-    @sample=sample1;1
+    @sample=donor1_day5;1
     AACCGGTT
     +whatever
     abcdefgh
+    
+where the ;1 means it's the first read that mapped to donor1_day5.
 '''
 
-import usearch_python.primer
+import usearch_python.primer, util
 import sys, argparse, string, itertools, re
-
-# swo> this code should probably be moved into a separate module
-from remove_primers import mismatches
-
-rctab = string.maketrans('ACGTacgt','TGCAtgca')
-def reverse_complement(x):
-    return x[::-1].translate(rctab)
 
 def barcode_file_to_dictionary(barcode_lines):
     '''parse a barcode mapping file into a dictionary {barcode: sample}'''
@@ -55,9 +50,11 @@ def best_barcode_match(known_barcodes, barcode):
     '''
     
     # get a list of pairs (n_mismatches, known_barcode)
-    n_mismatches = lambda known_barcode: mismatches(barcode, known_barcode, 1)[1]
+    #n_mismatches = lambda known_barcode: util.mismatches(barcode, known_barcode, 1)[1]
+    n_mismatches = lambda known_barcode: usearch_python.primer.MatchPrefix(barcode, known_barcode)
 
     alignments = [(n_mismatches(known_barcode), known_barcode) for known_barcode in known_barcodes]
+    print alignments
 
     # find the alignment that has the minimum number of mismatches
     min_mismatches, best_known_barcode = min(alignments, key=lambda x: x[0])
@@ -69,8 +66,6 @@ def rename_fastq_ids_with_sample_names(fastq_lines, barcode_map, max_barcode_dif
     '''
     Rename the read IDs in a fastq file with the corresponding sample name. Get the barcode
     read right from the ID line, look it up in the barcode map, and pick the best match.
-
-
 
     Parameters
     fastq_lines : sequence or iterator of strings
