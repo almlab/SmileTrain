@@ -64,7 +64,8 @@ def fastq_iterator(lines, check_sigils=True, check_lengths=True, output_type='li
 
         # check that the sequence and quality lines have the same number of nucleotides
         if check_lengths:
-            assert(len(seq_line) == len(quality_line))
+            if len(seq_line) != len(quality_line):
+                raise RuntimeError("sequence and quality lines are of unequal length for ID %s" % at_line)
 
         entry = [at_line, seq_line, quality_line]
         if output_type == 'list':
@@ -88,8 +89,8 @@ def fastq_at_line_to_id(line):
     return rid
 
 # Note that the 1.8 code J (score 41) has not equivalent in 1.3, so I map it to h (score 40)
-illumina13_codes = '''ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghh'''
-illumina18_codes = '''"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJ'''
+illumina13_codes = '''ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghh'''
+illumina18_codes = '''"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJ'''
 illumina_code_table = string.maketrans(illumina13_codes, illumina18_codes)
 
 def illumina13_quality_to_18(quality_line):
