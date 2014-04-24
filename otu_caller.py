@@ -54,6 +54,7 @@ def parse_args():
     group2.add_argument('-x', help='Index fastq')
     group4.add_argument('--p_mismatch', default=1, type=int, help='Number of mismatches allowed in primers')
     group6.add_argument('--b_mismatch', default=1, type=int, help='Number of mismatches allowed in barcodes')
+    group6.add_argument('--merged', '-m', action='store_true', help='Files were merged in a previous step?')
     group7.add_argument('--truncqual', default = 2, type = int, help = '')
     group7.add_argument('--maxee', default = 2., type = float, help = 'Maximum expected error (UPARSE)')
     group9.add_argument('--gold_db', default=config.get('Data', 'gold'), help='Gold 16S database')
@@ -263,9 +264,14 @@ class OTU_Caller():
         self.ssub.submit_and_wait(cmds, out = self.dry_run)
         self.ssub.validate_output(self.mi, out = self.dry_run)
         self.ssub.remove_files(self.fi + self.ri, out = self.dry_run)
+        
+        # swo> need another file check here
     
     def demultiplex_reads(self):
         '''Demultiplex samples using index and barcodes'''
+        
+        util.check_for_nonempty(self.ci, dry_run=self.dry_run)
+        util.check_for_collisions(self.Ci, dry_run=self.dry_run)
 
         cmds = []
         for i in range(self.n_cpus):
@@ -274,6 +280,8 @@ class OTU_Caller():
         self.ssub.submit_and_wait(cmds, self.dry_run)
         self.ssub.validate_output(self.Ci, self.dry_run)
         self.ssub.move_files(self.Ci, self.ci, self.dry_run)
+        
+        # swo> need a file check here
     
     def quality_filter(self):
         '''Quality filter with truncqual and maximum expected error'''
@@ -379,7 +387,7 @@ if __name__ == '__main__':
         oc.remove_primers()
     
     # Merge reads
-    if oc.merge == True:
+    if oc.merge or oc.merged:
         message('Merging reads')
         oc.merge_reads()
         
