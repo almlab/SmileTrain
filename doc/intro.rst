@@ -14,7 +14,7 @@ Input data should be in FASTQ format. A FASTQ file has entries of four lines eac
 	* a line that must begin with ``+`` and which can be empty of be a copy of the ID line
 	* the quality line, whose alphabet can differ
 
-New data from the BMC looks like this, so that's how I'm rolling right now.
+Data I've recently gotten from the BMC is in Illumina 1.4-1.7 format:
 
 ::
 
@@ -30,6 +30,15 @@ This format includes the *barcode read* (or *index read* or *multiplex tag*) on 
 	@EAS139:136:FC706VJ:2:2104:15343:197393 1:Y:18:ATCACG
 
 where the barcode is now at the very end of the line.
+
+Note also that the quality scores here are in ascii base 64 (going from low score ``b`` to high score ``h``). usearch uses base 33 (low score ``1`` to high score ``J``). However, usearch requires that the ``@`` line end with ``1`` or ``2``, so we use a mixed format in this pipeline.
+
+See also: `FASTQ format (wikipedia) <http://en.wikipedia.org/wiki/FASTQ_format>`_, `Quality scores (usearch) <http://www.drive5.com/usearch/manual/quality_score.html>`_
+
+Converting formats
+------------------
+
+Before doing anything, you should check that your data is in an acceptable input format with ``check_fastq_format.py``.
 
 
 Splitting FASTQs

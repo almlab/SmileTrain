@@ -15,7 +15,7 @@ Contents:
    wisdom
    primers
    util
-   split_fast
+   split_fastq
    ssub
    standards
 
