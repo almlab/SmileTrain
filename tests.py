@@ -118,6 +118,17 @@ class TestFastqUtilities(TestWithFiles):
             
         with self.assertRaises(RuntimeError):
             check_fastq_format.quality_line_format(bad_fastq)
+            
+    def test_format_conversion(self):
+        '''should convert Illumina 1.4-1.7 to our mixed format'''
+        
+        fastq13 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGTA\n+lolapolooza:1234#ACGT/1\nABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghh"""
+        fastq18 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGTA\n+\n"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJ"""
+        
+        entry13 = util.fastq_iterator(fastq13.split("\n")).next()
+        entry18 = util.fastq_iterator(fastq18.split("\n")).next()
+        
+        self.assertEqual(convert_fastq(entry13), entry18)
     
             
 class TestFileChecks(TestWithFiles):
