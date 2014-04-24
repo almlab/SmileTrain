@@ -11,19 +11,10 @@ being fed into the pipeline, that naming convention would need to change.
 import sys, argparse, re
 import util
 
-def fastq_at_line_to_id(line):
-    '''"@lolapolooza/1" -> "lolapolooza"'''
-    m = re.match('@(.+)/[12]', line)
-    if m is None:
-        raise RuntimeError("fastq at line did not parse: %s" % line)
-    else:
-        rid = m.group(1)
-        
-    return rid
 
 def fastq_ids(lines):
     '''Extract the read IDs (with no @) from a fastq file'''
-    return [fastq_at_line_to_id(at_line) for at_line, seq_line, quality_line in util.fastq_iterator(lines)]
+    return [util.fastq_at_line_to_id(at_line) for at_line, seq_line, quality_line in util.fastq_iterator(lines)]
 
 def common_ids(fastq1, fastq2):
     '''

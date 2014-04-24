@@ -77,6 +77,25 @@ def fastq_entry_list_to_string(entry):
     at_line, seq_line, quality_line = entry
     return "\n".join([at_line, seq_line, '+', quality_line])
 
+def fastq_at_line_to_id(line):
+    '''"@lolapolooza/1" -> "lolapolooza"'''
+    m = re.match('@(.+)/[12]', line)
+    if m is None:
+        raise RuntimeError("fastq at line did not parse: %s" % line)
+    else:
+        rid = m.group(1)
+        
+    return rid
+
+# Note that the 1.8 code J (score 41) has not equivalent in 1.3, so I map it to h (score 40)
+illumina13_codes = '''ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghh'''
+illumina18_codes = '''"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJ'''
+illumina_code_table = string.maketrans(illumina13_codes, illumina18_codes)
+
+def illumina13_quality_to_18(quality_line):
+    '''convert Illumina 1.3-1.7 quality scores to Illumina 1.8 quality scores'''
+    return quality_line.translate(illumina_code_table)
+
 def mismatches(seq, primer, w):
     '''
     Calculate mismatches between a sequence and primer with window size w.
@@ -107,7 +126,6 @@ def listify(inp):
         return inp
     else:
         raise RuntimeError("don't know how to stringify input: " + inp)
-
 
 def check_for_existence(filenames, dry_run=False):
     '''assert that each of filenames does exist'''

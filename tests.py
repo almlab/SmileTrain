@@ -2,7 +2,7 @@
 
 import unittest, tempfile, subprocess, os, shutil
 
-import util, remove_primers, derep_fulllength, intersect
+import util, remove_primers, derep_fulllength, intersect, check_fastq_format
 
 class TestWithFiles(unittest.TestCase):
     
@@ -85,6 +85,41 @@ class TestFastqUtilities(TestWithFiles):
         for i in range(2):
             os.remove("%s.%d" % (fastq_fn, i))
             
+    def test_fastq_id_parsing(self):
+        '''fastq_at_line_to_id should trim the starting @ and trailing /1 or /2'''
+        
+        self.assertEqual(util.fastq_at_line_to_id("@lolapolooza:1234#ACGT/1"), "lolapolooza:1234#ACGT")
+        self.assertEqual(util.fastq_at_line_to_id("@lolapolooza:1234#ACGT/2"), "lolapolooza:1234#ACGT")
+        
+    def test_fastq_ids(self):
+        '''fastq_ids should get the right ids from some fastq entries'''
+        
+        fastq1 = "@lolapolooza:1234#ACGT/1\nTAAAACATCATCATCAT\n+whatever\nabcdefghijklmnopq\n"
+        fastq2 = "@lolapolooza:7890#TGCA/1\nGAATACTACGGGAGAGAAA\n+whatever\nabcdefghijklmnopqrs\n"
+        fastq_lines = (fastq1 + fastq2).split('\n')
+        
+        ids = intersect.fastq_ids(fastq_lines)
+        self.assertEqual(ids, ["lolapolooza:1234#ACGT", "lolapolooza:7890#TGCA"])
+        
+    def test_format_identification(self):
+        '''should discriminate Illumina 1.3-1.7 against 1.8 against trash'''
+        fastq13_quality = "AJ[h"
+        fastq18_quality = "AJ';"
+        ambiguous_fastq = "ABCJ"
+        mixed_fastq = "AJ[h';"
+        bad_fastq = "AJ{|"
+        
+        self.assertEqual(check_fastq_format.quality_line_format(fastq13_quality), 'illumina13')
+        self.assertEqual(check_fastq_format.quality_line_format(fastq18_quality), 'illumina18')
+        self.assertEqual(check_fastq_format.quality_line_format(ambiguous_fastq), 'ambiguous')
+        
+        with self.assertRaises(RuntimeError):
+            check_fastq_format.quality_line_format(mixed_fastq)
+            
+        with self.assertRaises(RuntimeError):
+            check_fastq_format.quality_line_format(bad_fastq)
+    
+            
 class TestFileChecks(TestWithFiles):
     '''tests for utilities that make queries about files'''
     
@@ -111,6 +146,9 @@ class TestFileChecks(TestWithFiles):
         # but the file we deleted shouldn't
         with self.assertRaises(RuntimeError):
             util.check_for_existence(self.no_fn)
+            
+    def test_check_for_collision(self):
+        '''should identify files and not existing or so'''
 
 
 class TestRemovePrimers(unittest.TestCase):
@@ -132,22 +170,6 @@ class TestRemovePrimers(unittest.TestCase):
         
 class TestIntersect(TestWithFiles):
     '''tests for merging reads'''
-    
-    def test_fastq_id_parsing(self):
-        '''fastq_at_line_to_id should trim the starting @ and trailing /1 or /2'''
-        
-        self.assertEqual(intersect.fastq_at_line_to_id("@lolapolooza:1234#ACGT/1"), "lolapolooza:1234#ACGT")
-        self.assertEqual(intersect.fastq_at_line_to_id("@lolapolooza:1234#ACGT/2"), "lolapolooza:1234#ACGT")
-        
-    def test_fastq_ids(self):
-        '''fastq_ids should get the right ids from some fastq entries'''
-        
-        fastq1 = "@lolapolooza:1234#ACGT/1\nTAAAACATCATCATCAT\n+whatever\nabcdefghijklmnopq\n"
-        fastq2 = "@lolapolooza:7890#TGCA/1\nGAATACTACGGGAGAGAAA\n+whatever\nabcdefghijklmnopqrs\n"
-        fastq_lines = (fastq1 + fastq2).split('\n')
-        
-        ids = intersect.fastq_ids(fastq_lines)
-        self.assertEqual(ids, ["lolapolooza:1234#ACGT", "lolapolooza:7890#TGCA"])
     
     def test_usearch_merge(self):
         '''usearch should merge a perfectly matched pair of sequences'''
