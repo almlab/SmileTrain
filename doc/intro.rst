@@ -75,6 +75,19 @@ Forward and reverse reads that came from the same molecule should have the same 
 
 The pipeline currently supports merging with usearch. It should aim to also use Sonia's SHE-RA.
 
+usearch spits out the statistics about how well your merging went, for example::
+
+   1160817  Pairs                                    
+   1020386  Converted (87.9%)
+    292408  Exact overlaps (25.19%)
+    140422  Not aligned (12.10%)
+      4671  Gaps
+   6311260  Mismatches
+   3327666  Fwd errs
+   2983594  Rev errs
+         9  Staggered
+
+
 The usearch page has a `decent explanation <http://www.drive5.com/usearch/manual/merge_pair.html>`_ of quality scores of merged reads.
 
 Demultiplexing

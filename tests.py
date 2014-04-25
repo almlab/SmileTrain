@@ -1,10 +1,22 @@
 #!/usr/bin/env python
 
+'''
+Unit tests for the pipeline.
+
+There is a child class TestWithFiles. This should be used as the parent for classes that
+include tests that require reading and writing files. These files should be written into
+the tests folder and then cleaned up.
+
+Groups of tests go into classes. A sensible grouping is all (or most) of the functions
+in a particular script in the pipeline.
+'''
+
 import unittest, tempfile, subprocess, os, shutil
 
 import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes
 
 class TestWithFiles(unittest.TestCase):
+    '''tests that need to read and write files'''
     
     def tearDown(self):
         if os.path.isdir('tests'):

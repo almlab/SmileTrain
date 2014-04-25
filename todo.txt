@@ -1,5 +1,9 @@
 ssub: put in a check for available clusters
 
+fix the dry run collisions and empty input problem
+
+add a check to make sure the barcode is pointing the right way (i.e., the columns are not reversed)
+
 map_barcodes: include an option for reverse primers?
 on length checking, raise assertion error and give the line number where the problem happened
 
