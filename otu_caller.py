@@ -264,7 +264,7 @@ class OTU_Caller():
         self.ssub.validate_output(self.mi, out = self.dry_run)
         self.ssub.remove_files(self.fi + self.ri, out = self.dry_run)
         
-        # swo> need another file check here
+        util.check_for_nonempty(self.mi, dry_run=self.dry_run)
     
     def demultiplex_reads(self):
         '''Demultiplex samples using index and barcodes'''
@@ -277,10 +277,11 @@ class OTU_Caller():
             cmd = 'python %s/map_barcodes.py %s %s --max_barcode_diffs %d > %s' %(self.library, self.ci[i], self.b, self.b_mismatch, self.Ci[i])
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, self.dry_run)
-        self.ssub.validate_output(self.Ci, self.dry_run)
-        self.ssub.move_files(self.Ci, self.ci, self.dry_run)
         
-        # swo> need a file check here
+        self.ssub.validate_output(self.Ci, self.dry_run)
+        util.check_for_nonempty(self.ci, dry_run=self.dry_run)
+        
+        self.ssub.move_files(self.Ci, self.ci, self.dry_run)
     
     def quality_filter(self):
         '''Quality filter with truncqual and maximum expected error'''
@@ -297,7 +298,10 @@ class OTU_Caller():
             cmd = '%s -fastq_filter %s -fastq_truncqual %d -fastq_maxee %f -fastaout %s' %(self.usearch, self.ci[i], self.truncqual, self.maxee, self.Ci[i])
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, self.dry_run)
+        
         self.ssub.validate_output(self.Ci, self.dry_run)
+        util.check_for_nonempty(self.ci)
+        
         self.ssub.move_files(self.Ci, self.ci, self.dry_run)
     
     def dereplicate(self):
