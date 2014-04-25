@@ -30,17 +30,36 @@ The output file is sorted in order of decreasing abundance. Sequences with a min
 number of counts are dropped.
 '''
 
-import sys, argparse
+import sys, argparse, re
 import util
 
-def sequence_abundances(entries):
-    '''fasta entries to dictionary {sequence: # reads}'''
+def sid_to_sample(sid):
+    '''>sample=donor1;400 -> donor1'''
+    
+    m = re.match('sample=(.+);\d+', sid)
+    if m is None:
+        raise RuntimeError("fasta at line did not parse: %s" % sid)
+    else:
+        return m.group(1)
+
+def sequence_abundances(entries, by_sample=False):
+    '''
+    fasta entries to dictionary {sequence: # reads}
+    
+    
+    '''
+    
     abundance_map = {}
     for sid, sequence in entries:
-        if sequence not in abundance_map:
-            abundance_map[sequence] = 1
+        if by_sample:
+            key = (sid_to_sample(sid), sequence)
         else:
-            abundance_map[sequence] += 1
+            key = sequence
+        
+        if key not in abundance_map:
+            abundance_map[key] = 1
+        else:
+            abundance_map[key] += 1
 
     return abundance_map
 
@@ -65,7 +84,7 @@ def sorted_abundant_keys(abundance_map, minimum_counts):
 
     return filtered_sorted_keys
 
-def sorted_abundant_entries(entries, min_counts):
+def sorted_abundant_entries(entries, min_counts, by_sample=False):
     '''
     Given fasta entries, find the most abundant ones, and return them in order.
     
@@ -73,16 +92,29 @@ def sorted_abundant_entries(entries, min_counts):
         fasta entries
     min_counts : int
         minimum number of times a sequence must appear to be counted
+    by_sample : bool (default false)
+        only dereplicate sequences in the same sample
         
     yields : lists
         [new name, sequence] pairs
     '''
     
-    abundance_map = sequence_abundances(entries)
-    sorted_seqs = sorted_abundant_keys(abundance_map, min_counts)
+    abundance_map = sequence_abundances(entries, by_sample=by_sample)
+    sorted_keys = sorted_abundant_keys(abundance_map, min_counts)
     
-    for otu_i, seq in enumerate(sorted_seqs):
-        yield '>otu%s;size=%d\n%s' %(otu_i, abundance_map[seq], seq)
+    if by_sample:
+        seq_i = {}
+        for key in sorted_keys:
+            sample, seq = key
+            if sample not in seq_i:
+                seq_i[sample] = 1
+            else:
+                seq_i[sample] += 1
+                
+            yield ">sample=%s;seq=%d;counts=%d\n%s" %(sample, seq_i[sample], abundance_map[key], seq)
+    else:
+        for otu_i, seq in enumerate(sorted_keys):
+            yield '>otu%s;counts=%d\n%s' %(otu_i, abundance_map[seq], seq)
 
 
 if __name__ == '__main__':
@@ -91,9 +123,10 @@ if __name__ == '__main__':
     parser.add_argument('input', help='input fasta file')
     parser.add_argument('output', help='output fasta file')
     parser.add_argument('-m', '--minimum_counts', type=int, default=2, help='minimum times a sequence is included, otherwise it gets thrown out (default: 2)')
+    parser.add_argument('--by_sample', action='store_true', help='only dereplicate the same sequence when found in the same sample')
     args = parser.parse_args()
 
     with open(args.input, 'r') as f:
         with open(args.output, 'w') as o:
-            for entry in sorted_abundant_entries(util.fasta_entries(f), args.minimum_counts):
+            for entry in sorted_abundant_entries(util.fasta_entries(f), args.minimum_counts, by_sample=args.by_sample):
                 o.write("%s\n" %(entry))

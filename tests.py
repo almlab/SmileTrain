@@ -292,21 +292,41 @@ class TestDereplicate(unittest.TestCase):
     '''tests for dereplication'''
     
     def test_sequence_abundances(self):
+        '''should properly count sequences'''
         fasta_entries = [['>foo', 'AAA'], ['>bar', 'TTT'], ['>baz', 'AAA']]
         
         self.assertEqual(derep_fulllength.sequence_abundances(fasta_entries), {'AAA': 2, 'TTT': 1})
         
     def test_sorted_abundant_keys(self):
+        '''should sort keys based on abundance'''
         abunds = {'AA': 2, 'AC': 5, 'AT': 10, 'CC': 1}
         
         self.assertEqual(derep_fulllength.sorted_abundant_keys(abunds, 2), ['AT', 'AC', 'AA'])
         
     def test_sorted_abundant_entries(self):
+        '''should sort abundant fasta entries'''
         entries = [['>foo', 'AA'], ['>bar', 'CC'], ['>baz', 'AA'], ['>blag', 'AA'], ['>flog', 'TT'], ['>blob', 'TT']]
         
         it = derep_fulllength.sorted_abundant_entries(entries, 2)
-        self.assertEqual(it.next(), '>otu0;size=3\nAA')
-        self.assertEqual(it.next(), '>otu1;size=2\nTT')
+        self.assertEqual(it.next(), '>otu0;counts=3\nAA')
+        self.assertEqual(it.next(), '>otu1;counts=2\nTT')
+        
+    def test_sid_to_sample(self):
+        '''should parse >sample= line'''
+        
+        self.assertEqual(derep_fulllength.sid_to_sample("sample=donor1;400"), "donor1")
+        
+    def test_sort_with_sample(self):
+        '''should sort fasta entries by sample'''
+        
+        entries = [['sample=foo;1', 'AA'], ['sample=foo;2', 'AA'], ['sample=foo;3', 'CC'], ['sample=bar;1', 'AA']]
+        
+        sorted_entries = derep_fulllength.sorted_abundant_entries(entries, min_counts=1, by_sample=True)
+        
+        self.assertEqual(sorted_entries.next(), '>sample=foo;seq=1;counts=2\nAA')
+        self.assertEqual(sorted_entries.next(), '>sample=foo;seq=2;counts=1\nCC')
+        self.assertEqual(sorted_entries.next(), '>sample=bar;seq=1;counts=1\nAA')
+
 
 
 if __name__ == '__main__':
