@@ -65,6 +65,25 @@ def sorted_abundant_keys(abundance_map, minimum_counts):
 
     return filtered_sorted_keys
 
+def sorted_abundant_entries(entries, min_counts):
+    '''
+    Given fasta entries, find the most abundant ones, and return them in order.
+    
+    entries : list or iterator of [name, sequence] pairs
+        fasta entries
+    min_counts : int
+        minimum number of times a sequence must appear to be counted
+        
+    yields : lists
+        [new name, sequence] pairs
+    '''
+    
+    abundance_map = sequence_abundances(entries)
+    sorted_seqs = sorted_abundant_keys(abundance_map, min_counts)
+    
+    for otu_i, seq in enumerate(sorted_seqs):
+        yield '>otu%s;size=%d\n%s' %(otu_i, abundance_map[seq], seq)
+
 
 if __name__ == '__main__':
     # parse command line arguments
@@ -75,11 +94,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     with open(args.input, 'r') as f:
-        abundance_map = sequence_abundances(util.fasta_entries(f))
-
-    sorted_seqs = sorted_abundant_keys(abundance_map, args.minimum_counts)
-
-    with open(args.output, 'w') as f:
-        for otu_i, seq in enumerate(sorted_seqs):
-            f.write('>otu%s;size=%d\n' % (otu_i, abundance_map[seq]))
-            f.write('%s\n' %(seq))
+        with open(args.output, 'w') as o:
+            for entry in sorted_abundant_entries(util.fasta_entries(f), args.minimum_counts):
+                o.write("%s\n" %(entry))

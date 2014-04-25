@@ -282,6 +282,13 @@ class TestDereplicate(unittest.TestCase):
         abunds = {'AA': 2, 'AC': 5, 'AT': 10, 'CC': 1}
         
         self.assertEqual(derep_fulllength.sorted_abundant_keys(abunds, 2), ['AT', 'AC', 'AA'])
+        
+    def test_sorted_abundant_entries(self):
+        entries = [['>foo', 'AA'], ['>bar', 'CC'], ['>baz', 'AA'], ['>blag', 'AA'], ['>flog', 'TT'], ['>blob', 'TT']]
+        
+        it = derep_fulllength.sorted_abundant_entries(entries, 2)
+        self.assertEqual(it.next(), '>otu0;size=3\nAA')
+        self.assertEqual(it.next(), '>otu1;size=2\nTT')
 
 
 if __name__ == '__main__':
