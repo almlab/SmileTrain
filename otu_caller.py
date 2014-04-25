@@ -310,11 +310,15 @@ class OTU_Caller():
         cmd = 'cat %s > q.fst' %(' '.join(self.ci))
         self.ssub.run_local([cmd], out = self.dry_run)
         self.ssub.validate_output(['q.fst'], self.dry_run)
+        util.check_for_nonempty('q.fst', dry_run=self.dry_run)
+        
         cmd = 'rm %s' %(' '.join(self.ci))
         self.ssub.run_local([cmd], out = self.dry_run)
+        
         cmd = 'python %s/derep_fulllength.py q.fst q.derep.fst' %(self.library)
         self.ssub.submit_and_wait([cmd], self.dry_run)
         self.ssub.validate_output(['q.derep.fst'], self.dry_run)
+        util.check_for_nonempty('q.derep.fst', dry_run=self.dry_run)
     
     def denovo_clustering(rename=True):
         '''Denovo clustering with USEARCH'''
@@ -352,6 +356,9 @@ class OTU_Caller():
     
     def reference_mapping(self):
         '''Map reads to reference databases'''
+        
+        util.check_for_nonempty(self.db)
+        util.check_for_collisions(self.uc)
 
         cmds = []
         for i in range(len(self.sids)):
@@ -359,6 +366,8 @@ class OTU_Caller():
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, self.dry_run)
         self.ssub.validate_output(self.uc, self.dry_run)
+        
+        util.check_for_nonempty(self.uc, self.dry_run)
     
     def make_otu_tables(self):
         '''Make OTU tables from UC file'''
