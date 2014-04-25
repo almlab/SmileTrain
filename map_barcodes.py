@@ -54,15 +54,13 @@ def best_barcode_match(known_barcodes, barcode):
     n_mismatches = lambda known_barcode: usearch_python.primer.MatchPrefix(barcode, known_barcode)
 
     alignments = [(n_mismatches(known_barcode), known_barcode) for known_barcode in known_barcodes]
-    print alignments
 
     # find the alignment that has the minimum number of mismatches
     min_mismatches, best_known_barcode = min(alignments, key=lambda x: x[0])
 
     return min_mismatches, best_known_barcode
 
-# swo> this code is duplicated in remove_primers
-def rename_fastq_ids_with_sample_names(fastq_lines, barcode_map, max_barcode_diffs):
+def renamed_fastq_entries(fastq_lines, barcode_map, max_barcode_diffs):
     '''
     Rename the read IDs in a fastq file with the corresponding sample name. Get the barcode
     read right from the ID line, look it up in the barcode map, and pick the best match.
@@ -76,7 +74,8 @@ def rename_fastq_ids_with_sample_names(fastq_lines, barcode_map, max_barcode_dif
         maximum number of mismatches between a barcode read and known barcode before throwing
         out that read
 
-    Returns nothing. Everything is printed.
+    yields : list
+        fastq entry [renamed at line, sequence line, quality line]
     '''
 
     # keep track of the computations where we align the barcode read to the known barcodes
@@ -84,17 +83,7 @@ def rename_fastq_ids_with_sample_names(fastq_lines, barcode_map, max_barcode_dif
     sample_counts = {}
 
     # get the fastq lines four at a time
-    for at_line, seq_line, plus_line, quality_line in itertools.izip(*[iter(fastq_lines)] * 4):
-        at_line = at_line.rstrip()
-        seq_line = seq_line.rstrip()
-        plus_line = plus_line.rstrip()
-        quality_line = quality_line.rstrip()
-
-        # check that the two lines with identifiers match our expectations
-        assert(at_line.startswith('@'))
-        assert(plus_line.startswith('+'))
-        assert(len(seq_line) == len(quality_line))
-
+    for at_line, seq_line, quality_line in util.fastq_iterator(fastq_lines):
         # look for the barcode from the read ID line
         # match, e.g. @any_set_of_chars#ACGT/1 -> ACGT
         m = re.match("@.*#([ACGTN]+)/\d+", at_line)
@@ -122,11 +111,8 @@ def rename_fastq_ids_with_sample_names(fastq_lines, barcode_map, max_barcode_dif
                 sample = barcode_map[best_known_barcode]
                 barcode_read_to_sample[barcode_read] = sample
                 sample_counts[sample] = 1
-
-        print "@sample=%s;%d" %(sample, sample_counts[sample])
-        print seq_line
-        print "+"
-        print quality_line
+        
+        yield ["@sample=%s;%d" %(sample, sample_counts[sample]), seq_line, quality_line]
 
 
 if __name__ == '__main__':
@@ -143,4 +129,5 @@ if __name__ == '__main__':
 
     # get a set of reads
     with open(args.fastq, 'r') as f:
-        rename_fastq_ids_with_sample_names(f, barcode_map, args.max_barcode_diffs)
+        for entry in renamed_fastq_entries(f, barcode_map, args.max_barcode_diffs):
+            print util.fastq_entry_list_to_string(entry)

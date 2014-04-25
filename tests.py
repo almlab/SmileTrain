@@ -62,6 +62,11 @@ class TestFastqUtilities(TestWithFiles):
     def setUp(self):
         self.good_fastq_content = "@foo\nAAA\n+foo\n!!!\n@bar\nCCC\n+bar\n###"
         
+    def test_fastq_iterator(self):
+        it = util.fastq_iterator(self.good_fastq_content.split())
+        self.assertEqual(it.next(), ['@foo', 'AAA', '!!!'])
+        self.assertEqual(it.next(), ['@bar', 'CCC', '###'])
+        
     def test_split_fastq(self):
         '''split_fastq.py should split and trim content as expected'''
         
@@ -241,6 +246,18 @@ class TestDemultiplex(unittest.TestCase):
         
         self.assertEqual(n_mismatches, 1)
         self.assertEqual(best, 'TACACC')
+        
+    def test_rename(self):
+        '''should properly rename samples'''
+        
+        d = {'ACGT': 'donor1', 'TACA': 'donor2'}
+        
+        fastq_lines = ['@foo#ACGT/1', 'AAA', '+foo', 'AAA', '@bar#TACA/1', 'CCC', '+bar', 'BBB']
+        it = map_barcodes.renamed_fastq_entries(fastq_lines, d, 1)
+        
+        self.assertEqual(it.next(), ['@sample=donor1;1', 'AAA', 'AAA'])
+        self.assertEqual(it.next(), ['@sample=donor2;1', 'CCC', 'BBB'])
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
