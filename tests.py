@@ -60,9 +60,10 @@ class TestFastaUtilities(TestWithFiles):
 
         subprocess.call(['python', 'split_fasta.py', fasta_fn, '3'])
         with open(fasta_fn + '.0', 'r') as f:
-            fasta_out0 = f.read()
-
-        self.assertEqual(fasta_out0, ">foo\nAAAAAA\n")
+            self.assertEqual(f.read(), ">foo\nAAAAAA\n")
+            
+        with open(fasta_fn + '.1') as f:
+            self.assertEqual(f.read(), ">bar\nCCC\n")
 
         os.remove(fasta_fn)
         for i in range(3):

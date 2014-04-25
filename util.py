@@ -1,14 +1,16 @@
 import re, string, sys, time, itertools, os
 import usearch_python.primer
 
-def fasta_entries(lines):
+def fasta_entries(lines, output_type='list'):
     '''
     Yield [id, sequence] pairs from a fasta file. Sequence allowed to run over multiple lines.
 
     lines : sequence or iterator of strings
         lines from the fasta file
+    output_type : 'list' or 'string'
 
-    Yields [id (without the >), sequence] pairs
+    yields : list or string
+        [id (without the >), sequence] pairs if 'list'; ">id\nseq" if 'string'
     '''
 
     sid = None
@@ -25,13 +27,24 @@ def fasta_entries(lines):
                 assert(sid != '')
                 assert(sequence != '')
 
-                yield [sid, sequence]
+                if output_type == 'list':
+                    yield [sid, sequence]
+                elif output_type == 'string':
+                    yield ">%s\n%s" %(sid, sequence)
+                else:
+                    raise RuntimeError("unknown output type %s" %(output_type))
+                
                 sid = line[1:]
                 sequence = ''
             else:
                 sequence += line
 
-    yield [sid, sequence]
+    if output_type == 'list':
+        yield [sid, sequence]
+    elif output_type == 'string':
+        yield ">%s\n%s" %(sid, sequence)
+    else:
+        raise RuntimeError("unknown output type %s" %(output_type))
 
 def fastq_iterator(lines, check_sigils=True, check_lengths=True, output_type='list'):
     '''
