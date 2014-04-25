@@ -51,10 +51,9 @@ def parse_args():
     group2.add_argument('-p', help='Primer sequence (forward)')
     group2.add_argument('-q', help='Primer sequence (reverse)')
     group2.add_argument('-b', help='Barcodes list')
-    group2.add_argument('-x', help='Index fastq')
     group4.add_argument('--p_mismatch', default=1, type=int, help='Number of mismatches allowed in primers')
     group6.add_argument('--b_mismatch', default=1, type=int, help='Number of mismatches allowed in barcodes')
-    group6.add_argument('--merged', '-m', action='store_true', help='Files were merged in a previous step?')
+    group6.add_argument('--merged', action='store_true', help='Files were merged in a previous step?')
     group7.add_argument('--truncqual', default = 2, type = int, help = '')
     group7.add_argument('--maxee', default = 2., type = float, help = 'Maximum expected error (UPARSE)')
     group9.add_argument('--gold_db', default=config.get('Data', 'gold'), help='Gold 16S database')
@@ -275,7 +274,7 @@ class OTU_Caller():
 
         cmds = []
         for i in range(self.n_cpus):
-            cmd = 'python %s/map_barcodes.py %s %s %s %d > %s' %(self.library, self.ci[i], self.b, self.x, self.b_mismatch, self.Ci[i])
+            cmd = 'python %s/map_barcodes.py %s %s --max_barcode_diffs %d > %s' %(self.library, self.ci[i], self.b, self.b_mismatch, self.Ci[i])
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, self.dry_run)
         self.ssub.validate_output(self.Ci, self.dry_run)
@@ -387,12 +386,12 @@ if __name__ == '__main__':
         oc.remove_primers()
     
     # Merge reads
-    if oc.merge or oc.merged:
+    if oc.merge:
         message('Merging reads')
         oc.merge_reads()
         
     # Set current reads
-    if oc.merge == True:
+    if oc.merge or oc.merged:
         oc.ci = oc.mi
     else:
         oc.ci = oc.fi
