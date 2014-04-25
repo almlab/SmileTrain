@@ -304,7 +304,7 @@ class OTU_Caller():
         
         self.ssub.move_files(self.Ci, self.ci, self.dry_run)
     
-    def dereplicate(self):
+    def dereplicate_reads(self):
         '''Concatenate files and dereplicate'''
 
         cmd = 'cat %s > q.fst' %(' '.join(self.ci))
@@ -413,7 +413,7 @@ if __name__ == '__main__':
     # Dereplicate reads
     if oc.dereplicate == True:
         message('Dereplicating sequences')
-        oc.dereplicate()
+        oc.dereplicate_reads()
     
     # Denovo clustering
     if oc.denovo == True:

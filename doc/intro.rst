@@ -117,7 +117,11 @@ Quality filtering
 
 Every nucleotide in a read has an associated quality score. If we have low confidence in a nucleotide, we should throw it out. Reads that have poor quality overall should also be thrown out.
 
-The pipeline currently supports quality filtering using usearch.
+The pipeline currently supports quality filtering using usearch, which spits out some nice information::
+
+    912569  FASTQ recs (912.6k)                                      
+    158310  Low qual recs discarded (expected errs > 2.00)
+    754259  Converted (754.3k, 82.7%) 
 
 Dereplication
 -------------
