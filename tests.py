@@ -27,8 +27,8 @@ class TestFastaUtilities(TestWithFiles):
     '''tests for scripts and functions that do simple fasta manipulations'''
 
     def setUp(self):
-        self.good_fasta_content = ">foo\nAAA\nAAA\n>bar\nCCC\n>baz\nGGG"
-        self.bad_fasta_content = ">foo\nAAA\nAAA\n>bar\n>baz\nGGG"
+        self.good_fasta_content = ">foo\nAAA\nAAA\n>bar\nCCC\n>baz\nTTT"
+        self.bad_fasta_content = ">foo\nAAA\nAAA\n>bar\n>baz\nTTT"
 
     def test_fasta_entries_with_good_content(self):
         '''fasta_entries should split the content as expected'''
@@ -38,7 +38,7 @@ class TestFastaUtilities(TestWithFiles):
 
         self.assertEqual(i.next(), ["foo", "AAAAAA"])
         self.assertEqual(i.next(), ["bar", "CCC"])
-        self.assertEqual(i.next(), ["baz", "GGG"])
+        self.assertEqual(i.next(), ["baz", "TTT"])
 
     def test_fasta_entries_with_bad_content(self):
         '''fasta_entries should raise AssertionError when it gets two > lines back to back'''
@@ -50,24 +50,41 @@ class TestFastaUtilities(TestWithFiles):
         with self.assertRaises(AssertionError):
             i.next()
 
+def TestSplitFasta(TestFastaUtilities):
+    def setUp(self):
+        fasta_content = ">foo\nAAA\nAAA\n>bar\nCCC\n>baz\nTTT"
+        os.mkdir('tests')
+        fasta_fh, self.fasta_fn = tempfile.mkstemp(suffix='.fasta', dir='tests')
+        os.write(fasta_fh, self.good_fasta_content)
+        os.close(fasta_fh)
+        
     def test_split_fasta(self):
         '''split_fasta.py should split content as expected'''
 
-        os.mkdir('tests')
-        fasta_fh, fasta_fn = tempfile.mkstemp(suffix='.fasta', dir='tests')
-        os.write(fasta_fh, self.good_fasta_content)
-        os.close(fasta_fh)
-
-        subprocess.call(['python', 'split_fasta.py', fasta_fn, '3'])
-        with open(fasta_fn + '.0', 'r') as f:
+        subprocess.call(['python', 'split_fasta.py', self.fasta_fn, '3'])
+        with open(self.fasta_fn + '.0', 'r') as f:
             self.assertEqual(f.read(), ">foo\nAAAAAA\n")
             
-        with open(fasta_fn + '.1') as f:
+        with open(self.fasta_fn + '.1') as f:
             self.assertEqual(f.read(), ">bar\nCCC\n")
+            
+        with open(self.fasta_fn + '.2') as f:
+            self.assertEqual(f.read(), ">baz\nTTT\n")
 
-        os.remove(fasta_fn)
+        os.remove(self.fasta_fn)
         for i in range(3):
-            os.remove("%s.%d" %(fasta_fn, i))
+            os.remove("%s.%d" %(self.fasta_fn, i))
+            
+    def test_split_fasta_by_hash(self):
+        '''split_fasta should split sequences as expected'''
+        
+        subprocess.call(['python', 'split_fasta.py', '--hash', self.fasta_fn, '2'])
+        
+        with open(self.fasta_fn + '.0') as f:
+            self.assertEqual(f.read(), ">foo\nAAAAAA\n>bar\nCCC\n")
+            
+        with open(self.fasta_fn + '.1') as f:
+            self.assertEqual(f.read(), ">baz\nTTT\n")
 
 
 class TestFastqUtilities(TestWithFiles):
