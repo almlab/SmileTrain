@@ -30,7 +30,7 @@ The output file is sorted in order of decreasing abundance. Sequences with a min
 number of counts are dropped.
 '''
 
-import sys
+import sys, argparse
 import util
 
 def sequence_abundances(entries):

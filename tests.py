@@ -13,7 +13,7 @@ in a particular script in the pipeline.
 
 import unittest, tempfile, subprocess, os, shutil
 
-import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes
+import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength
 
 class TestWithFiles(unittest.TestCase):
     '''tests that need to read and write files'''
@@ -269,6 +269,19 @@ class TestDemultiplex(unittest.TestCase):
         
         self.assertEqual(it.next(), ['@sample=donor1;1', 'AAA', 'AAA'])
         self.assertEqual(it.next(), ['@sample=donor2;1', 'CCC', 'BBB'])
+        
+class TestDereplicate(unittest.TestCase):
+    '''tests for dereplication'''
+    
+    def test_sequence_abundances(self):
+        fasta_entries = [['>foo', 'AAA'], ['>bar', 'TTT'], ['>baz', 'AAA']]
+        
+        self.assertEqual(derep_fulllength.sequence_abundances(fasta_entries), {'AAA': 2, 'TTT': 1})
+        
+    def test_sorted_abundant_keys(self):
+        abunds = {'AA': 2, 'AC': 5, 'AT': 10, 'CC': 1}
+        
+        self.assertEqual(derep_fulllength.sorted_abundant_keys(abunds, 2), ['AT', 'AC', 'AA'])
 
 
 if __name__ == '__main__':
