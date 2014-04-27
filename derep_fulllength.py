@@ -138,7 +138,7 @@ class Dereplicator():
     def new_fasta_entries(self):
         '''yield the list of fasta lines in abundance order'''
         
-        for seq in self.filtered_abundant_sequence:
+        for seq in self.filtered_abundant_sequences:
             yield self.seq_to_entry(seq)
             
     def sample_index_entries(self):
