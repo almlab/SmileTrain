@@ -315,9 +315,9 @@ class TestDereplicate(unittest.TestCase):
         '''should properly organize names'''
         self.assertEqual(self.derep.seq_ids, {'AA': 'seq0', 'CC': 'seq1', 'TT': 'seq2'})
         
-    def test_sorted_abundant_sequences(self):
+    def test_sort_abundant_sequences(self):
         '''should properly short abundances'''
-        self.assertEqual(self.derep.sorted_abundant_sequences(), ['AA', 'TT'])
+        self.assertEqual(self.derep.filtered_abundant_sequences, ['AA', 'TT'])
     
     def test_fasta_entries(self):
         '''should give abundance-sorted entries'''
@@ -330,8 +330,8 @@ class TestDereplicateSample(unittest.TestCase):
     '''tests for dereplication with samples'''
     
     def setUp(self):
-        entries = [['sample=donor1;1', 'AA'], ['sample=donor2;1', 'AA'], ['sample=donor1;2', 'AA'], ['sample=donor2;2', 'TT']]
-        minimum_counts = 0
+        entries = [['sample=donor1;1', 'AA'], ['sample=donor2;1', 'AA'], ['sample=donor1;2', 'AA'], ['sample=donor2;2', 'TT'], ['sample=donor3;1', 'CATCAT'], ['sample=donor3;2', 'TT']]
+        minimum_counts = 2
         self.derep = derep_fulllength.Dereplicator(entries, minimum_counts, by_sample=True)
         
     def test_sample_index(self):

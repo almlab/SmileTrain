@@ -54,6 +54,9 @@ class Dereplicator():
         
         # process the data
         self.dereplicate()
+        
+        # sort out the abundant sequences
+        self.sort_abundant_sequences()
 
     def sid_to_sample(self, sid):
         '''sample=donor1;400 -> donor1'''
@@ -120,13 +123,12 @@ class Dereplicator():
                 else:
                     self.sample_counts[key] += 1
                     
-    def sorted_abundant_sequences(self):
+    def sort_abundant_sequences(self):
         '''get the abundant sequences in order of their abundance'''
         
         sorted_seqs = sorted(self.seq_ids.keys(), key=lambda seq: self.abundances[seq], reverse=True)
-        filtered_seqs = [seq for seq in sorted_seqs if self.abundances[seq] >= self.minimum_counts]
-        
-        return filtered_seqs
+        self.filtered_abundant_sequences = [seq for seq in sorted_seqs if self.abundances[seq] >= self.minimum_counts]
+        self.filtered_abundant_ids = [self.seq_ids[seq] for seq in self.filtered_abundant_sequences]
     
     def seq_to_entry(self, seq):
         '''seq_id, abundance -> >seq_id;counts=abundance\nACGT'''
@@ -136,14 +138,15 @@ class Dereplicator():
     def new_fasta_entries(self):
         '''yield the list of fasta lines in abundance order'''
         
-        for seq in self.sorted_abundant_sequences():
+        for seq in self.filtered_abundant_sequence:
             yield self.seq_to_entry(seq)
             
     def sample_index_entries(self):
         '''yield the list of lines in the index file'''
         
         for (sample, seq_id), abundance in self.sample_counts.items():
-            yield "%s\t%s\t%d" %(sample, seq_id, abundance)
+            if seq_id in self.filtered_abundant_ids:
+                yield "%s\t%s\t%d" %(sample, seq_id, abundance)
 
 if __name__ == '__main__':
     # parse command line arguments
