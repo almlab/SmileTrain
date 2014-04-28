@@ -13,7 +13,7 @@ in a particular script in the pipeline.
 
 import unittest, tempfile, subprocess, os, shutil
 
-import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus
+import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index
 
 class TestWithFiles(unittest.TestCase):
     '''tests that need to read and write files'''
@@ -294,11 +294,7 @@ class TestDereplicate(unittest.TestCase):
     def setUp(self):
         entries = [['foo', 'AA'], ['bar', 'CC'], ['baz', 'AA'], ['blag', 'AA'], ['flog', 'TT'], ['blob', 'TT']]
         minimum_counts = 2
-        self.derep = derep_fulllength.Dereplicator(entries, minimum_counts, by_sample=False)
-        
-    def test_sid_to_sample(self):
-        '''should properly sample sid line'''
-        self.assertEqual(self.derep.sid_to_sample("sample=donor1;400"), "donor1")
+        self.derep = derep_fulllength.Dereplicator(entries, minimum_counts)
         
     def test_new_seq_id(self):
         '''should give increasing sequence ids'''
@@ -325,22 +321,28 @@ class TestDereplicate(unittest.TestCase):
         self.assertEqual(fe.next(), '>seq0;counts=3\nAA')
         self.assertEqual(fe.next(), '>seq2;counts=2\nTT')
         
-
-class TestDereplicateSample(unittest.TestCase):
-    '''tests for dereplication with samples'''
+        
+class TestIndex(unittest.TestCase):
+    '''tests for index-writing script'''
     
-    def setUp(self):
-        entries = [['sample=donor1;1', 'AA'], ['sample=donor2;1', 'AA'], ['sample=donor1;2', 'AA'], ['sample=donor2;2', 'TT'], ['sample=donor3;1', 'CATCAT'], ['sample=donor3;2', 'TT']]
-        minimum_counts = 2
-        self.derep = derep_fulllength.Dereplicator(entries, minimum_counts, by_sample=True)
+    def test_parse_seq_id(self):
+        '''should get sequence ID from first fasta line'''
+        self.assertEqual(index.parse_seq_sid('seq44;counts=12'), 'seq44')
         
-    def test_sample_index(self):
-        '''should give a sample index in no particular order'''
-        entries = [entry for entry in self.derep.sample_index_entries()]
+    def test_parse_derep_fasta(self):
+        '''should make a dictionary of fasta lines'''
+        fasta_lines = ['>seq0;counts=10', 'AAA', '>seq4;counts=23', 'TTT']
+        self.assertEqual(index.parse_derep_fasta(fasta_lines), {'AAA': 'seq0', 'TTT': 'seq4'})
         
-        self.assertIn('donor1\tseq0\t2', entries)
-        self.assertIn('donor2\tseq0\t1', entries)
-        self.assertIn('donor2\tseq1\t1', entries)
+    def test_sid_to_sample(self):
+        '''should extract sample from fasta line'''
+        self.assertEqual(index.sid_to_sample('sample=donor1;444'), 'donor1')
+        
+    def test_parse_full_fasta(self):
+        seq_sid = {'AAA': 'seq0', 'TTT': 'seq4'}
+        fasta_lines = ['>sample=donor1;1', 'AAA', '>sample=donor1;2', 'AAA', '>sample=donor1;3', 'TTT', '>sample=donorT;1', 'TTT']
+        abund = index.parse_full_fasta(fasta_lines, seq_sid)
+        self.assertEqual(abund, {('donor1', 'seq0'): 2, ('donor1', 'seq4'): 1, ('donorT', 'seq4'): 1})
 
 
 class TestOTU(unittest.TestCase):
