@@ -71,7 +71,7 @@ def parse_args():
     
     # process arguments
     if args.all == True:
-        args.split = args.primers = args.merge = args.demultiplex = args.qfilter = args.chimeras = args.ref_gg = True
+        args.split = args.primers = args.merge = args.demultiplex = args.qfilter = args.chimera = args.index = args.ref_gg = True
     args.sids = map(int, args.sids.split(','))
         
     return args
