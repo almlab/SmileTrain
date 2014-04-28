@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 '''
 Create an OTU table by combining information from
     * the .uc file that contains the mapping sequence ID => OTU

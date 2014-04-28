@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 '''
 Dereplicate a fasta file. Read through all the entries, finding reads with identical
 sequences. Write out a new fasta file with IDs that keep track of the abundance of

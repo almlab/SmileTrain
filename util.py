@@ -187,12 +187,12 @@ def is_executable(filename):
     '''check if a filename exists and is executable'''
     return os.path.isfile(filename) and os.access(filename, os.X_OK)
 
+
 def message(text, indent=2):
     # print message to stderr
     space = ' ' * indent
     text = re.sub('\n', '\n%s' %(space), text)
     sys.stderr.write('%s%s\n' %(space, text))
-
 
 def error(text, indent=2):
     # print message to stderr and quit
@@ -201,12 +201,10 @@ def error(text, indent=2):
     sys.stderr.write('%s%s\n' %(space, text))
     quit()
 
-
 def read_list(fn, dtype=str):
     # read file as list
     x = [dtype(line.rstrip()) for line in open(fn)]
     return x
-
 
 def read_dataframe(fn, index_dtype=str, columns_dtype=str):
     import pandas as pd
@@ -216,12 +214,10 @@ def read_dataframe(fn, index_dtype=str, columns_dtype=str):
     x.columns = x.columns.astype(columns_dtype)
     return x
 
-
 def read_tseries(fn):
     import pandas as pd
     # read file as pandas time series
     return read_dataframe(fn, index_dtype=float, columns_dtype=str)
-
 
 def iter_fst(fn):
     # generator that iterates through [sid, seq] pairs in a fasta file
@@ -238,7 +234,6 @@ def iter_fst(fn):
             seq += line
     yield [sid, seq]
 
-
 def iter_fsq(fn):
     # generator that iterates through records in a fastq file
     record = []
@@ -252,7 +247,6 @@ def iter_fsq(fn):
         record.append(line.rstrip())
     yield record
 
-
 def read_fst(fn, reverse=False):
     # read fasta file as dictionary
     fst = {}
@@ -263,13 +257,11 @@ def read_fst(fn, reverse=False):
             fst[seq] = sid
     return fst
 
-
 def cycle(x):
     # an efficient way to cycle through a list (similar to itertools.cycle)
     while True:
         for xi in x:
             yield xi
-
 
 class timer():
     # generator that measures elapsed time
@@ -284,5 +276,3 @@ class timer():
 rctab = string.maketrans('ACGTacgt','TGCAtgca')
 def reverse_complement(x):
     return x[::-1].translate(rctab)
-
-

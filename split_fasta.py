@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 '''
 Split an input fasta file into k files.
 

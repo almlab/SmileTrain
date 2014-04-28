@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 '''
 Create an index file using the original and dereplicated fastas.
 

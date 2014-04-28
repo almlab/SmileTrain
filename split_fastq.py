@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 '''
 Split an input fastq file into multiple fastq files by
     * opening a cycling set of output file handles

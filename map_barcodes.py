@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 '''
 Demultiplex reads by mapping the barcode read to the sample names from a barcode mapping
 file.
