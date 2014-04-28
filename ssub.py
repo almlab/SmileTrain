@@ -37,7 +37,7 @@ config = ConfigParser.ConfigParser()
 config.read(os.path.join(os.path.dirname(__file__), "train.cfg"))
 username = config.get('User', 'username')
 temp_dir = config.get('User', 'tmp_directory')
-bashrc = config.get('User', 'bashrc')
+bashrc = config.get('Scripts', 'bashrc')
 cluster = config.get('User', 'cluster')
 
 def coyote_parse(qstat_output, my_username):
