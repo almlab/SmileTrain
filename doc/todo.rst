@@ -1,6 +1,11 @@
 Coding & documentation to do
 ============================
 
+chimeras
+--------
+* Nothing here has been refactored yet. It might not even work.
+* Shera should be implemented here.
+
 otu_caller.py
 -------------
 * Implement a more effective dry run. Right now the dry run checks for the existence of some files and throws errors. It would be nicer if it just told you where it was goign to check for file existence and not stop the dry run.
@@ -12,6 +17,10 @@ intersect
 ref_gg
 ------
 * Something is screwy with uclust's measurement of % identity. I've seen alignments like 250I250M250I that get 99.6% identity and alignments like 250I200MD49M250I that get 100%.
+
+dbotus
+------
+* Integrate SPP's dbOTU calling code.
 
 ssub
 ----
@@ -36,6 +45,8 @@ Diagnostics
     
 Strategic
 ---------
+* Move away from a nohup/screen kind of usage.
+    - Log files would help a lot with that!
 * Put more things in configuration files?
     - e.g., all the command line options
     - this would serve as a record for how the run went
