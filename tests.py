@@ -13,7 +13,7 @@ in a particular script in the pipeline.
 
 import unittest, tempfile, subprocess, os, shutil
 
-import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength
+import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus
 
 class TestWithFiles(unittest.TestCase):
     '''tests that need to read and write files'''
@@ -342,6 +342,58 @@ class TestDereplicateSample(unittest.TestCase):
         self.assertIn('donor2\tseq0\t1', entries)
         self.assertIn('donor2\tseq1\t1', entries)
 
+
+class TestOTU(unittest.TestCase):
+    '''tests for uc -> OTU'''
+    
+    def setUp(self):
+        self.uc_lines = ["H       112678  253     99.6    +       0       0       520I53MD199M736I        seq0;counts=118114      2045", "H       108455  252     99.6    +       0       0       531I252M717I    seq1;counts=93322      38278"]
+    
+    def test_parse_uc_line(self):
+        '''should parse one uc line into relevant fields'''
+        line = self.uc_lines[0]
+        sid, otu = uc2otus.parse_uc_line(line)
+        self.assertEqual(sid, "seq0")
+        self.assertEqual(otu, "2045")
+        
+    def test_parse_uc_lines(self):
+        '''should parse uc lines into dictionary'''
+        d = uc2otus.parse_uc_lines(self.uc_lines)
+        self.assertEqual(d, {'seq0': '2045', 'seq1': '38278'})
+        
+    def test_parse_bad_uc_lines(self):
+        '''should throw exception when sequence ID repeated'''
+        bad_uc_lines = ["H  0  250  99.9  +  0  0  100M  seq0;counts=100   otu1", "H  0  250  99.9  +  0  0  100M  seq0;counts=200  otu1"]
+        self.assertRaises(RuntimeError, uc2otus.parse_uc_lines, bad_uc_lines)
+        
+    def test_parse_sample_lines(self):
+        '''should read barcodes are first field'''
+        bc_lines = ['animal4       TCCGTGCG', 'animal1       TCAAAGCT']
+        self.assertEqual(uc2otus.parse_sample_lines(bc_lines), ['animal4', 'animal1'])
+        
+    def test_parse_index_lines(self):
+        '''should split and recast index line'''
+        line = 'donor1  otu5    100'
+        self.assertEqual(uc2otus.parse_index_line(line), ['donor1', 'otu5', 100])
+        
+    def test_sparse_count_table(self):
+        '''should make a sparse count table'''
+        seq_otu = {'AA': 'otuA', 'AAAA': 'otuA', 'CC': 'otuC'}
+        index_lines = ['donor1  AA  5', 'donor1 AAAA 1', 'donor1 CC 1', 'donor2  AA  4']
+        table = uc2otus.sparse_count_table(seq_otu, index_lines)
+        self.assertEqual(table, {'donor1': {'otuA': 6, 'otuC': 1}, 'donor2': {'otuA': 4}})
+        
+    def test_otu_table(self):
+        '''should make an OTU table'''
+        table = {'donor1': {'otuA': 6, 'otuC': 1}, 'donor2': {'otuA': 4}}
+        otus = ['otuA', 'otuC']
+        samples = ['donor1', 'donor2']
+        
+        out_lines = [line for line in uc2otus.otu_table(table, otus=None, samples=samples)]
+        
+        self.assertEqual(out_lines[0], 'OTU_ID\tdonor1\tdonor2')
+        self.assertIn('otuA\t6\t4', out_lines[1:])
+        self.assertIn('otuC\t1\t0', out_lines[1:])
 
 
 if __name__ == '__main__':
