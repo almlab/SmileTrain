@@ -28,17 +28,13 @@ becomes output like
 
 The output file is sorted in order of decreasing abundance. Sequences with a minimum
 number of counts are dropped.
-
-If if by_sample=True, then keep a list of where the counts came from to produce an
-index file with lines
-    sample_name sequence_id (# of times that seq appears in that sample)
 '''
 
 import sys, argparse, re
 import util
 
 class Dereplicator():
-    def __init__(self, fasta_entries, minimum_counts, by_sample):
+    def __init__(self, fasta_entries, minimum_counts):
         '''
         fasta_entries : list or iterator
             [sid (no >), sequence] pairs
@@ -50,22 +46,12 @@ class Dereplicator():
         
         self.input_fasta_entries = fasta_entries
         self.minimum_counts = minimum_counts
-        self.by_sample = by_sample
         
         # process the data
         self.dereplicate()
         
         # sort out the abundant sequences
         self.sort_abundant_sequences()
-
-    def sid_to_sample(self, sid):
-        '''sample=donor1;400 -> donor1'''
-        
-        m = re.match('sample=(.+);\d+', sid)
-        if m is None:
-            raise RuntimeError("fasta at line did not parse: %s" % sid)
-        else:
-            return m.group(1)
         
     def iter_seq_ids(self):
         self.max_seq_i = 0
@@ -82,17 +68,11 @@ class Dereplicator():
             
         Each sequence also has an abundance
             abundances = {'ACGT' => 100}
-            
-        If dereplicating by sample, the abundance of each sequence in each smaple is kept
-            sample_counts = {('donor1', 'seq1' => 40}
         '''
         
         self.abundances = {}
         self.seq_ids = {}
         new_seq_ids = self.iter_seq_ids()
-        
-        if self.by_sample:
-            self.sample_counts = {}
         
         # keep track of the highest sequence index used
         for sid, seq in self.input_fasta_entries:    
@@ -112,16 +92,6 @@ class Dereplicator():
                 self.abundances[seq] = 1
             else:
                 self.abundances[seq] += 1
-                
-            # if dereplicating by sample, keep track of the abundance of this sequence in
-            # its own sample
-            if self.by_sample:
-                sample = self.sid_to_sample(sid)
-                key = (sample, seq_id)
-                if key not in self.sample_counts:
-                    self.sample_counts[key] = 1
-                else:
-                    self.sample_counts[key] += 1
                     
     def sort_abundant_sequences(self):
         '''get the abundant sequences in order of their abundance'''
@@ -140,36 +110,19 @@ class Dereplicator():
         
         for seq in self.filtered_abundant_sequences:
             yield self.seq_to_entry(seq)
-            
-    def sample_index_entries(self):
-        '''yield the list of lines in the index file'''
-        
-        for (sample, seq_id), abundance in self.sample_counts.items():
-            if seq_id in self.filtered_abundant_ids:
-                yield "%s\t%s\t%d" %(sample, seq_id, abundance)
+
 
 if __name__ == '__main__':
     # parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('input', help='input fasta file')
     parser.add_argument('output', help='output fasta file')
-    parser.add_argument('--index', type=str, help='if specified, create a sample index file')
     parser.add_argument('-m', '--minimum_counts', type=int, default=2, help='minimum times a sequence is included, otherwise it gets thrown out (default: 2)')
     args = parser.parse_args()
-    
-    if args.index:
-        make_index = True
-    else:
-        make_index = False
 
     with open(args.input, 'r') as f:
-        derep = Dereplicator(util.fasta_entries(f), args.minimum_counts, make_index)
+        derep = Dereplicator(util.fasta_entries(f), args.minimum_counts)
         
     with open(args.output, 'w') as o:
         for entry in derep.new_fasta_entries():
             o.write("%s\n" %(entry))
-            
-    if make_index:
-        with open(args.index, 'w') as o:
-            for entry in derep.sample_index_entries():
-                o.write("%s\n" %(entry))
