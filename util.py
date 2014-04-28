@@ -4,11 +4,11 @@ import usearch_python.primer
 def fasta_entries(lines, output_type='list'):
     '''
     Yield [id, sequence] pairs from a fasta file. Sequence allowed to run over multiple lines.
-
+    
     lines : sequence or iterator of strings
         lines from the fasta file
     output_type : 'list' or 'string'
-
+    
     yields : list or string
         [id (without the >), sequence] pairs if 'list'; ">id\nseq" if 'string'
     '''
