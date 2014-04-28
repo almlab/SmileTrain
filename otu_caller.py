@@ -30,8 +30,9 @@ def parse_args():
     group7 = parser.add_argument_group('Quality filtering')
     group8 = parser.add_argument_group('Dereplicate')
     group9 = parser.add_argument_group('Chimeras')
-    group10 = parser.add_argument_group('Clustering')
-    group11 = parser.add_argument_group('Options')
+    group10 = parser.add_argument_group('Indexing')
+    group11 = parser.add_argument_group('Clustering')
+    group12 = parser.add_argument_group('Options')
     
     # add arguments
     group1.add_argument('--all', default = False, action = 'store_true', help = 'Run all steps of pipeline?')
@@ -43,6 +44,7 @@ def parse_args():
     group1.add_argument('--qfilter', default = False, action = 'store_true', help = 'Quality filter?')
     group1.add_argument('--chimeras', default = False, action = 'store_true', help = 'Chimera slay?')
     group1.add_argument('--dereplicate', action='store_true', help='Dereplicate?')
+    group1.add_argument('--index', action='store_true', help='Make index file?')
     group1.add_argument('--denovo', default = False, action = 'store_true', help = 'Denovo clustering (UPARSE)?')
     group1.add_argument('--ref_gg', default = False, action = 'store_true', help = 'Reference mapping (Greengenes)?')
     group1.add_argument('--otu_table', action='store_true', help='Make OTU table?')
@@ -50,16 +52,16 @@ def parse_args():
     group2.add_argument('-r', help='Input fastq (reverse)')
     group2.add_argument('-p', help='Primer sequence (forward)')
     group2.add_argument('-q', help='Primer sequence (reverse)')
-    group2.add_argument('-b', help='Barcodes list')
+    group2.add_argument('-b', default=None, help='Barcodes list')
     group4.add_argument('--p_mismatch', default=1, type=int, help='Number of mismatches allowed in primers')
     group6.add_argument('--b_mismatch', default=1, type=int, help='Number of mismatches allowed in barcodes')
     group6.add_argument('--merged', action='store_true', help='Files were merged in a previous step?')
     group7.add_argument('--truncqual', default = 2, type = int, help = '')
     group7.add_argument('--maxee', default = 2., type = float, help = 'Maximum expected error (UPARSE)')
     group9.add_argument('--gold_db', default=config.get('Data', 'gold'), help='Gold 16S database')
-    group10.add_argument('--sids', default='91,94,97,99', help='Sequence identities for clustering')
-    group11.add_argument('--n_cpus', '-n', default = 1, type = int, help='Number of CPUs')
-    group11.add_argument('--dry_run', '-z', action='store_true', help='Submit no jobs; just print output commands')
+    group11.add_argument('--sids', default='91,94,97,99', help='Sequence identities for clustering')
+    group12.add_argument('--n_cpus', '-n', default = 1, type = int, help='Number of CPUs')
+    group12.add_argument('--dry_run', '-z', action='store_true', help='Submit no jobs; just print output commands')
     
     # parse arguments
     if __name__ == '__main__':
@@ -319,6 +321,18 @@ class OTU_Caller():
         self.ssub.submit_and_wait([cmd], self.dry_run)
         self.ssub.validate_output(['q.derep.fst'], self.dry_run)
         util.check_for_nonempty('q.derep.fst', dry_run=self.dry_run)
+        
+    def make_index(self):
+        '''Make an index file'''
+        
+        # verify input & check for collisions with output
+        util.check_for_nonempty(['q.fst', 'q.derep.fst'], dry_run=self.dry_run)
+        util.check_for_collisions('q.index')
+        
+        cmd = 'python %s/index.py q.fst q.derep.fst --output q.index' %(self.library)
+        self.ssub.submit_and_wait([cmd], self.dry_run)
+        
+        util.check_for_nonempty('q.index', dry_run=self.dry_run)
     
     def denovo_clustering(rename=True):
         '''Denovo clustering with USEARCH'''
@@ -371,13 +385,22 @@ class OTU_Caller():
     
     def make_otu_tables(self):
         '''Make OTU tables from UC file'''
+        
+        util.check_for_nonempty(self.uc + ['q.index'])
+        util.check_for_collisions(self.xi)
 
         cmds = []
         for i in range(len(self.sids)):
-            cmd = 'python %s/usearch_python/uc2otutab.py %s %s' %(self.library, self.uc[i], self.xi[i])
+            cmd = 'python %s/uc2otus.py %s q.index --output %s' %(self.library, self.uc[i], self.xi[i])
+            
+            # if we have a barcode file, use that order for the sample columns
+            if self.b is not None:
+                cmd += ' --samples %s' %(self.b)
+            
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, self.dry_run)
-        self.ssub.validate_output(self.xi, self.dry_run)
+        
+        util.check_for_nonempty(self.xi)
     
 
 if __name__ == '__main__':
@@ -423,6 +446,11 @@ if __name__ == '__main__':
     if oc.dereplicate == True:
         message('Dereplicating sequences')
         oc.dereplicate_reads()
+        
+    # Make index file
+    if oc.index == True:
+        message('Indexing samples')
+        oc.make_index()
     
     # Denovo clustering
     if oc.denovo == True:

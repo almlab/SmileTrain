@@ -375,13 +375,13 @@ class TestOTU(unittest.TestCase):
         
     def test_parse_index_lines(self):
         '''should split and recast index line'''
-        line = 'donor1  otu5    100'
-        self.assertEqual(uc2otus.parse_index_line(line), ['donor1', 'otu5', 100])
+        line = 'donor1  seq5    100'
+        self.assertEqual(uc2otus.parse_index_line(line), ['donor1', 'seq5', 100])
         
     def test_sparse_count_table(self):
         '''should make a sparse count table'''
-        seq_otu = {'AA': 'otuA', 'AAAA': 'otuA', 'CC': 'otuC'}
-        index_lines = ['donor1  AA  5', 'donor1 AAAA 1', 'donor1 CC 1', 'donor2  AA  4']
+        seq_otu = {'seqA': 'otuA', 'seqA2': 'otuA', 'seqC': 'otuC'}
+        index_lines = ['donor1  seqA  5', 'donor1 seqA2  1', 'donor1 seqC 1', 'donor2  seqA  4']
         table = uc2otus.sparse_count_table(seq_otu, index_lines)
         self.assertEqual(table, {'donor1': {'otuA': 6, 'otuC': 1}, 'donor2': {'otuA': 4}})
         
@@ -396,7 +396,34 @@ class TestOTU(unittest.TestCase):
         self.assertEqual(out_lines[0], 'OTU_ID\tdonor1\tdonor2')
         self.assertIn('otuA\t6\t4', out_lines[1:])
         self.assertIn('otuC\t1\t0', out_lines[1:])
+        
+def TestPipelineSteps(TestWithFiles):
+    '''tests for file input/output for each pipeline step'''
+    
+    def test_make_otu_table(self):
+        '''should read inputs and write otu table'''
 
+        uc_lines = ["H  0  250  99.9  +  0  0  100M  seq0;counts=100  otu0", "H  0  250  99.9  +  0  0  100M  seq1;counts=10  otu0", "H  0  250  99.9  +  0  0  100M  seq5;counts=22  otu3"]
+        index_lines = ['donor1  seq0  5', 'donor1 seq5 1', 'donor1 seq1 1', 'donor2  otu3  4']
+        
+        with open('tests/otus.uc', 'w') as f:
+            for line in uc_lines:
+                f.write(line + "\n")
+                
+        with open('tests/q.index', 'w') as f:
+            for line in index_lines:
+                f.write(line + "\n")
+                
+        subprocess.call(['python', 'uc2otus.py', 'tests/otus.uc', 'tests/q.index', '--output', 'tests/otu.count'])
+        
+        with open('tests/otus.count') as f:
+            table_content = f.read()
+            
+        expected_table_data = [['OTU_ID', 'donor1', 'donor2'], ['otu1', '6', '0'], ['otu3', '1', '4']]
+        expected_table = '\n'.join(['\t'.join(row) for row in table])
+        
+        self.assertEqual(table_content, expected_table)
+        
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
