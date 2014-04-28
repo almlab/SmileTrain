@@ -1,3 +1,6 @@
+implement a more effective dry run
+check for uclust sequence identity thing
+
 ssub: put in a check for available clusters
 
 fix the dry run collisions and empty input problem
