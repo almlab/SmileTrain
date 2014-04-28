@@ -126,11 +126,31 @@ The pipeline currently supports quality filtering using usearch, which spits out
 Dereplication
 -------------
 
+Simple dereplication looks for identical sequences and keeps only one copy. The dereplication script looks through the output from the quality filtering and keeps track of the number of times each sequence appears. It gives each sequence a unique ID and reports its sequence in a dereplicated fasta file with entries like::
+
+    >seq0;counts=123
+    ACGTACGT
+    
+which means that the sequence ``ACGTACGT`` appeared 123 times and it has the new ID ``seq0``.
+
+If barcodes were included, a separate index file is produced. This file keeps track of how many times each sequence occurred in each sample. It has lines like::
+
+    sample1 seq0    97
+    
+which means that, of ``seq0``'s 123 total appearances, 97 were in ``sample1``.
+
 OTU calling
 -----------
 
 Reference-based
 ~~~~~~~~~~~~~~~
+
+usearch produces a ``.uc`` file, which has a tab-separated `format <http://www.drive5.com/usearch/manual/ucout.html>`_. The important fields are
+
+* Field 1 : ``H`` (hit) or ``N`` (no hit in the database).
+* Field 4 : percent identity with hit (although there is something funny here).
+* Field 9 : the fasta ID
+* Field 10 : the ID from the reference database
 
 De novo
 ~~~~~~~
