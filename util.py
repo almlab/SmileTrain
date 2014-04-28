@@ -152,7 +152,7 @@ def check_for_existence(filenames, dry_run=False):
         tests = [os.path.isfile(filename) for filename in filenames]
         if False in tests:
             bad_names = " ".join([filename for filename, test in zip(filenames, tests) if test == False])
-            raise RuntimeError("input file(s) missing: %s" % bad_names)
+            raise RuntimeError("file(s) missing: %s" % bad_names)
     
 def check_for_nonempty(filenames, dry_run=False):
     '''assert that each file exists and is nonempty'''
