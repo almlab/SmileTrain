@@ -18,6 +18,9 @@ import util, remove_primers, derep_fulllength, intersect, check_fastq_format, co
 class TestWithFiles(unittest.TestCase):
     '''tests that need to read and write files'''
     
+    def setUp(self):
+        os.mkdir('tests')
+    
     def tearDown(self):
         if os.path.isdir('tests'):
             shutil.rmtree('tests')
@@ -53,7 +56,6 @@ class TestFastaUtilities(TestWithFiles):
 def TestSplitFasta(TestFastaUtilities):
     def setUp(self):
         fasta_content = ">foo\nAAA\nAAA\n>bar\nCCC\n>baz\nTTT"
-        os.mkdir('tests')
         fasta_fh, self.fasta_fn = tempfile.mkstemp(suffix='.fasta', dir='tests')
         os.write(fasta_fh, self.good_fasta_content)
         os.close(fasta_fh)
@@ -90,7 +92,10 @@ def TestSplitFasta(TestFastaUtilities):
 class TestFastqUtilities(TestWithFiles):
     '''tests for functions and scripts that do fastq manipulations'''
     def setUp(self):
+        os.mkdir('tests')
         self.good_fastq_content = "@foo\nAAA\n+foo\n!!!\n@bar\nCCC\n+bar\n###"
+        self.fastq13 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+lolapolooza:1234#ACGT/1\nABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefgh"""
+        self.fastq18 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+\n"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHJ"""
         
     def test_fastq_iterator(self):
         it = util.fastq_iterator(self.good_fastq_content.split())
@@ -100,7 +105,6 @@ class TestFastqUtilities(TestWithFiles):
     def test_split_fastq(self):
         '''split_fastq.py should split and trim content as expected'''
         
-        os.mkdir('tests')
         fastq_fh, fastq_fn = tempfile.mkstemp(suffix='.fastq', dir='tests')
         os.write(fastq_fh, self.good_fastq_content)
         os.close(fastq_fh)
@@ -165,13 +169,24 @@ class TestFastqUtilities(TestWithFiles):
     def test_format_conversion(self):
         '''should convert Illumina 1.4-1.7 to our mixed format'''
         
-        fastq13 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+lolapolooza:1234#ACGT/1\nABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefgh"""
-        fastq18 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+\n"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHJ"""
-        
-        entry13 = util.fastq_iterator(fastq13.split("\n")).next()
-        entry18 = util.fastq_iterator(fastq18.split("\n")).next()
+        entry13 = util.fastq_iterator(self.fastq13.split("\n")).next()
+        entry18 = util.fastq_iterator(self.fastq18.split("\n")).next()
         
         self.assertEqual(convert_fastq.convert_entry(entry13), entry18)
+        
+    def test_format_check_right(self):
+        '''should identify written file as correct format'''
+        with open('tests/good.fastq', 'w') as f:
+            f.write(self.fastq13)
+        
+        check_fastq_format.check_illumina13_format(['tests/good.fastq'])
+        
+    def test_format_check_right(self):
+        '''should identify written file with incorrect format'''
+        with open('tests/bad.fastq', 'w') as f:
+            f.write(self.fastq18)
+        
+        self.assertRaises(RuntimeError, check_fastq_format.check_illumina13_format, ['tests/bad.fastq'])
     
             
 class TestFileChecks(TestWithFiles):
@@ -179,7 +194,6 @@ class TestFileChecks(TestWithFiles):
     
     def setUp(self):
         os.mkdir('tests')
-        
         empty_fh, self.empty_fn = tempfile.mkstemp(dir='tests')
         
         full_fh, self.full_fn = tempfile.mkstemp(dir='tests')
@@ -201,8 +215,14 @@ class TestFileChecks(TestWithFiles):
         with self.assertRaises(RuntimeError):
             util.check_for_existence(self.no_fn)
             
-    def test_check_for_collision(self):
-        '''should identify files and not existing or so'''
+    def test_check_for_collision_yes(self):
+        '''should identify files as existing'''
+        self.assertRaises(RuntimeError, util.check_for_collisions, self.empty_fn)
+        self.assertRaises(RuntimeError, util.check_for_collisions, self.full_fn)
+        
+    def test_check_for_collision_no(self):
+        '''should identify destination as empty'''
+        util.check_for_collisions(self.no_fn)
 
 
 class TestRemovePrimers(unittest.TestCase):
@@ -232,9 +252,6 @@ class TestIntersect(TestWithFiles):
         # complemented the last, gave them all the same quality code, and made up a name.
         self.forward_fastq = "@foo/1\nGTTTTCTTCGCTTTATGGTGGTGGTAAAAGTGCTTCGATCTGCTAGATATCCCTCAGGAAAGTTTATGCCCGTGTCCGTTTGTTTGGGTAGATCTCTCACCCTTGGAATTCCAAGCGTTCAGGTATCCCACAATCGCTTCGATGACTCCGCCTCCTTATTATATACTTCGCCGATACGCAGCGCATGAAGAGTCATCGGGA\n+\n#########################################################################################################################################################################################################\n"
         self.reverse_fastq = "@foo/2\nCGATATCCGTGGCTTAAGCTATATGCGATTTTGCAGAGCAGTCAAGGTCTCCCTGGGTAGATTAAAGGGCGAGCTCACGAAGAGATTACTACTCAACCCTCCCGATGACTCTTCATGCGCTGCGTATCGGCGAAGTATATAATAAGGAGGCGGAGTCATCGAAGCGATTGTGGGATACCTGAACGCTTGGAATTCCAAGG\n+\n########################################################################################################################################################################################################\n"
-        
-        # set up the tests directory
-        os.mkdir('tests')
         
         fasta_fh, fasta_fn = tempfile.mkstemp(suffix='.fasta', dir='tests')
         

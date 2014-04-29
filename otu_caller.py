@@ -7,7 +7,7 @@ Options allow the user to run individual parts of the pipeline or the entire thi
 
 import argparse, os, ConfigParser
 import ssub
-import util
+import util, check_fastq_format
 from util import *
 
 # open the config file sister to this script
@@ -295,6 +295,9 @@ class OTU_Caller():
         
         # check that usearch is ready to go
         assert(util.is_executable(self.usearch))
+        
+        # check that the files are in the right format
+        check_fastq_format.check_illumina13_format(self.ci)
 
         cmds = []
         for i in range(self.n_cpus):

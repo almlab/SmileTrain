@@ -7,8 +7,18 @@ Illumina 1.3-1.7 format, specificially that
     * the quality line uses Sanger encoding (ascii offset 64, high score h to low score B)
 '''
 
-import itertools, os, os.path, sys, argparse, itertools, shutil
+import itertools, os, os.path, sys, argparse, shutil
 import util
+
+def check_illumina13_format(fastq_filenames):
+    '''raise error is any of the input filenames are not in Illumina 1.3-1.7 format'''
+    
+    good_file = lambda fn: is_illumina13_format(open(fn))
+    tests = [good_file(fn) for fn in fastq_filenames]
+    
+    if False in tests:
+        bad_names = [name for name, test in zip(fastq_filenames, tests) if test == False]
+        raise RuntimeError("files do not appear to be in Illumina 1.3-1.7 format: %s" %(" ".join(bad_names)))
 
 def is_illumina13_format(fastq, max_entries=10):
     '''are the @ and quality lines in Illumina 1.3-1.7 format?'''
