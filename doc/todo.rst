@@ -8,6 +8,7 @@ chimeras
 
 otu_caller.py
 -------------
+* Put a format check before doing quality filtering. If the format is wrong, then usearch dies and ruins the output.
 * Implement a more effective dry run. Right now the dry run checks for the existence of some files and throws errors. It would be nicer if it just told you where it was goign to check for file existence and not stop the dry run.
 
 intersect
