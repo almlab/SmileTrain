@@ -126,7 +126,8 @@ class Ssub():
         elif cluster == 'coyote':
             self.submit_cmd = 'qsub'
             self.stat_cmd = ['qstat', '-x']
-            self.parse_job = lambda x: re.match('\d+', x).group()
+            # parse: match a string of integers then either [] or nothing
+            self.parse_job = lambda x: re.match('\d+(\[\])?', x).group()
             self.parse_status = lambda x: coyote_parse(x, username)
         
         # unrecognized cluster
