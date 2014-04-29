@@ -49,7 +49,7 @@ def coyote_parse(qstat_output, my_username):
     my_username : string
         kerberos username
 
-    Returns : list of job IDs, each a string of integers
+    Returns : list of job IDs, each a string of integers with an optional []
     '''
 
     root = ET.fromstring(qstat_output)
@@ -64,7 +64,7 @@ def coyote_parse(qstat_output, my_username):
             # job id contains 12345.wiley.coyote.etc.etc
             # we want just the integers at the beginning
             raw_job_id = child.find('Job_Id').text
-            job_id = re.match('\d+', raw_job_id).group()
+            job_id = re.match('\d+(\[\])?', raw_job_id).group()
             job_ids.append(job_id)
 
     return job_ids
