@@ -302,7 +302,7 @@ class OTU_Caller():
         self.ssub.submit_and_wait(cmds, self.dry_run)
         
         self.ssub.validate_output(self.Ci, self.dry_run)
-        util.check_for_nonempty(self.ci)
+        util.check_for_nonempty(self.Ci)
         
         self.ssub.move_files(self.Ci, self.ci, self.dry_run)
     
