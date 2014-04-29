@@ -35,11 +35,11 @@ def parse_args():
     group12 = parser.add_argument_group('Options')
     
     # add arguments
-    group1.add_argument('--all', default = False, action = 'store_true', help = 'Run all steps of pipeline?')
+    group1.add_argument('--all', action='store_true', help='Run primer, merge, demultiplex, filter, derep, index, ref_gg, and otu?')
     group1.add_argument('--split', action='store_true', help='Split the fastq files?')
     group1.add_argument('--convert', action='store_true', help='Convert fastq format?')
-    group1.add_argument('--primers', default = False, action = 'store_true', help = 'Remove primers?')
-    group1.add_argument('--merge', default = False, action = 'store_true', help = 'Merge forward and reverse reads?')
+    group1.add_argument('--primers', action='store_true', help='Remove primers?')
+    group1.add_argument('--merge', action='store_true', help='Merge forward and reverse reads?')
     group1.add_argument('--demultiplex', default = False, action = 'store_true', help = 'Demultiplex?')
     group1.add_argument('--qfilter', default = False, action = 'store_true', help = 'Quality filter?')
     group1.add_argument('--chimeras', default = False, action = 'store_true', help = 'Chimera slay?')
@@ -71,7 +71,7 @@ def parse_args():
     
     # process arguments
     if args.all == True:
-        args.split = args.primers = args.merge = args.demultiplex = args.qfilter = args.chimera = args.index = args.ref_gg = True
+        args.split = args.convert = args.primers = args.merge = args.demultiplex = args.qfilter = args.dereplicate = args.index = args.ref_gg = args.otu_table = True
     args.sids = map(int, args.sids.split(','))
         
     return args
@@ -106,6 +106,7 @@ class OTU_Caller():
             f_base = os.path.basename(self.f)
         if self.r:
             r_base = os.path.basename(self.r)
+            
         self.fi = ['%s.%d' %(self.f, i) for i in range(self.n_cpus)] # forward reads (split)
         self.ri = ['%s.%d' %(self.r, i) for i in range(self.n_cpus)] # reverse reads (split)
         self.mi = ['%s.%d.merge' %(self.f, i) for i in range(self.n_cpus)] # merged reads (split)
