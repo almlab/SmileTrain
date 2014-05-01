@@ -39,6 +39,7 @@ username = config.get('User', 'username')
 temp_dir = config.get('User', 'tmp_directory')
 bashrc = config.get('Scripts', 'bashrc')
 cluster = config.get('User', 'cluster')
+queue = config.get('User', 'queue')
 
 def coyote_parse(qstat_output, my_username):
     '''
@@ -262,6 +263,7 @@ class Ssub():
         # write header
         fh.write('#PBS -t 1-%d%%%s\n' %(len(fns), min(len(fns), int(self.l))))
         fh.write('#PBS -e %s.e\n' %(array_fn))
+        fh.write('#PBS -q %s\n' %(queue))
         fh.write('#PBS -o %s.o\n' %(array_fn))
         fh.write('source %s\n' % bashrc)
         fh.write('cd $PBS_O_WORKDIR\n')

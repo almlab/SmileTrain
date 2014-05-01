@@ -25,6 +25,7 @@ dbotus
 
 ssub
 ----
+* Refactor and remove old code. Decide if this ssub should be entirely a module for the otu caller. Otherwise, it needs to be able to be called as a script. Otherwise, ssub and the otu caller will have to be separate projects that depend on each other, which sounds a little dangerous.
 * Put in a check for available clusters.
 * Add functionality & tests for broad.
     - qstat equivalent
