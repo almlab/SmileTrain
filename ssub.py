@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, os, re, select, stat, subprocess, sys, tempfile, time, ConfigParser, re
+import argparse, os, re, select, stat, subprocess, sys, tempfile, time, ConfigParser, re, time
 import xml.etree.ElementTree as ET
 from util import *
 
@@ -172,6 +172,11 @@ class Ssub():
         for job in running_jobs:
             if job in job_ids:
                 return False
+            
+        message('jobs completed at %s' % time.strftime("%d %b %H:%M", time.localtime()))
+            
+        # give the IO a chance to flush
+        time.sleep(5)
         return True
     
     

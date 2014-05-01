@@ -20,7 +20,13 @@ def parse_uc_line(line):
     else:
         sid = m.group(1)
     
-    otu = fields[9]
+    hit = fields[0]
+    if hit == 'H':
+        otu = fields[9]
+    elif hit == 'N':
+        otu = 'no_match'
+    else:
+        raise RuntimeError('unknown code %s found in .uc file' % hit)
     
     return (sid, otu)
 
@@ -47,6 +53,14 @@ def parse_index_line(line):
     sample, seq, abund = line.split()
     abund = int(abund)
     return [sample, seq, abund]
+
+def counts(table, sample, otu):
+    '''get counts from table structure, or 0 if sample or otu missing'''
+    if sample in table:
+        if otu in table[sample]:
+            return table[sample][otu]
+        
+    return 0
 
 def sparse_count_table(seq_otu, index_lines):
     '''
@@ -110,7 +124,7 @@ def otu_table(table, otus=None, samples=None):
     
     # loop over rows
     for otu in otus: 
-        yield "\t".join([otu] + [str(table[sample].get(otu, 0)) for sample in samples])
+        yield "\t".join([otu] + [str(counts(table, sample, otu)) for sample in samples])
 
 
 if __name__ == '__main__':
@@ -141,6 +155,5 @@ if __name__ == '__main__':
         with open(args.otus) as f:
             otus = parse_sample_lines(f)
             
-    with open(args.output, 'w') as o:
-        for line in otu_table(table, otus, samples):
-            o.write("%s\n" % line)
+    for line in otu_table(table, otus, samples):
+        args.output.write("%s\n" % line)
