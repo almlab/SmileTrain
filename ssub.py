@@ -173,7 +173,7 @@ class Ssub():
             if job in job_ids:
                 return False
             
-        message('  jobs completed\ttime: %s' % time.strftime("%d %b %H:%M", time.localtime()))
+        message('jobs completed\ttime: %s' % time.strftime("%d %b %H:%M", time.localtime()), indent=4)
         return True
     
     
@@ -217,7 +217,7 @@ class Ssub():
 
             job_ids.append(job_id)
             message('Submitting job %s' %(fn))
-            message('  job ID: %s\ttime: %s' %(job_id, time.strftime("%d %b %H:%M", time.localtime())))
+            message('job ID: %s\ttime: %s' %(job_id, time.strftime("%d %b %H:%M", time.localtime())), indent=4)
         return job_ids
     
     

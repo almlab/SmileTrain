@@ -36,6 +36,7 @@ def parse_args():
     
     # add arguments
     group1.add_argument('--all', action='store_true', help='Run primer, merge, demultiplex, filter, derep, index, ref_gg, and otu?')
+    group1.add_argument('--check', action='store_true', help='Check input file format?')
     group1.add_argument('--split', action='store_true', help='Split the fastq files?')
     group1.add_argument('--convert', action='store_true', help='Convert fastq format?')
     group1.add_argument('--primers', action='store_true', help='Remove primers?')
@@ -71,7 +72,7 @@ def parse_args():
     
     # process arguments
     if args.all == True:
-        args.split = args.convert = args.primers = args.merge = args.demultiplex = args.qfilter = args.dereplicate = args.index = args.ref_gg = args.otu_table = True
+        args.check = args.split = args.convert = args.primers = args.merge = args.demultiplex = args.qfilter = args.dereplicate = args.index = args.ref_gg = args.otu_table = True
     args.sids = map(int, args.sids.split(','))
         
     return args
@@ -125,6 +126,18 @@ class OTU_Caller():
             self.db = self.oi
         elif self.ref_gg == True:
             self.db = ['%s/%d_otus.fasta' %(self.ggdb, sid) for sid in self.sids]
+            
+    def check_format(self):
+        '''Make sure we have the correct input format'''
+        files = []
+        if self.f:
+            files.append(self.f)
+        
+        if self.r:
+            files.append(self.r)
+            
+        message('Testing format of %s' %(" ".join(files)))
+        check_fastq_format.check_illumina13_format(files)
     
     def split_fastq(self):
         '''Split forward and reverse reads (for parallel processing)'''
@@ -407,6 +420,11 @@ class OTU_Caller():
 if __name__ == '__main__':
     # Initialize OTU caller
     oc = OTU_Caller()
+    
+    # Check fastq format
+    if oc.check:
+        message('Checking input formats')
+        oc.check_format()
     
     # Split fastq
     if oc.split:
