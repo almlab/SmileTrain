@@ -155,9 +155,9 @@ class OTU_Caller():
 
         # validate output
         if do_forward:
-            self.ssub.validate_output(self.fi, out=self.dry_run)
+            util.check_for_nonempty(self.fi, self.dry_run)
         if do_reverse:
-            self.ssub.validate_output(self.ri, out=self.dry_run)
+            util.check_for_nonempty(self.ri, self.dry_run)
             
     def convert_format(self):
         '''Convert to compatible fastq format'''
@@ -264,10 +264,9 @@ class OTU_Caller():
             cmd = '%s -fastq_mergepairs %s -reverse %s -fastq_truncqual %d -fastqout %s' %(self.usearch, self.fi[i], self.ri[i], self.truncqual, self.mi[i])
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, out = self.dry_run)
-        self.ssub.validate_output(self.mi, out = self.dry_run)
-        self.ssub.remove_files(self.fi + self.ri, out = self.dry_run)
         
         util.check_for_nonempty(self.mi, dry_run=self.dry_run)
+        self.ssub.remove_files(self.fi + self.ri, out = self.dry_run)
     
     def demultiplex_reads(self):
         '''Demultiplex samples using index and barcodes'''
@@ -281,10 +280,9 @@ class OTU_Caller():
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, self.dry_run)
         
-        self.ssub.validate_output(self.Ci, self.dry_run)
-        util.check_for_nonempty(self.ci, dry_run=self.dry_run)
-        
+        util.check_for_nonempty(self.Ci, dry_run=self.dry_run)
         self.ssub.move_files(self.Ci, self.ci, self.dry_run)
+        util.check_for_nonempty(self.ci, dry_run=self.dry_run)
     
     def quality_filter(self):
         '''Quality filter with truncqual and maximum expected error'''
@@ -305,17 +303,15 @@ class OTU_Caller():
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, self.dry_run)
         
-        self.ssub.validate_output(self.Ci, self.dry_run)
-        util.check_for_nonempty(self.Ci)
-        
+        util.check_for_nonempty(self.Ci, self.dry_run)
         self.ssub.move_files(self.Ci, self.ci, self.dry_run)
+        util.check_for_nonempty(self.Ci, self.dry_run)
     
     def dereplicate_reads(self):
         '''Concatenate files and dereplicate'''
 
         cmd = 'cat %s > q.fst' %(' '.join(self.ci))
         self.ssub.run_local([cmd], out = self.dry_run)
-        self.ssub.validate_output(['q.fst'], self.dry_run)
         util.check_for_nonempty('q.fst', dry_run=self.dry_run)
         
         cmd = 'rm %s' %(' '.join(self.ci))
@@ -323,7 +319,6 @@ class OTU_Caller():
         
         cmd = 'python %s/derep_fulllength.py q.fst q.derep.fst' %(self.library)
         self.ssub.submit_and_wait([cmd], self.dry_run)
-        self.ssub.validate_output(['q.derep.fst'], self.dry_run)
         util.check_for_nonempty('q.derep.fst', dry_run=self.dry_run)
         
     def make_index(self):
@@ -347,7 +342,7 @@ class OTU_Caller():
             cmd = '%s -cluster_otus q.derep.fst -otus %s -otuid .%d' %(self.usearch, self.oi[i], sid)
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, self.dry_run)
-        self.ssub.validate_output(self.oi, self.dry_run)
+        util.check_for_nonempty(self.oi, self.dry_run)
         
         # Rename OTUs
         if rename == True:
@@ -357,8 +352,9 @@ class OTU_Caller():
                 cmd = 'python %s/usearch_python/fasta_number.py %s OTU%d_ > %s' %(self.library, self.oi[i], sid, self.Oi[i])
                 cmds.append(cmd)
             self.ssub.submit_and_wait(cmds, self.dry_run)
-            self.ssub.validate_output(self.Oi, self.dry_run)
+            util.check_for_nonempty(self.Oi, self.dry_run)
             self.ssub.move_files(self.Oi, self.oi, self.dry_run)
+            util.check_for_nonempty(self.oi, self.dry_run)
     
     def remove_chimeras(self):
         '''Remove chimeras using gold database'''
@@ -369,8 +365,10 @@ class OTU_Caller():
             cmd = '%s -uchime_ref %s -db %s -nonchimeras %s -strand plus' %(self.usearch, self.oi[i], self.gold_db, self.Oi[i])
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, self.dry_run)
-        self.ssub.validate_output(self.Oi, self.dry_run)
+        
+        util.check_for_nonempty(self.Oi, self.dry_run)
         self.ssub.move_files(self.Oi, self.oi, self.dry_run)
+        util.check_for_nonempty(self.oi, self.dry_run)
     
     def reference_mapping(self):
         '''Map reads to reference databases'''
@@ -382,9 +380,8 @@ class OTU_Caller():
         for i in range(len(self.sids)):
             cmd = '%s -usearch_global q.derep.fst -db %s -uc %s -strand both -id .%d' %(self.usearch, self.db[i], self.uc[i], self.sids[i])
             cmds.append(cmd)
+            
         self.ssub.submit_and_wait(cmds, self.dry_run)
-        self.ssub.validate_output(self.uc, self.dry_run)
-        
         util.check_for_nonempty(self.uc, self.dry_run)
     
     def make_otu_tables(self):
