@@ -1,4 +1,4 @@
-import re, string, sys, time, itertools, os
+import re, string, sys, time, itertools, os, subprocess
 import usearch_python.primer
 
 def fasta_entries(lines, output_type='list'):
@@ -149,6 +149,9 @@ def check_for_existence(filenames, dry_run=False):
     if dry_run:
         print "dry run: test for existence of files: " + " ".join(filenames)
     else:
+        # running ls first seems to prevent spurious empties
+        subprocess.call(['ls', '-lah'])
+        
         tests = [os.path.isfile(filename) for filename in filenames]
         if False in tests:
             bad_names = " ".join([filename for filename, test in zip(filenames, tests) if test == False])

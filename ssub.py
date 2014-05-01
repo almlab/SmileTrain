@@ -219,7 +219,8 @@ class Ssub():
             job_id = self.parse_job(out)
 
             job_ids.append(job_id)
-            message('Submitting job %s as ID %s' %(fn, job_id))
+            message('Submitting job %s' %(fn))
+            message('  job ID: %s  time: %s' %(job_id, time.strftime("%d %b %H:%M", time.localtime())))
         return job_ids
     
     
