@@ -150,7 +150,7 @@ def check_for_existence(filenames, dry_run=False):
         print "dry run: test for existence of files: " + " ".join(filenames)
     else:
         # running ls first seems to prevent spurious empties
-        subprocess.call(['ls', '-lah'])
+        subprocess.check_output(['ls', '-lah'])
         
         tests = [os.path.isfile(filename) for filename in filenames]
         if False in tests:
