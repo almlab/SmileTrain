@@ -10,18 +10,37 @@ Illumina 1.3-1.7 format, specificially that
 import itertools, os, os.path, sys, argparse, shutil
 import util
 
-def check_illumina13_format(fastq_filenames):
-    '''raise error is any of the input filenames are not in Illumina 1.3-1.7 format'''
+def check_illumina_format(filenames, target):
+    '''
+    Raise error if any of the input filenames are not in the desired format.
     
-    good_file = lambda fn: is_illumina13_format(open(fn))
-    tests = [good_file(fn) for fn in fastq_filenames]
+    filenames : iterable of strings
+        files to be checked
+    target : string
+        'illumina13' or 'illumina18'
+    '''
+    
+    if target not in ['illumina13', 'illumina18']:
+        raise ArgumentError("unrecognized format type: %s" % target)
+    
+    format_f = lambda fn: file_format(open(fn))
+    
+    formats = [file_format(open(fn)) for fn in filenames]
+    tests = [form == target for form in formats]
+    bad_files = [fn for fn, test in zip(filenames, tests) if test == False]
+    bad_forms = set([form for form, test in zip(formats, tests) if test == False])
     
     if False in tests:
-        bad_names = [name for name, test in zip(fastq_filenames, tests) if test == False]
-        raise RuntimeError("files do not appear to be in Illumina 1.3-1.7 format: %s" %(" ".join(bad_names)))
+        bad_info = "\n".join([" ".join([fn, form]) for fn, form in zip(filenames, bad_forms)])
+        raise RuntimeError("files do not appear to be in %s format: \n%s" % (target, bad_info))
 
-def is_illumina13_format(fastq, max_entries=10):
-    '''are the @ and quality lines in Illumina 1.3-1.7 format?'''
+def file_format(fastq, max_entries=10):
+    '''
+    what format is the file?
+    
+    returns : string
+        'illumina13', 'illumin18', or 'ambiguous'
+    '''
     
     for i, (at_line, seq_line, qua_line) in enumerate(util.fastq_iterator(fastq)):
         if i > max_entries:
@@ -31,13 +50,7 @@ def is_illumina13_format(fastq, max_entries=10):
         rid = util.fastq_at_line_to_id(at_line)
         
         # check the quality line's character content
-        form = quality_line_format(qua_line)
-        if form == 'illumina13':
-            return True
-        elif form == 'illumina18':
-            return False
-        elif form == 'ambiguous':
-            continue
+        return quality_line_format(qua_line)
         
 def quality_line_format(line):
     '''

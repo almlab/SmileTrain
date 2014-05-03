@@ -88,7 +88,7 @@ def renamed_fastq_entries(fastq_lines, barcode_map, max_barcode_diffs):
     for at_line, seq_line, quality_line in util.fastq_iterator(fastq_lines):
         # look for the barcode from the read ID line
         # match, e.g. @any_set_of_chars#ACGT/1 -> ACGT
-        m = re.match("@.*#([ACGTN]+)/\d+", at_line)
+        m = re.match("@.*#([ACGTN]+)/(\d)+", at_line)
 
         if m is None:
             raise RuntimeError("couldn't find barcode in fastq line: %s" %(at_line))
@@ -96,6 +96,11 @@ def renamed_fastq_entries(fastq_lines, barcode_map, max_barcode_diffs):
         # if we've already aligned this barcode read, just use the same sample we found before.
         # otherwise, look through all the barcodes for the best match.
         barcode_read = m.group(1)
+        read_direction = m.group(2)
+        
+        if read_direction not in ['1', '2']:
+            raise RuntimeError('read direction not 1 or 2: %s' %(at_line))
+        
         if barcode_read in barcode_read_to_sample:
             sample = barcode_read_to_sample[barcode_read]
             sample_counts[sample] += 1
@@ -114,7 +119,7 @@ def renamed_fastq_entries(fastq_lines, barcode_map, max_barcode_diffs):
                 barcode_read_to_sample[barcode_read] = sample
                 sample_counts[sample] = 1
         
-        yield ["@sample=%s;%d" %(sample, sample_counts[sample]), seq_line, quality_line]
+        yield ["@sample=%s;%d/%s" %(sample, sample_counts[sample], read_direction), seq_line, quality_line]
 
 
 if __name__ == '__main__':

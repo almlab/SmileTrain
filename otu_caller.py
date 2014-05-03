@@ -137,7 +137,7 @@ class OTU_Caller():
             files.append(self.r)
             
         message('Testing format of %s' %(" ".join(files)))
-        check_fastq_format.check_illumina13_format(files)
+        check_fastq_format.check_illumina_format(files, 'illumina13')
     
     def split_fastq(self):
         '''Split forward and reverse reads (for parallel processing)'''
@@ -308,7 +308,7 @@ class OTU_Caller():
         assert(util.is_executable(self.usearch))
         
         # check that the files are in the right format
-        check_fastq_format.check_illumina13_format(self.ci)
+        check_fastq_format.check_illumina_format(self.ci, 'illumina18'))
 
         cmds = []
         for i in range(self.n_cpus):

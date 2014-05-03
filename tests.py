@@ -94,7 +94,7 @@ class TestFastqUtilities(TestWithFiles):
     def setUp(self):
         os.mkdir('tests')
         self.good_fastq_content = "@foo\nAAA\n+foo\n!!!\n@bar\nCCC\n+bar\n###"
-        self.fastq13 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+lolapolooza:1234#ACGT/1\nABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefgh"""
+        self.fastq13 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+\nABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefgh"""
         self.fastq18 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+\n"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHJ"""
         
     def test_fastq_iterator(self):
@@ -179,14 +179,14 @@ class TestFastqUtilities(TestWithFiles):
         with open('tests/good.fastq', 'w') as f:
             f.write(self.fastq13)
         
-        check_fastq_format.check_illumina13_format(['tests/good.fastq'])
+        check_fastq_format.check_illumina_format(['tests/good.fastq'], 'illumina13')
         
-    def test_format_check_right(self):
+    def test_format_check_wrong(self):
         '''should identify written file with incorrect format'''
         with open('tests/bad.fastq', 'w') as f:
             f.write(self.fastq18)
         
-        self.assertRaises(RuntimeError, check_fastq_format.check_illumina13_format, ['tests/bad.fastq'])
+        self.assertRaises(RuntimeError, check_fastq_format.check_illumina_format, ['tests/bad.fastq'], 'illumina13')
     
             
 class TestFileChecks(TestWithFiles):
@@ -302,8 +302,8 @@ class TestDemultiplex(unittest.TestCase):
         fastq_lines = ['@foo#ACGT/1', 'AAA', '+foo', 'AAA', '@bar#TACA/1', 'CCC', '+bar', 'BBB']
         it = map_barcodes.renamed_fastq_entries(fastq_lines, d, 1)
         
-        self.assertEqual(it.next(), ['@sample=donor1;1', 'AAA', 'AAA'])
-        self.assertEqual(it.next(), ['@sample=donor2;1', 'CCC', 'BBB'])
+        self.assertEqual(it.next(), ['@sample=donor1;1/1', 'AAA', 'AAA'])
+        self.assertEqual(it.next(), ['@sample=donor2;1/1', 'CCC', 'BBB'])
         
 class TestDereplicate(unittest.TestCase):
     '''tests for dereplication without samples'''
