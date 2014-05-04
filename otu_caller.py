@@ -308,7 +308,7 @@ class OTU_Caller():
         assert(util.is_executable(self.usearch))
         
         # check that the files are in the right format
-        check_fastq_format.check_illumina_format(self.ci, 'illumina18'))
+        check_fastq_format.check_illumina_format(self.ci, 'illumina18')
 
         cmds = []
         for i in range(self.n_cpus):
@@ -318,7 +318,7 @@ class OTU_Caller():
         
         util.check_for_nonempty(self.Ci, self.dry_run)
         self.ssub.move_files(self.Ci, self.ci, self.dry_run)
-        util.check_for_nonempty(self.Ci, self.dry_run)
+        util.check_for_nonempty(self.ci, self.dry_run)
     
     def dereplicate_reads(self):
         '''Concatenate files and dereplicate'''
