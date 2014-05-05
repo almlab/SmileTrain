@@ -414,6 +414,14 @@ class TestOTU(unittest.TestCase):
         self.assertIn('otuA\t6\t4', out_lines[1:])
         self.assertIn('otuC\t1\t0', out_lines[1:])
         
+    def test_nomatch_first(self):
+        '''should put no_match as first OTU ID if it's there'''
+        table = {'donor1': {'otuA': 6, 'otuC': 1}, 'donor2': {'otuA': 4, 'no_match': 10}}
+        out_lines = [line for line in uc2otus.otu_table(table)]
+        first_id = out_lines[1].split()[0]
+        
+        self.assertEqual(first_id, 'no_match')
+        
 def TestPipelineSteps(TestWithFiles):
     '''tests for file input/output for each pipeline step'''
     

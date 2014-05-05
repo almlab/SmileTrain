@@ -109,6 +109,11 @@ def otu_table(table, otus=None, samples=None):
     if samples is None:
         samples = sorted(table.keys())
         
+        # if 'no_match' is in there, put it first
+        if 'no_match' in samples:
+            samples.remove('no_match')
+            samples.insert(0, 'no_match')
+        
     # and our own samples list
     if otus is None:
         # concatenate the lists of keys
