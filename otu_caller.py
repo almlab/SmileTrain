@@ -388,10 +388,15 @@ class OTU_Caller():
         
         util.check_for_nonempty(self.db)
         util.check_for_collisions(self.uc)
+        
+        # when mapping to references that are at most, say, 97% similar the read should map
+        # to the reference with at least 98.5% confidence, since otherwise it could map
+        # to other reference sequences
+        reference_map_sids = [0.5*(100.0+float(sid)) for sid in self.sids]
 
         cmds = []
         for i in range(len(self.sids)):
-            cmd = '%s -usearch_global q.derep.fst -db %s -uc %s -strand both -id .%d' %(self.usearch, self.db[i], self.uc[i], self.sids[i])
+            cmd = '%s -usearch_global q.derep.fst -db %s -uc %s -strand both -id .%d' %(self.usearch, self.db[i], self.uc[i], reference_map_sids[i])
             cmds.append(cmd)
             
         self.ssub.submit_and_wait(cmds, self.dry_run)

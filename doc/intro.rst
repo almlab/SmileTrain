@@ -152,6 +152,8 @@ usearch produces a ``.uc`` file, which has a tab-separated `format <http://www.d
 * Field 9 : the fasta ID
 * Field 10 : the ID from the reference database
 
+See also the full page: :doc:`otu_calling`.
+
 De novo
 ~~~~~~~
 

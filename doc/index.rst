@@ -15,6 +15,7 @@ Contents:
    config
    wisdom
    primers
+   otu_calling
    util
    split_fastq
    ssub
