@@ -7,8 +7,7 @@ There is a child class TestWithFiles. This should be used as the parent for clas
 include tests that require reading and writing files. These files should be written into
 the tests folder and then cleaned up.
 
-Groups of tests go into classes. A sensible grouping is all (or most) of the functions
-in a particular script in the pipeline.
+Most of these tests should be refactored into separate scripts.
 '''
 
 import unittest, tempfile, subprocess, os, shutil
@@ -270,41 +269,8 @@ class TestIntersect(TestWithFiles):
             out_fastq = f.read()
             
         self.assertEqual(out_fastq, "@foo/1\nGTTTTCTTCGCTTTATGGTGGTGGTAAAAGTGCTTCGATCTGCTAGATATCCCTCAGGAAAGTTTATGCCCGTGTCCGTTTGTTTGGGTAGATCTCTCACCCTTGGAATTCCAAGCGTTCAGGTATCCCACAATCGCTTCGATGACTCCGCCTCCTTATTATATACTTCGCCGATACGCAGCGCATGAAGAGTCATCGGGAGGGTTGAGTAGTAATCTCTTCGTGAGCTCGCCCTTTAATCTACCCAGGGAGACCTTGACTGCTCTGCAAAATCGCATATAGCTTAAGCCACGGATATCG\n+\n####################################################################################################$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$###################################################################################################\n")
+        
 
-
-class TestDemultiplex(unittest.TestCase):
-    '''tests for demultiplexing'''
-    
-    def test_barcode_dictionary(self):
-        '''should parse a tab-separated mapping file'''
-        
-        mapping_lines = ['donor1\tACGT', 'donor2\tTACA']
-        d = map_barcodes.barcode_file_to_dictionary(mapping_lines)
-        
-        self.assertEqual(d, {'ACGT': 'donor1', 'TACA': 'donor2'})
-        
-    def test_best_barcode(self):
-        '''should find the best barcode out of a list'''
-        
-        barcodes = ['AAAATT', 'TACACC', 'ACGTAA']
-        target = 'TACTCC'
-        
-        n_mismatches, best = map_barcodes.best_barcode_match(barcodes, target)
-        
-        self.assertEqual(n_mismatches, 1)
-        self.assertEqual(best, 'TACACC')
-        
-    def test_rename(self):
-        '''should properly rename samples'''
-        
-        d = {'ACGT': 'donor1', 'TACA': 'donor2'}
-        
-        fastq_lines = ['@foo#ACGT/1', 'AAA', '+foo', 'AAA', '@bar#TACA/1', 'CCC', '+bar', 'BBB']
-        it = map_barcodes.renamed_fastq_entries(fastq_lines, d, 1)
-        
-        self.assertEqual(it.next(), ['@sample=donor1;1/1', 'AAA', 'AAA'])
-        self.assertEqual(it.next(), ['@sample=donor2;1/1', 'CCC', 'BBB'])
-        
 class TestDereplicate(unittest.TestCase):
     '''tests for dereplication without samples'''
     
@@ -338,7 +304,7 @@ class TestDereplicate(unittest.TestCase):
         self.assertEqual(fe.next(), '>seq0;counts=3\nAA')
         self.assertEqual(fe.next(), '>seq2;counts=2\nTT')
         
-        
+
 class TestIndex(unittest.TestCase):
     '''tests for index-writing script'''
     
@@ -422,6 +388,7 @@ class TestOTU(unittest.TestCase):
         
         self.assertEqual(first_id, 'no_match')
         
+
 def TestPipelineSteps(TestWithFiles):
     '''tests for file input/output for each pipeline step'''
     
