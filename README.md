@@ -6,15 +6,13 @@ The full documentation is in the `doc` subfolder. To compile on Linux or Mac, ru
 
 Then you can open `index.html` and read away!
 
-Scripts are annotated with docstrings that can be read using pydoc. To view documentation for script.py, run
-    pydoc script
+Scripts are annotated with docstrings that can be read using pydoc. To view documentation for script.py, run `pydoc script`.
 
 # Dependencies
 * Python 2.7, numpy, pandas
 
 # Tests
-Unit tests are in the `test` folder. You can run the tests from the top directory by running
-    python -m unittest discover
+Unit tests are in the `test` folder. You can run the tests from the top directory by running `python -m unittest discover`.
 
 # Usage
 * Enter your user information in the config file before use.
