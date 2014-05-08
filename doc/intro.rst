@@ -1,7 +1,7 @@
 intro to the pipeline
 =======================================
 
-Before doing anything, set up that config file.
+Before doing anything, set up that config file. and run the unit tests
 
 then run the scripts in order
 

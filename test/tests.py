@@ -13,7 +13,7 @@ in a particular script in the pipeline.
 
 import unittest, tempfile, subprocess, os, shutil
 
-import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index
+from smile_train import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index
 
 class TestWithFiles(unittest.TestCase):
     '''tests that need to read and write files'''

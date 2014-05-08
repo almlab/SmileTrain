@@ -12,6 +12,10 @@ Scripts are annotated with docstrings that can be read using pydoc. To view docu
 # Dependencies
 * Python 2.7, numpy, pandas
 
+# Tests
+Unit tests are in the `test` folder. You can run the tests from the top directory by running
+    python -m unittest discover
+
 # Usage
 * Enter your user information in the config file before use.
 * Make sure your .bash_rc loads python 2.7. Otherwise, argparse will die. At the start of my .bash_rc, I have
