@@ -12,7 +12,7 @@ from util import *
 
 # open the config file sister to this script
 config = ConfigParser.ConfigParser()
-config.read(os.path.join(os.path.dirname(__file__), 'train.cfg'))
+config.read(os.path.join(os.path.dirname(__file__), 'user.cfg'))
 
 def parse_args():
     '''arguments to be parsed and passed to the OTU_Caller object'''

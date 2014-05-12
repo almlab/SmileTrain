@@ -34,7 +34,7 @@ to create and run pipelines:
 
 # set global variables
 config = ConfigParser.ConfigParser()
-config.read(os.path.join(os.path.dirname(__file__), "train.cfg"))
+config.read(os.path.join(os.path.dirname(__file__), 'user.cfg'))
 username = config.get('User', 'username')
 temp_dir = config.get('User', 'tmp_directory')
 bashrc = config.get('Scripts', 'bashrc')
