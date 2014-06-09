@@ -9,33 +9,35 @@ Create an OTU table by combining information from
 import re, sys, argparse
 
 def parse_uc_line(line):
-    '''uc line -> (sequence ID, OTU)'''
+    '''
+    uc line -> (H or N, sid, otu)
+    '''
     fields = line.split()
     
-    label = fields[8]
-    
-    m = re.match('(.*);counts=\d+', label)
-    if m is None:
-        raise RuntimeError("uc label did not parse: %s" % label)
-    else:
-        sid = m.group(1)
-    
     hit = fields[0]
-    if hit == 'H':
-        otu = fields[9]
-    elif hit == 'N':
-        otu = 'no_match'
-    else:
-        raise RuntimeError('unknown code %s found in .uc file' % hit)
+    label = fields[8]
+    otu = fields[9]
     
-    return (sid, otu)
+    return (hit, label, otu)
 
-def parse_uc_lines(lines):
+def parse_uc_lines(lines, miss_name='no_match'):
     '''uc lines -> dictionary {sequence ID => OTU}'''
     
     sid_otu = {}
     for line in lines:
-        sid, otu = parse_uc_line(line)
+        # rename the otu from "*" if there was no hit
+        hit, label, otu = parse_uc_line(line)
+        if hit == 'N':
+            otu = miss_name
+        elif hit != 'H':
+            raise RuntimeError('unknown code %s found in .uc file' % hit)
+    
+        # parse the sid "seq123;counts=456" to "seq123"    
+        m = re.match('(.*);counts=\d+', label)
+        if m is None:
+            raise RuntimeError("uc label did not parse: %s" % label)
+        else:
+            sid = m.group(1)
         
         if sid in sid_otu:
             raise RuntimeError("sequence ID %s repeated in .uc lines" % sid)
