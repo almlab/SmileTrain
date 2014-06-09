@@ -6,7 +6,6 @@ the greengenes taxonomy list. Output the taxonomies in order.
 '''
 
 import sys, argparse, re
-import util
 
 def table_ids(fn):
     '''get the otu ids from the otu table with filename fn'''
@@ -24,7 +23,9 @@ def matching_fields(fn, ids):
     d = {}
     with open(fn) as f:
         for line in f:
-            otu, tax = line.split()
+            fields = line.split()
+            otu = fields[0]
+            tax = " ".join(fields[1:])
             if otu in ids:
                 d[otu] = tax
 
