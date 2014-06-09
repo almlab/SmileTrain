@@ -48,6 +48,7 @@ def parse_args():
     group1.add_argument('--index', action='store_true', help='Make index file?')
     group1.add_argument('--denovo', default = False, action = 'store_true', help = 'Denovo clustering (UPARSE)?')
     group1.add_argument('--ref_gg', default = False, action = 'store_true', help = 'Reference mapping (Greengenes)?')
+    group1.add_argument('--open_ref_gg', action='store_true', help='Reference map (Greengenes) and then denovo cluster?')
     group1.add_argument('--otu_table', action='store_true', help='Make OTU table?')
     group2.add_argument('-f', help='Input fastq (forward)')
     group2.add_argument('-r', help='Input fastq (reverse)')
@@ -120,6 +121,15 @@ class OTU_Caller():
         self.Oi = ['otus.%d.tmp' %(sid) for sid in self.sids] # otu representative sequences (temp)
         self.uc = ['otus.%d.uc' %(sid) for sid in self.sids] # uclust output files
         self.xi = ['otus.%d.counts' %(sid) for sid in self.sids] # otu tables (counts)
+        
+        self.open_fst = ['q.%d.no_match.fst' %(sid) for sid in self.sids] # otu rep seqs
+        self.open_uc = ['otus.%d.no_match.uc' %(sid) for sid in self.sids] # uclust output files, for open reference clustering
+        self.open_otu_tmp = ['otus.%d.no_match.tmp' %(sid) for sid in self.sids] # otu rep seqs (tmp)
+        self.open_otu = ['otus.%d.no_match.fst' %(sid) for sid in self.sids] # otu rep seqs
+        
+        # if reference-based clustering at 97%, make sure reads are 98.5% dissimilar
+        self.reference_map_sids = [0.5*(100.0+float(sid)) for sid in self.sids]
+        self.reference_map_pcts = [100.0 - sid for sid in self.reference_map_sids]
         
         # Get database for read mapping
         if self.denovo == True:
@@ -388,19 +398,48 @@ class OTU_Caller():
         
         util.check_for_nonempty(self.db)
         util.check_for_collisions(self.uc)
-        
-        # when mapping to references that are at most, say, 97% similar the read should map
-        # to the reference with at least 98.5% confidence, since otherwise it could map
-        # to other reference sequences
-        reference_map_sids = [0.5*(100.0+float(sid)) for sid in self.sids]
 
         cmds = []
         for i in range(len(self.sids)):
-            cmd = '%s -usearch_global q.derep.fst -db %s -uc %s -strand both -id .%d' %(self.usearch, self.db[i], self.uc[i], reference_map_sids[i])
+            cmd = '%s -usearch_global q.derep.fst -db %s -uc %s -strand both -id .%d' %(self.usearch, self.db[i], self.uc[i], self.reference_map_sids[i])
             cmds.append(cmd)
             
         self.ssub.submit_and_wait(cmds, self.dry_run)
         util.check_for_nonempty(self.uc, self.dry_run)
+        
+    def open_reference_mapping(self):
+        '''Makes new otus from reads missed in the original reference mapping, then maps to those otus'''
+        
+        util.check_for_nonempty(self.uc)
+        util.check_for_collisions(self.open_fst)        # unmatched seqs go into a new source fasta
+        util.check_for_collisions(self.open_otu_tmp)    # rep seqs for otus made from those unmatched seqs
+        util.check_for_collisions(self.open_otu)        # same rep seqs, but renamed as OTUs
+        util.check_for_collisions(self.open_uc)         # mapping information of unmatched seqs to denovo OTUs
+        
+        # grab the unmatched sequences from the database-reference uc
+        cmds = ['python %s/uc2denovo.py q.derep.fst %s --output %s' %(self.library, self.uc[i], self.open_fst[i]) \
+                for i in range(len(self.sids))]
+        self.ssub.submit_and_wait(cmds, self.dry_run)
+        util.check_for_nonempty(self.open_fst)
+        
+        # denovo cluster those sequences
+        cmds = ['%s -cluster_otus %s -otus %s -otu_radius_pct .%d' %(self.usearch, self.open_fst[i], self.open_otu_tmp[i], self.reference_map_pcts[i]) \
+                for i in range(len(self.sids))]
+        self.ssub.submit_and_wait(cmds, self.dry_run)
+        util.check_for_nonempty(self.open_otu_tmp)
+        
+        # rename the OTUs in those representative sequences
+        cmds = ['python %s/usearch_python/fasta_number.py %s OTU%d_ > %s' %(self.library, self.open_otu_tmp[i], self.sids[i], self.open_otu[i]) \
+                for i in range(len(self.sids))]
+        self.ssub.submit_and_wait(cmds, self.dry_run)
+        util.check_for_nonempty(self.open_otu)
+        
+        # reference map against these new rep seqs
+        cmds = ['%s -usearch_global %s -db %s -uc %s -strand both -id .%d' %(self.usearch, self.open_fst[i], self.open_otu[i], self.open_uc[i], self.reference_map_sids[i]) \
+                for i in range(len(self.sids))]
+        self.ssub.submit_and_wait(cmds, self.dry_run)
+        util.check_for_nonempty(self.open_uc)
+        
     
     def make_otu_tables(self):
         '''Make OTU tables from UC file'''

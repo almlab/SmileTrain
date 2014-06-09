@@ -32,7 +32,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('fasta', help='input fasta file')
     parser.add_argument('uc', help='input uc file')
-    parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output file (default stdout)')
+    parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output fasta file (default stdout)')
     args = parser.parse_args()
     
     with open(args.uc) as f:
