@@ -5,7 +5,7 @@ Get the entries from the dereplicated fasta file that have sequences that did no
 reference-based search.
 '''
 
-from . import uc2otus, util
+import uc2otus, util, argparse, sys, re
 
 def missed_labels(uc_lines):
     '''uc lines -> labels for missed sequences'''
@@ -13,8 +13,7 @@ def missed_labels(uc_lines):
     labels = []
     for line in uc_lines:
         hit, label, otu = uc2otus.parse_uc_line(line)
-        if hit == 'N':
-            labels.append(label)
+        if hit == 'N': labels.append(label)
             
     return labels
 
@@ -42,5 +41,7 @@ if __name__ == '__main__':
     with open(args.fasta) as f:
         fastas = util.fasta_entries(f, output_type='list')
         new_fasta = matching_fasta_entries(labels, fastas)
-            
+    
+    # rename size in label
+    new_fasta = re.sub('counts', 'size', new_fasta)
     args.output.write(new_fasta)
