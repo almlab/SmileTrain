@@ -33,7 +33,7 @@ def parse_uc_lines(lines, miss_name='no_match'):
             raise RuntimeError('unknown code %s found in .uc file' % hit)
     
         # parse the sid "seq123;counts=456" to "seq123"    
-        m = re.match('(.*);counts=\d+', label)
+        m = re.match('(.*);(counts|size)=\d+', label)
         if m is None:
             raise RuntimeError("uc label did not parse: %s" % label)
         else:

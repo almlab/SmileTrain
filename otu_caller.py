@@ -123,6 +123,7 @@ class OTU_Caller():
         self.xi = ['otus.%d.counts' %(sid) for sid in self.sids] # otu tables (counts)
         
         self.open_fst = ['q.%d.no_match.fst' %(sid) for sid in self.sids] # otu rep seqs
+        self.orig_uc = ['otus.%d.ref_db.uc' %(sid) for sid in self.sids] # uclust output for initial reference-based mapping
         self.open_uc = ['otus.%d.no_match.uc' %(sid) for sid in self.sids] # uclust output files, for open reference clustering
         self.open_otu_tmp = ['otus.%d.no_match.tmp' %(sid) for sid in self.sids] # otu rep seqs (tmp)
         self.open_otu = ['otus.%d.no_match.fst' %(sid) for sid in self.sids] # otu rep seqs
@@ -415,6 +416,7 @@ class OTU_Caller():
         util.check_for_collisions(self.open_otu_tmp)    # rep seqs for otus made from those unmatched seqs
         util.check_for_collisions(self.open_otu)        # same rep seqs, but renamed as OTUs
         util.check_for_collisions(self.open_uc)         # mapping information of unmatched seqs to denovo OTUs
+        util.check_for_collisions(self.orig_uc)         # mapping information for reference-based matching
         
         # grab the unmatched sequences from the database-reference uc
         cmds = ['python %s/uc2denovo.py q.derep.fst %s --output %s' %(self.library, self.uc[i], self.open_fst[i]) \
@@ -423,15 +425,19 @@ class OTU_Caller():
         util.check_for_nonempty(self.open_fst)
         
         # denovo cluster those sequences
-        cmds = ['%s -cluster_otus %s -otus %s -otu_radius_pct .%d' %(self.usearch, self.open_fst[i], self.open_otu_tmp[i], self.reference_map_pcts[i]) \
+        cmds = ['%s -cluster_otus %s -otus %s -otu_radius_pct .%d' %(self.usearch, self.open_fst[i], self.open_otu[i], self.reference_map_pcts[i]) \
+                for i in range(len(self.sids))]
+        self.ssub.submit_and_wait(cmds, self.dry_run)
+        util.check_for_nonempty(self.open_otu)
+        
+        # rename the OTUs in those representative sequences
+        cmds = ['python %s/usearch_python/fasta_number.py %s OTU%d_ > %s' %(self.library, self.open_otu[i], self.sids[i], self.open_otu_tmp[i]) \
                 for i in range(len(self.sids))]
         self.ssub.submit_and_wait(cmds, self.dry_run)
         util.check_for_nonempty(self.open_otu_tmp)
         
-        # rename the OTUs in those representative sequences
-        cmds = ['python %s/usearch_python/fasta_number.py %s OTU%d_ > %s' %(self.library, self.open_otu_tmp[i], self.sids[i], self.open_otu[i]) \
-                for i in range(len(self.sids))]
-        self.ssub.submit_and_wait(cmds, self.dry_run)
+        # move the file with the renamed sequences into the spot as the final file
+        self.ssub.move_files(self.open_otu_tmp, self.open_otu)
         util.check_for_nonempty(self.open_otu)
         
         # reference map against these new rep seqs
@@ -440,6 +446,15 @@ class OTU_Caller():
         self.ssub.submit_and_wait(cmds, self.dry_run)
         util.check_for_nonempty(self.open_uc)
         
+        # move the original uc files to different place
+        self.ssub.move_files(self.uc, self.orig_uc)
+        util.check_for_nonempty(self.orig_uc)
+        
+        # combine the uc files
+        cmds = ['grep "^H" %s > %s; cat %s >> %s' %(self.orig_uc[i], self.uc[i], self.open_uc[i], self.uc[i]) \
+                for i in range(len(self.sids))]
+        self.ssub.submit_and_wait(cmds, self.dry_run)
+        util.check_for_nonempty(self.uc)
     
     def make_otu_tables(self):
         '''Make OTU tables from UC file'''
@@ -524,6 +539,11 @@ if __name__ == '__main__':
     if oc.ref_gg == True:
         message('Mapping to reference')
         oc.reference_mapping()
+        
+    # Open reference clustering
+    if oc.open_ref_gg:
+        message('Open reference-based clustering')
+        oc.open_reference_mapping()
     
     # Make OTU tables
     if oc.otu_table == True:
