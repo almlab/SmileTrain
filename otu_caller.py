@@ -327,20 +327,16 @@ class OTU_Caller():
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, self.dry_run)
         
-        util.check_for_nonempty(self.Ci, self.dry_run)
-        self.ssub.move_files(self.Ci, self.ci, self.dry_run)
-        util.check_for_nonempty(self.ci, self.dry_run)
+        cmd = 'cat %s > q.fst' %(' '.join(self.Ci))
+        self.ssub.run_local([cmd], out = self.dry_run)
+        util.check_for_nonempty('q.fst', dry_run=self.dry_run)
+        
+        cmd = 'rm %s' %(' '.join(self.Ci))
+        self.ssub.run_local([cmd], out = self.dry_run)
     
     def dereplicate_reads(self):
         '''Concatenate files and dereplicate'''
 
-        cmd = 'cat %s > q.fst' %(' '.join(self.ci))
-        self.ssub.run_local([cmd], out = self.dry_run)
-        util.check_for_nonempty('q.fst', dry_run=self.dry_run)
-        
-        cmd = 'rm %s' %(' '.join(self.ci))
-        self.ssub.run_local([cmd], out = self.dry_run)
-        
         cmd = 'python %s/derep_fulllength.py q.fst q.derep.fst' %(self.library)
         self.ssub.submit_and_wait([cmd], self.dry_run)
         util.check_for_nonempty('q.derep.fst', dry_run=self.dry_run)
