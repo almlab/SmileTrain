@@ -1,5 +1,5 @@
 import unittest, tempfile, subprocess, os, shutil
-from smile_train import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index
+from SmileTrain import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index
 
 class TestBarcodeDictionary(unittest.TestCase):
     '''tests for the barcode dictionary'''

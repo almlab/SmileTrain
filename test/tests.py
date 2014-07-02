@@ -12,17 +12,19 @@ Most of these tests should be refactored into separate scripts.
 
 import unittest, tempfile, subprocess, os, shutil
 
-from smile_train import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index
+from SmileTrain import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index
+
+tmp_dir = 'tmp'
 
 class TestWithFiles(unittest.TestCase):
     '''tests that need to read and write files'''
     
     def setUp(self):
-        os.mkdir('tests')
+        os.mkdir(tmp_dir)
     
     def tearDown(self):
-        if os.path.isdir('tests'):
-            shutil.rmtree('tests')
+        if os.path.isdir(tmp_dir):
+            shutil.rmtree(tmp_dir)
 
 
 class TestFastaUtilities(TestWithFiles):
@@ -55,7 +57,7 @@ class TestFastaUtilities(TestWithFiles):
 def TestSplitFasta(TestFastaUtilities):
     def setUp(self):
         fasta_content = ">foo\nAAA\nAAA\n>bar\nCCC\n>baz\nTTT"
-        fasta_fh, self.fasta_fn = tempfile.mkstemp(suffix='.fasta', dir='tests')
+        fasta_fh, self.fasta_fn = tempfile.mkstemp(suffix='.fasta', dir=tmp_dir)
         os.write(fasta_fh, self.good_fasta_content)
         os.close(fasta_fh)
         
@@ -91,7 +93,7 @@ def TestSplitFasta(TestFastaUtilities):
 class TestFastqUtilities(TestWithFiles):
     '''tests for functions and scripts that do fastq manipulations'''
     def setUp(self):
-        os.mkdir('tests')
+        os.mkdir(tmp_dir)
         self.good_fastq_content = "@foo\nAAA\n+foo\n!!!\n@bar\nCCC\n+bar\n###"
         self.fastq13 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+\nABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefgh"""
         self.fastq18 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+\n"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHJ"""
@@ -104,11 +106,11 @@ class TestFastqUtilities(TestWithFiles):
     def test_split_fastq(self):
         '''split_fastq.py should split and trim content as expected'''
         
-        fastq_fh, fastq_fn = tempfile.mkstemp(suffix='.fastq', dir='tests')
+        fastq_fh, fastq_fn = tempfile.mkstemp(suffix='.fastq', dir=tmp_dir)
         os.write(fastq_fh, self.good_fastq_content)
         os.close(fastq_fh)
         
-        subprocess.call(['python', 'split_fastq.py', fastq_fn, '2'])
+        subprocess.call(['python', '../split_fastq.py', fastq_fn, '2'])
         
         with open("%s.0" % fastq_fn) as f:
             fastq_out0 = f.read()
@@ -175,31 +177,31 @@ class TestFastqUtilities(TestWithFiles):
         
     def test_format_check_right(self):
         '''should identify written file as correct format'''
-        with open('tests/good.fastq', 'w') as f:
+        with open('%s/good.fastq' % tmp_dir, 'w') as f:
             f.write(self.fastq13)
         
-        check_fastq_format.check_illumina_format(['tests/good.fastq'], 'illumina13')
+        check_fastq_format.check_illumina_format(['%s/good.fastq' % tmp_dir], 'illumina13')
         
     def test_format_check_wrong(self):
         '''should identify written file with incorrect format'''
-        with open('tests/bad.fastq', 'w') as f:
+        with open('%s/bad.fastq' % tmp_dir, 'w') as f:
             f.write(self.fastq18)
         
-        self.assertRaises(RuntimeError, check_fastq_format.check_illumina_format, ['tests/bad.fastq'], 'illumina13')
+        self.assertRaises(RuntimeError, check_fastq_format.check_illumina_format, ['%s/bad.fastq' % tmp_dir], 'illumina13')
     
             
 class TestFileChecks(TestWithFiles):
     '''tests for utilities that make queries about files'''
     
     def setUp(self):
-        os.mkdir('tests')
-        empty_fh, self.empty_fn = tempfile.mkstemp(dir='tests')
+        os.mkdir(tmp_dir)
+        empty_fh, self.empty_fn = tempfile.mkstemp(dir=tmp_dir)
         
-        full_fh, self.full_fn = tempfile.mkstemp(dir='tests')
+        full_fh, self.full_fn = tempfile.mkstemp(dir=tmp_dir)
         os.write(full_fh, "hello world")
         os.close(full_fh)
         
-        no_fh, self.no_fn = tempfile.mkstemp(dir='tests')
+        no_fh, self.no_fn = tempfile.mkstemp(dir=tmp_dir)
         os.close(no_fh)
         os.unlink(self.no_fn)
         
@@ -252,20 +254,20 @@ class TestIntersect(TestWithFiles):
         self.forward_fastq = "@foo/1\nGTTTTCTTCGCTTTATGGTGGTGGTAAAAGTGCTTCGATCTGCTAGATATCCCTCAGGAAAGTTTATGCCCGTGTCCGTTTGTTTGGGTAGATCTCTCACCCTTGGAATTCCAAGCGTTCAGGTATCCCACAATCGCTTCGATGACTCCGCCTCCTTATTATATACTTCGCCGATACGCAGCGCATGAAGAGTCATCGGGA\n+\n#########################################################################################################################################################################################################\n"
         self.reverse_fastq = "@foo/2\nCGATATCCGTGGCTTAAGCTATATGCGATTTTGCAGAGCAGTCAAGGTCTCCCTGGGTAGATTAAAGGGCGAGCTCACGAAGAGATTACTACTCAACCCTCCCGATGACTCTTCATGCGCTGCGTATCGGCGAAGTATATAATAAGGAGGCGGAGTCATCGAAGCGATTGTGGGATACCTGAACGCTTGGAATTCCAAGG\n+\n########################################################################################################################################################################################################\n"
         
-        fasta_fh, fasta_fn = tempfile.mkstemp(suffix='.fasta', dir='tests')
+        fasta_fh, fasta_fn = tempfile.mkstemp(suffix='.fasta', dir=tmp_dir)
         
-        with open('tests/f.fastq', 'w') as f:
+        with open('%s/f.fastq' % tmp_dir, 'w') as f:
             f.write(self.forward_fastq)
             
-        with open('tests/r.fastq', 'w') as f:
+        with open('%s/r.fastq' % tmp_dir, 'w') as f:
             f.write(self.reverse_fastq)
 
         # run usearch. usearch should output something that has "1  Exact overlaps" in it.
-        usearch_output = subprocess.check_output(['usearch', '-fastq_mergepairs', 'tests/f.fastq', '-reverse', 'tests/r.fastq', '-fastqout', 'tests/out.fastq'], stderr=subprocess.STDOUT)
+        usearch_output = subprocess.check_output(['usearch', '-fastq_mergepairs', '%s/f.fastq' % tmp_dir, '-reverse', '%s/r.fastq' % tmp_dir, '-fastqout', '%s/out.fastq' % tmp_dir], stderr=subprocess.STDOUT)
         self.assertRegexpMatches(usearch_output, '1\s+Exact overlaps')
         
         # check the output too
-        with open('tests/out.fastq', 'r') as f:
+        with open('%s/out.fastq' % tmp_dir, 'r') as f:
             out_fastq = f.read()
             
         self.assertEqual(out_fastq, "@foo/1\nGTTTTCTTCGCTTTATGGTGGTGGTAAAAGTGCTTCGATCTGCTAGATATCCCTCAGGAAAGTTTATGCCCGTGTCCGTTTGTTTGGGTAGATCTCTCACCCTTGGAATTCCAAGCGTTCAGGTATCCCACAATCGCTTCGATGACTCCGCCTCCTTATTATATACTTCGCCGATACGCAGCGCATGAAGAGTCATCGGGAGGGTTGAGTAGTAATCTCTTCGTGAGCTCGCCCTTTAATCTACCCAGGGAGACCTTGACTGCTCTGCAAAATCGCATATAGCTTAAGCCACGGATATCG\n+\n####################################################################################################$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$###################################################################################################\n")
@@ -326,67 +328,6 @@ class TestIndex(unittest.TestCase):
         fasta_lines = ['>sample=donor1;1', 'AAA', '>sample=donor1;2', 'AAA', '>sample=donor1;3', 'TTT', '>sample=donorT;1', 'TTT']
         abund = index.parse_full_fasta(fasta_lines, seq_sid)
         self.assertEqual(abund, {('donor1', 'seq0'): 2, ('donor1', 'seq4'): 1, ('donorT', 'seq4'): 1})
-
-
-class TestOTU(unittest.TestCase):
-    '''tests for uc -> OTU'''
-    
-    def setUp(self):
-        self.uc_lines = ["H       112678  253     99.6    +       0       0       520I53MD199M736I        seq0;counts=118114      2045", "H       108455  252     99.6    +       0       0       531I252M717I    seq1;counts=93322      38278"]
-    
-    def test_parse_uc_line(self):
-        '''should parse one uc line into relevant fields'''
-        line = self.uc_lines[0]
-        sid, otu = uc2otus.parse_uc_line(line)
-        self.assertEqual(sid, "seq0")
-        self.assertEqual(otu, "2045")
-        
-    def test_parse_uc_lines(self):
-        '''should parse uc lines into dictionary'''
-        d = uc2otus.parse_uc_lines(self.uc_lines)
-        self.assertEqual(d, {'seq0': '2045', 'seq1': '38278'})
-        
-    def test_parse_bad_uc_lines(self):
-        '''should throw exception when sequence ID repeated'''
-        bad_uc_lines = ["H  0  250  99.9  +  0  0  100M  seq0;counts=100   otu1", "H  0  250  99.9  +  0  0  100M  seq0;counts=200  otu1"]
-        self.assertRaises(RuntimeError, uc2otus.parse_uc_lines, bad_uc_lines)
-        
-    def test_parse_sample_lines(self):
-        '''should read barcodes are first field'''
-        bc_lines = ['animal4       TCCGTGCG', 'animal1       TCAAAGCT']
-        self.assertEqual(uc2otus.parse_sample_lines(bc_lines), ['animal4', 'animal1'])
-        
-    def test_parse_index_lines(self):
-        '''should split and recast index line'''
-        line = 'donor1  seq5    100'
-        self.assertEqual(uc2otus.parse_index_line(line), ['donor1', 'seq5', 100])
-        
-    def test_sparse_count_table(self):
-        '''should make a sparse count table'''
-        seq_otu = {'seqA': 'otuA', 'seqA2': 'otuA', 'seqC': 'otuC'}
-        index_lines = ['donor1  seqA  5', 'donor1 seqA2  1', 'donor1 seqC 1', 'donor2  seqA  4']
-        table = uc2otus.sparse_count_table(seq_otu, index_lines)
-        self.assertEqual(table, {'donor1': {'otuA': 6, 'otuC': 1}, 'donor2': {'otuA': 4}})
-        
-    def test_otu_table(self):
-        '''should make an OTU table'''
-        table = {'donor1': {'otuA': 6, 'otuC': 1}, 'donor2': {'otuA': 4}}
-        otus = ['otuA', 'otuC']
-        samples = ['donor1', 'donor2']
-        
-        out_lines = [line for line in uc2otus.otu_table(table, otus=None, samples=samples)]
-        
-        self.assertEqual(out_lines[0], 'OTU_ID\tdonor1\tdonor2')
-        self.assertIn('otuA\t6\t4', out_lines[1:])
-        self.assertIn('otuC\t1\t0', out_lines[1:])
-        
-    def test_nomatch_first(self):
-        '''should put no_match as first OTU ID if it's there'''
-        table = {'donor1': {'otuA': 6, 'otuC': 1}, 'donor2': {'otuA': 4, 'no_match': 10}}
-        out_lines = [line for line in uc2otus.otu_table(table)]
-        first_id = out_lines[1].split()[0]
-        
-        self.assertEqual(first_id, 'no_match')
         
 
 def TestPipelineSteps(TestWithFiles):
