@@ -82,7 +82,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     with open(args.fastq) as f:
-        if is_illumina13_format(f):
+        format_guess = file_format(f)
+        if format_guess == 'illumina13':
             print "Looks like Illumina 1.3-1.7 format. Proceed with the pipeline!"
+        elif format_guess == 'illumina18':
+            print "Looks like Illumina 1.8 format. You may need to convert. Beware..."
+        elif format_guess == 'ambiguous':
+            print "Doesn't look like Illumina 1.3-1.7 or 1.8 format. I don't know how to proceed!"
         else:
-            print "Doesn't look like Illumina 1.3-1.7 format. Investigate before proceeding."
+            raise RuntimeError
