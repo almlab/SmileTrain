@@ -49,7 +49,7 @@ if __name__ == '__main__':
     # if it is, used a pickled dictionary
     # otherwise, just search line by line
     if re.search("\.(pkl|pickle)$", args.db):
-        with open(fn, 'rb') as f:
+        with open(args.db, 'rb') as f:
             d = pickle.load(f)
     else:   
         d = taxa_dictionary(args.db, ids)
