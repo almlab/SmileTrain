@@ -13,6 +13,7 @@ def lid(fastq_entry):
     return fastq_entry[0].split()[0]
 
 def new_id_line(location, barcode, direction):
+    '''(location, barcode, direction) -> location#barcode/direction'''
     return "%s#%s/%s" %(location, barcode, direction)
 
 if __name__ == '__main__':
