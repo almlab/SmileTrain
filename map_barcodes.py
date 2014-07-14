@@ -62,6 +62,34 @@ def best_barcode_match(known_barcodes, barcode):
 
     return min_mismatches, best_known_barcode
 
+def parse_barcode(at_line):
+    '''
+    Extract the barcode read and direction from the at line
+    
+    Parameters
+    at_line : string
+        string starting with @ from fastq
+    
+    returns : tuple
+        (barcode read, read direction), where direction is either '1' or '2'
+    '''
+    
+    # match, e.g. @any_set_of_chars#ACGT/1 -> ACGT
+    m = re.match("@.*#([ACGTN]+)/(\d)+", at_line)
+
+    if m is None:
+        raise RuntimeError("couldn't find barcode in fastq line: %s" %(at_line))
+
+    # pull out the read and direction from the match
+    barcode_read = m.group(1)
+    read_direction = m.group(2)
+    
+    if read_direction not in ['1', '2']:
+        raise RuntimeError('read direction not 1 or 2: %s' %(at_line))
+    
+    return (barcode_read, read_direction)
+    
+
 def renamed_fastq_entries(fastq_lines, barcode_map, max_barcode_diffs):
     '''
     Rename the read IDs in a fastq file with the corresponding sample name. Get the barcode
@@ -87,19 +115,7 @@ def renamed_fastq_entries(fastq_lines, barcode_map, max_barcode_diffs):
     # get the fastq lines four at a time
     for at_line, seq_line, quality_line in util.fastq_iterator(fastq_lines):
         # look for the barcode from the read ID line
-        # match, e.g. @any_set_of_chars#ACGT/1 -> ACGT
-        m = re.match("@.*#([ACGTN]+)/(\d)+", at_line)
-
-        if m is None:
-            raise RuntimeError("couldn't find barcode in fastq line: %s" %(at_line))
-
-        # if we've already aligned this barcode read, just use the same sample we found before.
-        # otherwise, look through all the barcodes for the best match.
-        barcode_read = m.group(1)
-        read_direction = m.group(2)
-        
-        if read_direction not in ['1', '2']:
-            raise RuntimeError('read direction not 1 or 2: %s' %(at_line))
+        barcode_read, read_direction = parse_barcode(at_line)
         
         if barcode_read in barcode_read_to_sample:
             sample = barcode_read_to_sample[barcode_read]
