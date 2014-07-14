@@ -10,7 +10,7 @@ import Bio.Seq
 
 def reverse_complement_map(m):
     '''[['sample1', 'AAA'], ...] -> [['sample1', 'TTT'], ...]'''
-    return [[sample, Bio.Seq.Seq(code).reverse_complement()] for sample, code in m]
+    return [[sample, Bio.Seq.Seq(code).reverse_complement().tostring()] for sample, code in m]
 
 
 if __name__ == '__main__':
