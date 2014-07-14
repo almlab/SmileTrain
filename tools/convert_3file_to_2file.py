@@ -5,7 +5,8 @@ Convert the three-file raw Illumina data (forward, reverse, and index reads) int
 two-file format used by SmileTrain.
 '''
 
-import argparse
+import argparse, sys, os
+sys.path.append(os.path.normpath(os.path.abspath(__file__) + '/../..'))
 from SmileTrain import util
 
 def lid(fastq_entry):

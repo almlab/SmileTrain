@@ -49,6 +49,7 @@ def parse_args():
     group1.add_argument('--denovo', default = False, action = 'store_true', help = 'Denovo clustering (UPARSE)?')
     group1.add_argument('--ref_gg', default = False, action = 'store_true', help = 'Reference mapping (Greengenes)?')
     group1.add_argument('--open_ref_gg', action='store_true', help='Reference map (Greengenes) and then denovo cluster?')
+    group1.add_argument('--seq_table', action='store_true', help='Make a sequence table?')
     group1.add_argument('--otu_table', action='store_true', help='Make OTU table?')
     group2.add_argument('-f', help='Input fastq (forward)')
     group2.add_argument('-r', help='Input fastq (reverse)')
@@ -470,6 +471,16 @@ class OTU_Caller():
         self.ssub.submit_and_wait(cmds, self.dry_run)
         
         util.check_for_nonempty(self.xi)
+        
+    def make_seq_table(self):
+        '''Make sequence table from the index file'''
+        
+        util.check_for_nonempty('q.index')
+        util.check_for_collisions('seq.txt')
+        
+        cmds = ['python %s/index_to_seq_table.py %s --fasta %s --output %s' %(self.library, 'q.index', 'q.derep.fasta', 'seq.txt')]
+        self.ssub.submit_and_wait(cmds, self.dry_run)
+        util.check_for_nonempty('seq.txt')
     
 
 if __name__ == '__main__':
@@ -540,6 +551,11 @@ if __name__ == '__main__':
     if oc.open_ref_gg:
         message('Open reference-based clustering')
         oc.open_reference_mapping()
+        
+    # Make sequence tables
+    if oc.seq_table:
+        message('Making sequence table')
+        oc.make_seq_table()
     
     # Make OTU tables
     if oc.otu_table == True:
