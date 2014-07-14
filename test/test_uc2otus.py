@@ -30,11 +30,6 @@ class TestOTU(unittest.TestCase):
         bc_lines = ['animal4       TCCGTGCG', 'animal1       TCAAAGCT']
         self.assertEqual(uc2otus.parse_sample_lines(bc_lines), ['animal4', 'animal1'])
         
-    def test_parse_index_lines(self):
-        '''should split and recast index line'''
-        line = 'donor1  seq5    100'
-        self.assertEqual(uc2otus.parse_index_line(line), ['donor1', 'seq5', 100])
-        
     def test_sparse_count_table(self):
         '''should make a sparse count table'''
         seq_otu = {'seqA': 'otuA', 'seqA2': 'otuA', 'seqC': 'otuC'}
