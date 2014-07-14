@@ -110,7 +110,7 @@ class TestFastqUtilities(TestWithFiles):
         os.write(fastq_fh, self.good_fastq_content)
         os.close(fastq_fh)
         
-        subprocess.call(['python', '../split_fastq.py', fastq_fn, '2'])
+        subprocess.call(['python', 'split_fastq.py', fastq_fn, '2'])
         
         with open("%s.0" % fastq_fn) as f:
             fastq_out0 = f.read()
