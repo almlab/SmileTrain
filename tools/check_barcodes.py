@@ -35,7 +35,7 @@ def write_counts_report(counts, f):
     percent = lambda n: "%.2f%%" %(float(n) / counts['total'] * 100)
     
     w = csv.writer(f, delimiter='\t', quoting=csv.QUOTE_NONE)
-    w.writerow(['', '# reads', '\% reads'])
+    w.writerow(['sample', '# reads', '% reads'])
         
     for sample, n in sorted_counts:
         w.writerow([sample, str(n), percent(n)])
