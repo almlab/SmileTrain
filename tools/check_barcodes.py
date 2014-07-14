@@ -14,14 +14,15 @@ def count_barcodes(fastq_entries, barcode_map):
     '''count the number of appearances of each barcode in a fastq'''
     
     # initialize the count dictionary
-    counts = {key: 0 for key in barcode_map.keys()}
+    counts = {sample: 0 for sample in barcode_map.values()}
     counts['mapped'] = 0
     counts['total'] = 0
     
     for at_line, seq_line, qua_line in fastq_entries:
         barcode_read, read_direction = map_barcodes.parse_barcode(at_line)
-        if barcode_read in counts:
-            counts[barcode_read] += 1
+        if barcode_read in barcode_map:
+            sample = barcode_map[barcode_read]
+            counts[sample] += 1
             counts['mapped'] += 1
         
         counts['total'] += 1

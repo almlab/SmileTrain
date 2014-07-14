@@ -11,7 +11,7 @@ class TestCountBarcodes(unittest.TestCase):
     def test_correct(self):
         '''should count up barcodes correctly'''
         counts = check_barcodes.count_barcodes(self.fastq_entries, self.barcode_map)
-        self.assertEqual(counts, {'total': 3, 'mapped': 2, 'AAA': 1, 'TTT': 1, 'CCC': 0})
+        self.assertEqual(counts, {'total': 3, 'mapped': 2, 'sampleA': 1, 'sampleT': 1, 'sampleC': 0})
 
 
 if __name__ == '__main__':
