@@ -29,6 +29,8 @@ def count_barcodes(fastq_entries, barcode_map):
     return counts
 
 def write_counts_report(counts, f):
+    '''log the counts in a filehandle f'''
+    
     # sort the results by abundance
     sorted_counts = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)
     

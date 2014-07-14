@@ -78,7 +78,7 @@ def parse_barcode(at_line):
     m = re.match("@.*#([ACGTN]+)/(\d)+", at_line)
 
     if m is None:
-        raise RuntimeError("couldn't find barcode in fastq line: %s" %(at_line))
+        raise RuntimeError("fastq line did not match expected format: %s" %(at_line))
 
     # pull out the read and direction from the match
     barcode_read = m.group(1)
