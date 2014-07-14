@@ -6,22 +6,8 @@ for ordering by abundance.
 '''
 
 import re, sys, argparse
-import util
+import util, util_index
 
-# copied from uc2otus
-def parse_index_line(line):
-    '''read an index line to sample, sequence, abundance'''
-    sample, seq, abund = line.split()
-    abund = int(abund)
-    return [sample, seq, abund]
-
-def counts(table, sample, otu):
-    '''get counts from table structure, or 0 if sample or otu missing'''
-    if sample in table:
-        if otu in table[sample]:
-            return table[sample][otu]
-        
-    return 0
 
 # adapted from uc2otus
 def sparse_seq_count_table(index_lines):
@@ -37,7 +23,7 @@ def sparse_seq_count_table(index_lines):
     
     table = {}
     for line in index_lines:
-        sample, seq, abund = parse_index_line(line)
+        sample, seq, abund = util_index.parse_index_line(line)
         
         if sample not in table:
             table[sample] = {seq: abund}
@@ -97,7 +83,7 @@ def seq_table(table, seqs=None, samples=None):
     
     # loop over rows
     for seq in seqs: 
-        yield "\t".join([seq] + [str(counts(table, sample, seq)) for sample in samples])
+        yield "\t".join([seq] + [str(util_index.counts(table, sample, seq)) for sample in samples])
 
 
 if __name__ == '__main__':
