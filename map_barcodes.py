@@ -5,7 +5,7 @@ Demultiplex reads by mapping the barcode read to the sample names from a barcode
 file.
 
 Given a tab-separated barcode mapping file like
-    ACGT    donor1_day5
+    donor1_day5   ACGT
 
 the first read mapping to that barcode, say
     @OURSEQ:lolapalooza1234#ACGT/1
