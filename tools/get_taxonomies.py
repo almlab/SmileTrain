@@ -9,13 +9,14 @@ If the input database is a pickle, just load that dictionary.
 
 import sys, argparse, re, cPickle as pickle
 
-def table_ids(fn):
+def table_ids(fn, header):
     '''get the otu ids from the otu table with filename fn'''
     with open(fn) as f:
         ids = [line.split()[0] for line in f]
 
-    # remove the first item, which is "OTU_ID"
-    ids.pop(0)
+    if header:
+        # remove the first item, which is "OTU_ID"
+        ids.pop(0)
 
     return ids
 
@@ -39,11 +40,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input', help='input otu table')
     parser.add_argument('db', help='input database')
-    parser.add_argument('--no_match_id', default='no_match', help='OTU ID for no match (default "no_match")')
-    parser.add_argument('--no_match_tax', default='k__; p__; c__; o__; f__; g__; s__', help='taxonomy for unmatched OTU ID (default is QIIME taxonomy format')
+    parser.add_argument('-d', '--no_header', action='store_true', help='match the first line? (default false)')
+    parser.add_argument('-i', '--no_match_id', default='no_match', help='OTU ID for no match (default "no_match")')
+    parser.add_argument('-t', '--no_match_tax', default='k__; p__; c__; o__; f__; g__; s__', help='taxonomy for unmatched OTU ID (default is QIIME taxonomy format)')
     args = parser.parse_args()
 
-    ids = table_ids(args.input)
+    header = not args.no_header
+    ids = table_ids(args.input, header)
 
     # check if the database file ends in .pkl or .pickle
     # if it is, used a pickled dictionary
