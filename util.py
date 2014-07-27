@@ -85,6 +85,13 @@ def fastq_iterator(lines, check_sigils=True, check_lengths=True, output_type='li
             yield entry
         elif output_type == 'string':
             yield fastq_entry_list_to_string(entry)
+            
+def fasta_entry_list_to_string(entry):
+    '''[sequence id, sequence] -> newline-separated fasta entry'''
+    return "\n".join(entry)
+
+def fasta_entries_to_string(entries):
+    return "\n".join([fasta_entry_list_to_string(entry) for entry in entries])
 
 def fastq_entry_list_to_string(entry):
     '''[at line, sequence line, quality line] -> new-line separated fastq entry'''
