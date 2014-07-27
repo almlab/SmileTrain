@@ -88,7 +88,8 @@ def fastq_iterator(lines, check_sigils=True, check_lengths=True, output_type='li
             
 def fasta_entry_list_to_string(entry):
     '''[sequence id, sequence] -> newline-separated fasta entry'''
-    return "\n".join(entry)
+    sid, sequence = entry
+    return ">%s\n%s" %(sid, sequence)
 
 def fasta_entries_to_string(entries):
     return "\n".join([fasta_entry_list_to_string(entry) for entry in entries])

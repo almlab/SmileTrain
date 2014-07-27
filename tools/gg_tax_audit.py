@@ -32,9 +32,10 @@ if __name__ == '__main__':
     config = ConfigParser.ConfigParser()
     config.read(os.path.join(os.path.dirname(__file__), os.pardir, 'user.cfg'))
     
-    parser = argparse.ArgumentParser
+    parser = argparse.ArgumentParser()
     parser.add_argument('gg_id', help='reference id')
     parser.add_argument('uc', help='input uc file')
+    parser.add_argument('gg_rep_set', help='input gg rep set fasta')
     parser.add_argument('--fasta', default='q.derep.fst', help='dereplicated fasta (default: q.derep.fst)')
     parser.add_argument('matches', help='output matched seqs fasta')
     parser.add_argument('-m', '--mismatches', default=None, help='output mismatch file (default: none)')
@@ -42,6 +43,7 @@ if __name__ == '__main__':
     parser.add_argument('--strand', default='both', help='strand (default: both)')
     parser.add_argument('--sid', default='0.995', help='sequence identity (default: 0.995)')
     parser.add_argument('--tax', default='tax.txt', help='taxonomy output (default: tax.txt)')
+    parser.add_argument('--dry', default='store_true', help='don\'t submit jobs, just show them?')
     
     args = parser.parse_args()
     
@@ -53,7 +55,7 @@ if __name__ == '__main__':
     # get the matching seq labels from the uc file
     util.message('getting matching seq labels from uc...')
     with open(args.uc) as f:
-        labels = matching_labels(f, target)
+        labels = matching_labels(f, args.gg_id)
     
     # get the sequences matching these labels
     util.message('getting matching sequences from fasta...')
@@ -72,12 +74,18 @@ if __name__ == '__main__':
     if args.mismatches is not None:
         util.message('counting mismatches...')
         cmd = 'python %s/tools/count_mismatches.py %s > %s' %(library, args.matches, args.mismatches)
-        submitter.submit_and_wait([cmd])
-        
+        submitter.submit([cmd])
+    
     util.message('searching for sequences...')
-    cmd = '%s -search_global %s -db %s -uc %s -uc_allhits -maxaccepts 0 -maxrejects 0 -strand %s -id %s' %(usearch, args.matches, gg_tax, args.out_uc, args.strand, args.sid)
-    submitter.submit_and_wait([cmd])
+    cmd = '%s -search_global %s -db %s -uc %s -uc_allhits -maxaccepts 0 -maxrejects 0 -strand %s -id %s' %(usearch, args.matches, args.gg_rep_set, args.out_uc, args.strand, args.sid)
+    if dry:
+        print cmd
+    else:
+        submitter.submit_and_wait([cmd])
 
     util.message('matching taxonomies...')
-    cmd = '%s/tools/get_taxonomies.py %s --uc %s > %s' %(library, args.out_uc, args.tax)
-    submitter.submit_and_wait([cmd])
+    cmd = '%s/tools/get_taxonomies.py %s --uc %s > %s' %(library, gg_tax, args.out_uc, args.tax)
+    if dry:
+        print cmd
+    else:
+        submitter.submit_and_wait([cmd])
