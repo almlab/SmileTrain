@@ -69,7 +69,7 @@ if __name__ == '__main__':
         f.write(util.fasta_entries_to_string(entries))
         
     with open(args.top_match, 'w') as f:
-        f.write(util.fasta_entry_list_to_string(entries[0]))
+        f.write(util.fasta_entry_list_to_string(entries[0]) + "\n")
     
     # start an internal ssub object
     submitter = ssub.Ssub()
@@ -80,16 +80,16 @@ if __name__ == '__main__':
         cmd = 'python %s/tools/count_mismatches.py %s > %s' %(library, args.matches, args.mismatches)
         submitter.submit([cmd])
     
-    util.message('searching for sequences...')
     cmd = '%s -search_global %s -db %s -uc %s -uc_allhits -maxaccepts 0 -maxrejects 0 -strand %s -id %s' %(usearch, args.top_match, args.gg_rep_set, args.out_uc, args.strand, args.sid)
     if args.dry:
         print cmd
     else:
+        util.message('searching for sequences...')
         submitter.submit_and_wait([cmd])
 
-    util.message('matching taxonomies...')
     cmd = '%s/tools/get_taxonomies.py %s --uc %s > %s' %(library, gg_tax, args.out_uc, args.tax)
     if args.dry:
         print cmd
     else:
+        util.message('matching taxonomies...')
         submitter.submit_and_wait([cmd])
