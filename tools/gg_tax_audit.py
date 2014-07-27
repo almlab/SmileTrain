@@ -37,13 +37,14 @@ if __name__ == '__main__':
     parser.add_argument('uc', help='input uc file')
     parser.add_argument('gg_rep_set', help='input gg rep set fasta')
     parser.add_argument('--fasta', default='q.derep.fst', help='dereplicated fasta (default: q.derep.fst)')
+    parser.add_argument('top_match', help='top match fasta')
     parser.add_argument('matches', help='output matched seqs fasta')
     parser.add_argument('-m', '--mismatches', default=None, help='output mismatch file (default: none)')
     parser.add_argument('-u', '--out_uc', default='out.uc', help='output uc (default: out.uc)')
     parser.add_argument('--strand', default='both', help='strand (default: both)')
     parser.add_argument('--sid', default='0.995', help='sequence identity (default: 0.995)')
     parser.add_argument('--tax', default='tax.txt', help='taxonomy output (default: tax.txt)')
-    parser.add_argument('--dry', default='store_true', help='don\'t submit jobs, just show them?')
+    parser.add_argument('--dry', action='store_true', help='don\'t submit jobs, just show them?')
     
     args = parser.parse_args()
     
@@ -66,6 +67,9 @@ if __name__ == '__main__':
     util.message('writing matches...')
     with open(args.matches, 'w') as f:
         f.write(util.fasta_entries_to_string(entries))
+        
+    with open(args.top_match, 'w') as f:
+        f.write(util.fasta_entry_list_to_string(entries[0]))
     
     # start an internal ssub object
     submitter = ssub.Ssub()
@@ -77,15 +81,15 @@ if __name__ == '__main__':
         submitter.submit([cmd])
     
     util.message('searching for sequences...')
-    cmd = '%s -search_global %s -db %s -uc %s -uc_allhits -maxaccepts 0 -maxrejects 0 -strand %s -id %s' %(usearch, args.matches, args.gg_rep_set, args.out_uc, args.strand, args.sid)
-    if dry:
+    cmd = '%s -search_global %s -db %s -uc %s -uc_allhits -maxaccepts 0 -maxrejects 0 -strand %s -id %s' %(usearch, args.top_match, args.gg_rep_set, args.out_uc, args.strand, args.sid)
+    if args.dry:
         print cmd
     else:
         submitter.submit_and_wait([cmd])
 
     util.message('matching taxonomies...')
     cmd = '%s/tools/get_taxonomies.py %s --uc %s > %s' %(library, gg_tax, args.out_uc, args.tax)
-    if dry:
+    if args.dry:
         print cmd
     else:
         submitter.submit_and_wait([cmd])
