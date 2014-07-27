@@ -9,15 +9,26 @@ If the input database is a pickle, just load that dictionary.
 
 import sys, argparse, re, cPickle as pickle
 
-def table_ids(fn, header):
+def table_ids(fn):
     '''get the otu ids from the otu table with filename fn'''
     with open(fn) as f:
         ids = [line.split()[0] for line in f]
 
-    if header:
-        # remove the first item, which is "OTU_ID"
-        ids.pop(0)
+    # remove the first item, which is "OTU_ID"
+    ids.pop(0)
 
+    return ids
+
+def uc_ids(fn):
+    with open(fn) as f:
+        ids = [line.split()[-1] for line in f]
+        
+    return ids
+
+def list_ids(fn):
+    with open(fn) as f:
+        ids = [line.strip() for line in f]
+    
     return ids
 
 def taxa_dictionary(fn, ids):
@@ -38,15 +49,28 @@ def taxa_dictionary(fn, ids):
 if __name__ == '__main__':
     # parse command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('input', help='input otu table')
     parser.add_argument('db', help='input database')
-    parser.add_argument('-d', '--no_header', action='store_true', help='match the first line? (default false)')
-    parser.add_argument('-i', '--no_match_id', default='no_match', help='OTU ID for no match (default "no_match")')
-    parser.add_argument('-t', '--no_match_tax', default='k__; p__; c__; o__; f__; g__; s__', help='taxonomy for unmatched OTU ID (default is QIIME taxonomy format)')
+    input_type = parser.add_mutually_exclusive_group(required=True)
+    input_type.add_argument('-t', '--table', default=None, help='input otu table')
+    input_type.add_argument('-u', '--uc', default=None, help='input uc file')
+    input_type.add_argument('-l', '--list', default=None, help='input plain text list')
+    
+    parser.add_argument('-i', '--no_match_id', default=None, help='OTU ID for no match (default "no_match" for table/list; "*" for uc)')
+    parser.add_argument('-x', '--no_match_tax', default='k__; p__; c__; o__; f__; g__; s__', help='taxonomy for unmatched OTU ID (default is QIIME taxonomy format)')
     args = parser.parse_args()
 
     header = not args.no_header
-    ids = table_ids(args.input, header)
+    
+    # depending on the input type, adjust the no match id and parsing function
+    if args.table is not None:
+        ids = table_ids(args.table)
+        if args.no_match_id is None: args.no_match_id = 'no_match'
+    elif args.uc is not None:
+        ids = uc_ids(args.uc)
+        if args.no_match_id is None: args.no_match_id = '*'
+    elif args.list is not None:
+        ids = list_ids(args.list)
+        if args.no_match_id is None: args.no_match_id = 'no_match'
 
     # check if the database file ends in .pkl or .pickle
     # if it is, used a pickled dictionary
