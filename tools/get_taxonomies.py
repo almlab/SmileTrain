@@ -58,8 +58,6 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--no_match_id', default=None, help='OTU ID for no match (default "no_match" for table/list; "*" for uc)')
     parser.add_argument('-x', '--no_match_tax', default='k__; p__; c__; o__; f__; g__; s__', help='taxonomy for unmatched OTU ID (default is QIIME taxonomy format)')
     args = parser.parse_args()
-
-    header = not args.no_header
     
     # depending on the input type, adjust the no match id and parsing function
     if args.table is not None:
