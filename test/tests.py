@@ -292,10 +292,6 @@ class TestDereplicate(unittest.TestCase):
 
 class TestIndex(unittest.TestCase):
     '''tests for index-writing script'''
-    
-    def test_parse_seq_id(self):
-        '''should get sequence ID from first fasta line'''
-        self.assertEqual(index.parse_seq_sid('seq44;counts=12'), 'seq44')
         
     def test_parse_derep_fasta(self):
         '''should make a dictionary of fasta lines'''

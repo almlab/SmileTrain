@@ -16,3 +16,8 @@ class TestCounts(unittest.TestCase):
     def test_correct(self):
         '''should parse the counts table structure'''
         raise RuntimeError("test not implemented")
+    
+
+class TestParseSeqSid(unittest.TestCase):
+    def test_correct(self):
+        self.assertEqual(util_index.parse_seq_sid('seq44;counts=12'), 'seq44')
