@@ -320,7 +320,7 @@ class OTU_Caller():
         assert(util.is_executable(self.usearch))
         
         # check that the files are in the right format
-        check_fastq_format.check_illumina_format(self.ci, 'illumina18')
+        check_fastq_format.check_illumina_format(self.ci, ['illumina18', 'ambiguous'])
 
         cmds = []
         for i in range(self.n_cpus):
