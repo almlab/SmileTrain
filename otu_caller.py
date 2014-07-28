@@ -478,7 +478,7 @@ class OTU_Caller():
         util.check_for_nonempty('q.index')
         util.check_for_collisions('seq.txt')
         
-        cmds = ['python %s/index_to_seq_table.py %s --fasta %s --output %s' %(self.library, 'q.index', 'q.derep.fasta', 'seq.txt')]
+        cmds = ['python %s/index_to_seq_table.py %s %s --output %s' %(self.library, 'q.index', 'q.derep.fst', 'seq.txt')]
         self.ssub.submit_and_wait(cmds, self.dry_run)
         util.check_for_nonempty('seq.txt')
     
