@@ -7,6 +7,15 @@ def parse_index_line(line):
     abund = int(abund)
     return [sample, seq, abund]
 
+def parse_seq_sid(sid):
+    '''seq0;counts=400 -> seq0'''
+    
+    m = re.match('(.*);counts=\d+', sid)
+    if m is None:
+        raise RuntimeError("sequence id did not parse: %s" % sid)
+    else:
+        return m.group(1)
+
 def counts(table, sample, otu):
     '''get counts from table structure, or 0 if sample or otu missing'''
     if sample in table:

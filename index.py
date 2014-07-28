@@ -12,20 +12,12 @@ Produce an index file with lines
 '''
 
 import sys, argparse, re
-import util
+import util, util_index
 
-def parse_seq_sid(sid):
-    '''seq0;counts=400 -> seq0'''
-    
-    m = re.match('(.*);counts=\d+', sid)
-    if m is None:
-        raise RuntimeError("sequence id did not parse: %s" % sid)
-    else:
-        return m.group(1)
 
 def parse_derep_fasta(lines):
     '''create a hash {sequence => ID}'''
-    return {seq: parse_seq_sid(sid) for sid, seq in util.fasta_entries(lines)}
+    return {seq: util_index.parse_seq_sid(sid) for sid, seq in util.fasta_entries(lines)}
 
 def sid_to_sample(sid):
     '''sample=donor1;400 -> donor1'''

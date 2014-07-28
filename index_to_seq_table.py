@@ -8,6 +8,9 @@ for ordering by abundance.
 import re, sys, argparse
 import util, util_index
 
+def trimmed_fasta_entries(lines):
+    '''create a list [[sequence id (without counts), sequence], ...]'''
+    return [[util_index.parse_seq_sid(sid), seq] for sid, seq in util.fasta_entries(lines)]
 
 def sparse_seq_count_table(index_lines):
     '''
@@ -77,7 +80,7 @@ if __name__ == '__main__':
     
     # read in the fasta file
     with open(args.fasta) as f:
-        lab_seq = list(util.fasta_entries(f))
+        lab_seq = trimmed_fasta_entries(f)
     
     # read in the sample order, if given
     if args.samples is None:
