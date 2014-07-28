@@ -80,16 +80,14 @@ if __name__ == '__main__':
         cmd = 'python %s/tools/count_mismatches.py %s > %s' %(library, args.matches, args.mismatches)
         submitter.submit([cmd])
     
-    cmd = '%s -search_global %s -db %s -uc %s -uc_allhits -maxaccepts 0 -maxrejects 0 -strand %s -id %s' %(usearch, args.top_match, args.gg_rep_set, args.out_uc, args.strand, args.sid)
+    cmd1 = '%s -search_global %s -db %s -uc %s -uc_allhits -maxaccepts 0 -maxrejects 0 -strand %s -id %s' %(usearch, args.top_match, args.gg_rep_set, args.out_uc, args.strand, args.sid)
+    cmd2 = '%s/tools/get_taxonomies.py %s --uc %s > %s' %(library, gg_tax, args.out_uc, args.tax)
     if args.dry:
-        print cmd
+        print "run these commands on a node:"
+        print "%s; %s" %(cmd1, cmd2)
     else:
         util.message('searching for sequences...')
-        submitter.submit_and_wait([cmd])
+        submitter.submit_and_wait([cmd1])
 
-    cmd = '%s/tools/get_taxonomies.py %s --uc %s > %s' %(library, gg_tax, args.out_uc, args.tax)
-    if args.dry:
-        print cmd
-    else:
         util.message('matching taxonomies...')
         submitter.submit_and_wait([cmd])
