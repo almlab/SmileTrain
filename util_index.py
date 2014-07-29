@@ -15,6 +15,15 @@ def parse_seq_sid(sid):
         raise RuntimeError("sequence id did not parse: %s" % sid)
     else:
         return m.group(1)
+    
+def sid_to_sample(sid):
+    '''sample=donor1;400 -> donor1'''
+    
+    m = re.match('sample=(.+);\d+', sid)
+    if m is None:
+        raise RuntimeError("fasta at line did not parse: %s" % sid)
+    else:
+        return m.group(1)
 
 def counts(table, sample, otu):
     '''get counts from table structure, or 0 if sample or otu missing'''
