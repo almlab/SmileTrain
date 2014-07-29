@@ -67,11 +67,11 @@ def table_lines(fasta, min_counts, samples=None):
     seqs = [seq for seq in all_seqs if abund[seq] >= min_counts]
     
     # write the header
-    yield "sequence\t" + "\t".join(samples) + "\t" + "abundance"
+    yield "sequence\t" + "\t".join(samples)
     
     for seq in seqs:
         counts = [table[seq].get(sample, 0) for sample in samples]
-        yield seq + "\t" + "\t".join([str(x) for x in counts]) + "\t" + str(abund[seq])
+        yield seq + "\t" + "\t".join([str(x) for x in counts])
 
 
 if __name__ == '__main__':
