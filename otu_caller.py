@@ -55,7 +55,7 @@ def parse_args():
     group2.add_argument('-r', help='Input fastq (reverse)')
     group2.add_argument('-p', help='Primer sequence (forward)')
     group2.add_argument('-q', help='Primer sequence (reverse)')
-    group2.add_argument('-b', default=None, help='Barcodes list')
+    group2.add_argument('--barcodes', '-b', default=None, help='Barcodes list')
     group4.add_argument('--p_mismatch', default=1, type=int, help='Number of mismatches allowed in primers')
     group6.add_argument('--b_mismatch', default=1, type=int, help='Number of mismatches allowed in barcodes')
     group6.add_argument('--merged', action='store_true', help='Files were merged in a previous step?')
@@ -76,6 +76,9 @@ def parse_args():
     if args.all == True:
         args.check = args.split = args.convert = args.primers = args.merge = args.demultiplex = args.qfilter = args.dereplicate = args.index = args.ref_gg = args.otu_table = True
     args.sids = map(int, args.sids.split(','))
+    
+    if args.demultiplex and args.barcodes is None:
+        raise RuntimeError("--demultiplex selected but no barcode mapping file specified")
         
     return args
 
@@ -301,7 +304,7 @@ class OTU_Caller():
 
         cmds = []
         for i in range(self.n_cpus):
-            cmd = 'python %s/map_barcodes.py %s %s --max_barcode_diffs %d > %s' %(self.library, self.ci[i], self.b, self.b_mismatch, self.Ci[i])
+            cmd = 'python %s/map_barcodes.py %s %s --max_barcode_diffs %d > %s' %(self.library, self.ci[i], self.barcodes, self.b_mismatch, self.Ci[i])
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, self.dry_run)
         
@@ -464,8 +467,8 @@ class OTU_Caller():
             cmd = 'python %s/uc2otus.py %s q.index --output %s' %(self.library, self.uc[i], self.xi[i])
             
             # if we have a barcode file, use that order for the sample columns
-            if self.b is not None:
-                cmd += ' --samples %s' %(self.b)
+            if self.barcodes is not None:
+                cmd += ' --samples %s' %(self.barcodes)
             
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, self.dry_run)
