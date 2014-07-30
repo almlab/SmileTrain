@@ -4,7 +4,7 @@
 Get the taxonomies for a seq table using greengenes (or whatever).
 '''
 
-import sys, argparse, tempfile, cPickle as pickle
+import sys, argparse, tempfile, cPickle as pickle, ConfigParser
 from SmileTrain import ssub
 
 def seq_table_to_fasta(table_fh, fasta_fh):
@@ -28,13 +28,13 @@ def write_tmp_fasta(table_fh, tmp_dir):
     
     return fasta_fn
 
-def usearch_against_database_cmd(usearch, table_fh, tmp_dir, db, strand='both', sid='0.995'):
+def usearch_against_database_cmd(usearch, table_fh, tmp_dir, db, fid, strand='both'):
     fasta_fn = write_tmp_fasta(table_fh, tmp_dir)
     uc_fh = tempfile.NamedTemporaryFile(suffix='.uc', delete=True, dir=tmp_dir)
     uc_fn = uc_fh.name
     uc_fh.close()
     
-    cmd = "%s -usearch_global %s -uc %s -strand %s -id %s -db %s" %(usearch, fasta_fn, uc_fn, strand, sid, db)
+    cmd = "%s -usearch_global %s -uc %s -strand %s -id %s -db %s" %(usearch, fasta_fn, uc_fn, strand, fid, db)
     print "  temporary fasta: %s" % fasta_fn
     print "  temporary uc: %s" % uc_fn
     return cmd, uc_fn
@@ -60,16 +60,26 @@ if __name__ == '__main__':
     # parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('table', help='input sequence table')
-    parser.add_argument('db', help='input taxonomy database')
-    parser.add_argument('usearch')
-    parser.add_argument('tmp_dir')
+    parser.add_argument('-s', '--sid', default='99', help='greengenes repset identity (default: 99)')
+    parser.add_argument('-i', '--fid', default='0.995', help='fractional identity to make hit (default: 0.995)')
     parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output file (default stdout)')
     
     args = parser.parse_args()
     
+    # grab the configuration file
+    config = ConfigParser.ConfigParser()
+    config.read(os.path.join(os.path.dirname(__file__), 'user.cfg'))
+    
+    usearch = config.get('User', 'usearch')
+    gg_dir = config.get('Data', 'greengenes')
+    gg_tax = config.get('Data', 'greengenes_taxonomy')
+    library = config.get('Scripts', 'library')
+    tmp_dir = config.get('User', 'tmp_directory')
+    
     submitter = ssub.Ssub()
     
-    cmd, uc_fn = usearch_against_database_cmd(args.usearch, args.table, args.tmp_dir, args.db)
+    gg_fasta = os.path.join(gg_dir, "%s_otus.fasta" %(args.sid))
+    cmd, uc_fn = usearch_against_database_cmd(usearch, args.table, tmp_dir, gg_fasta, args.fid)
     submitter.submit_and_wait([cmd])
     
     with open(uc_fn) as f:
