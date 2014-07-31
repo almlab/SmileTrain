@@ -478,11 +478,15 @@ class OTU_Caller():
     def make_seq_table(self):
         '''Make sequence table from the index file'''
         
-        util.check_for_nonempty('q.index')
+        util.check_for_nonempty('q.fst')
         util.check_for_collisions('seq.txt')
+
+        cmd = 'python %s/seq_table.py %s --output %s' %(self.library, 'q.fst', 'seq.txt')
         
-        cmds = ['python %s/index_to_seq_table.py %s %s --output %s' %(self.library, 'q.index', 'q.derep.fst', 'seq.txt')]
-        self.ssub.submit_and_wait(cmds, self.dry_run)
+        if self.barcodes is not None:
+            cmd += ' --samples %s' %(self.barcodes)
+        
+        self.ssub.submit_and_wait([cmd], self.dry_run)
         util.check_for_nonempty('seq.txt')
     
 
