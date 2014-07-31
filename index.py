@@ -12,12 +12,13 @@ Produce an index file with lines
 '''
 
 import sys, argparse, re
+from Bio import SeqIO
 import util, util_index
 
 
-def parse_derep_fasta(lines):
-    '''create a hash {sequence => ID}'''
-    return {seq: util_index.parse_seq_sid(sid) for sid, seq in util.fasta_entries(lines)}
+def parse_derep_fasta(fasta):
+    '''create a hash {sequence => ID} from fasta filename or filehandle'''
+    return {str(record.seq): util_index.parse_seq_id(record.id) for record in SeqIO.parse(fasta, 'fasta')}
 
 def sid_to_sample(sid):
     '''sample=donor1;400 -> donor1'''
@@ -28,13 +29,13 @@ def sid_to_sample(sid):
     else:
         return m.group(1)
     
-def parse_full_fasta(lines, seq_sid):
+def parse_full_fasta(fasta, seq_sid):
     '''
     Count the abundance of each sequence in each sample. Ignore sequences that are not
     in the known ID list.
     
-    lines : list or iterator of strings
-        lines in the big fasta file
+    fasta : filehandle or filename
+        input fasta
     seq_sid : dictionary
         {sequence => sequence ID}
         
@@ -43,11 +44,11 @@ def parse_full_fasta(lines, seq_sid):
     '''
     
     abund = {}
-    for sid, seq in util.fasta_entries(lines):
-        sample = sid_to_sample(sid)
+    for record in SeqIO.parse(fasta, 'fasta'):
+        sample = sid_to_sample(record.id)
         
-        if seq in seq_sid:
-            seq_id = seq_sid[seq]
+        if record.seq in seq_sid:
+            seq_id = seq_sid[str(record.seq)]
             key = (sample, seq_id)
             
             if key in abund:
@@ -72,11 +73,8 @@ if __name__ == '__main__':
     parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output file (default stdout)')
     args = parser.parse_args()
     
-    with open(args.derep) as f:
-        seq_sid = parse_derep_fasta(f)
-                
-    with open(args.orig) as f:
-        abundances = parse_full_fasta(f, seq_sid)
+    seq_sid = parse_derep_fasta(args.derep)
+    abundances = parse_full_fasta(args.orig, seq_sid)
                 
     for line in index_lines(abundances):
         args.output.write(line + "\n")

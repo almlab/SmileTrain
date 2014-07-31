@@ -9,13 +9,14 @@ abundance of the sequence in that sample.
 '''
 
 import sys, argparse, re
+from Bio import SeqIO
 import util, util_index
     
-def fasta_to_table_and_abund(lines):
+def fasta_to_table_and_abund(fasta):
     '''
     Count the abundance of each sequence in each sample.
     
-    lines : list or iterator of strings
+    fasta : fasta fh or fn
         lines in the big fasta file
         
     returns : dict of dicts
@@ -24,8 +25,9 @@ def fasta_to_table_and_abund(lines):
     
     table = {}
     abund = {}
-    for sid, seq in util.fasta_entries(lines):
-        sample = util_index.sid_to_sample(sid)
+    for record in SeqIO.parse(fasta):
+        sample = util_index.sid_to_sample(record.id)
+        seq = str(record.seq)
         
         if seq in abund:
             abund[seq] += 1
@@ -89,6 +91,5 @@ if __name__ == '__main__':
     else:
         samples = None
         
-    with open(args.fasta) as f:
-        for line in table_lines(f, args.minimum_counts, samples):
-            args.output.write(line + "\n")
+    for line in table_lines(fasta, args.minimum_counts, samples):
+        args.output.write(line + "\n")
