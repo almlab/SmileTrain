@@ -85,6 +85,14 @@ def fastq_iterator(lines, check_sigils=True, check_lengths=True, output_type='li
             yield entry
         elif output_type == 'string':
             yield fastq_entry_list_to_string(entry)
+            
+def fasta_entry_list_to_string(entry):
+    '''[sequence id, sequence] -> newline-separated fasta entry'''
+    sid, sequence = entry
+    return ">%s\n%s" %(sid, sequence)
+
+def fasta_entries_to_string(entries):
+    return "\n".join([fasta_entry_list_to_string(entry) for entry in entries])
 
 def fastq_entry_list_to_string(entry):
     '''[at line, sequence line, quality line] -> new-line separated fastq entry'''
@@ -163,7 +171,7 @@ def check_for_nonempty(filenames, dry_run=False):
     filenames = listify(filenames)
     
     if dry_run:
-        print "dry run: test that files are non-empty: " + " ".join(filenames)
+        message("dry run: test that files are non-empty: " + " ".join(filenames), indent=4)
     else:
         check_for_existence(filenames)
     
@@ -179,7 +187,7 @@ def check_for_collisions(filenames, dry_run=False):
     filenames = listify(filenames)
 
     if dry_run:
-        print "dry run: test that destinations are free: " + " ".join(filenames)
+        message("dry run: test that destinations are free: " + " ".join(filenames), indent=4)
     else:
         tests = [os.path.isfile(filename) for filename in filenames]
         if True in tests:

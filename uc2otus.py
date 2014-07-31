@@ -7,6 +7,7 @@ Create an OTU table by combining information from
 '''
 
 import re, sys, argparse
+import util_index
 
 def parse_uc_line(line):
     '''
@@ -50,20 +51,6 @@ def parse_sample_lines(lines):
     '''read in the first column of each line'''
     return [line.split()[0] for line in lines]
 
-def parse_index_line(line):
-    '''read an index line to sample, sequence, abundance'''
-    sample, seq, abund = line.split()
-    abund = int(abund)
-    return [sample, seq, abund]
-
-def counts(table, sample, otu):
-    '''get counts from table structure, or 0 if sample or otu missing'''
-    if sample in table:
-        if otu in table[sample]:
-            return table[sample][otu]
-        
-    return 0
-
 def sparse_count_table(seq_otu, index_lines):
     '''
     Create a sparse count table using sequence-OTU mapping and sample-sequence-abundance index.
@@ -79,7 +66,7 @@ def sparse_count_table(seq_otu, index_lines):
     
     table = {}
     for line in index_lines:
-        sample, seq, abund = parse_index_line(line)
+        sample, seq, abund = util_index.parse_index_line(line)
         otu = seq_otu[seq]
         
         if sample not in table:
@@ -131,7 +118,7 @@ def otu_table(table, otus=None, samples=None):
     
     # loop over rows
     for otu in otus: 
-        yield "\t".join([otu] + [str(counts(table, sample, otu)) for sample in samples])
+        yield "\t".join([otu] + [str(util_index.counts(table, sample, otu)) for sample in samples])
 
 
 if __name__ == '__main__':

@@ -10,29 +10,45 @@ Illumina 1.3-1.7 format, specificially that
 import itertools, os, os.path, sys, argparse, shutil
 import util
 
-def check_illumina_format(filenames, target):
+def check_illumina_format(ifilenames, itargets):
     '''
     Raise error if any of the input filenames are not in the desired format.
     
-    filenames : iterable of strings
+    filenames : string, or iterable of strings
         files to be checked
-    target : string
-        'illumina13' or 'illumina18'
+    target : string, or iterable of strings
+        'illumina13' or 'illumina18' or 'ambiguous', or some combination
     '''
     
-    if target not in ['illumina13', 'illumina18']:
-        raise ArgumentError("unrecognized format type: %s" % target)
+    # convert to lists if required
+    if type(ifilenames) is str:
+        filenames = [ifilenames]
+    else:
+        filenames = ifilenames
+    
+    if type(itargets) is str:
+        targets = [itargets]
+    else:
+        targets = itargets
+    
+    # check that input targets are in acceptable list
+    acceptable_targets = set(['illumina13', 'illumina18', 'ambiguous'])
+    if not set(targets).issubset(acceptable_targets):
+        bad_targets = targets - acceptable_targets
+        raise ArgumentError("unrecognized format type(s): %s" % bad_targets)
     
     format_f = lambda fn: file_format(open(fn))
     
+    # check all the formats
     formats = [file_format(open(fn)) for fn in filenames]
-    tests = [form == target for form in formats]
+    tests = [form in targets for form in formats]
     bad_files = [fn for fn, test in zip(filenames, tests) if test == False]
     bad_forms = set([form for form, test in zip(formats, tests) if test == False])
     
+    # complain if something went wrong
     if False in tests:
         bad_info = "\n".join([" ".join([fn, form]) for fn, form in zip(filenames, bad_forms)])
-        raise RuntimeError("files do not appear to be in %s format: \n%s" % (target, bad_info))
+        raise RuntimeError("files do not appear to be in %s format: \n%s" % (targets, bad_info))
 
 def file_format(fastq, max_entries=10):
     '''
@@ -88,6 +104,6 @@ if __name__ == '__main__':
         elif format_guess == 'illumina18':
             print "Looks like Illumina 1.8 format. You may need to convert. Beware..."
         elif format_guess == 'ambiguous':
-            print "Doesn't look like Illumina 1.3-1.7 or 1.8 format. I don't know how to proceed!"
+            print "Could be either 1.3-1.7 or 1.8 format. Ambiguous. Proceed with caution."
         else:
             raise RuntimeError

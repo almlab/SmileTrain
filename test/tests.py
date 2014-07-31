@@ -110,7 +110,7 @@ class TestFastqUtilities(TestWithFiles):
         os.write(fastq_fh, self.good_fastq_content)
         os.close(fastq_fh)
         
-        subprocess.call(['python', '../split_fastq.py', fastq_fn, '2'])
+        subprocess.call(['python', 'split_fastq.py', fastq_fn, '2'])
         
         with open("%s.0" % fastq_fn) as f:
             fastq_out0 = f.read()
@@ -224,23 +224,6 @@ class TestFileChecks(TestWithFiles):
     def test_check_for_collision_no(self):
         '''should identify destination as empty'''
         util.check_for_collisions(self.no_fn)
-
-
-class TestRemovePrimers(unittest.TestCase):
-    '''tests for the remove primers step'''
-
-    def setUp(self):
-        self.fastq = "@lolapolooza\nTAAAACATCATCATCAT\n+whatever\nabcdefghijklmnopq\n"
-        self.fastq_lines = self.fastq.split()
-        self.primer = "AAAA"
-        self.max_primer_diffs = 1
-
-        self.primer_remover = remove_primers.PrimerRemover(self.fastq_lines, self.primer, self.max_primer_diffs)
-
-    def test_correct_output(self):
-        '''the primer remover should trim the match as expected'''
-        self.assertEqual(self.primer_remover.next(), "@lolapolooza\nCATCATCATCAT\n+\nfghijklmnopq")
-        self.assertEqual(self.primer_remover.n_successes, 1)
         
         
 class TestIntersect(TestWithFiles):
@@ -309,10 +292,6 @@ class TestDereplicate(unittest.TestCase):
 
 class TestIndex(unittest.TestCase):
     '''tests for index-writing script'''
-    
-    def test_parse_seq_id(self):
-        '''should get sequence ID from first fasta line'''
-        self.assertEqual(index.parse_seq_sid('seq44;counts=12'), 'seq44')
         
     def test_parse_derep_fasta(self):
         '''should make a dictionary of fasta lines'''
