@@ -1,9 +1,10 @@
 import unittest
 from SmileTrain import seq_table
+from SmileTrain.test import FakeFile
 
 class TestFastaToTableAndAbundance(unittest.TestCase):
     def test_correct(self):
-        fasta = ['>sample=donor1;1', 'AAA', '>sample=donor1;2', 'AAA', '>sample=donor2;1', 'AAA', '>sample=donor3;1', 'TTT']
+        fasta = FakeFile(['>sample=donor1;1', 'AAA', '>sample=donor1;2', 'AAA', '>sample=donor2;1', 'AAA', '>sample=donor3;1', 'TTT'])
         table = {'AAA': {'donor1': 2, 'donor2': 1}, 'TTT': {'donor3': 1}}
         abund = {'AAA': 3, 'TTT': 1}
         self.assertEqual(seq_table.fasta_to_table_and_abund(fasta), (table, abund))

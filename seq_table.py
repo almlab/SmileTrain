@@ -25,7 +25,7 @@ def fasta_to_table_and_abund(fasta):
     
     table = {}
     abund = {}
-    for record in SeqIO.parse(fasta):
+    for record in SeqIO.parse(fasta, 'fasta'):
         sample = util_index.sid_to_sample(record.id)
         seq = str(record.seq)
         

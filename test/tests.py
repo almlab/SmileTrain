@@ -10,6 +10,7 @@ the tests folder and then cleaned up.
 Most of these tests should be refactored into separate scripts.
 '''
 
+from SmileTrain.test import FakeFile
 import unittest, tempfile, subprocess, os, shutil
 
 from SmileTrain import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index
@@ -260,9 +261,9 @@ class TestDereplicate(unittest.TestCase):
     '''tests for dereplication without samples'''
     
     def setUp(self):
-        entries = [['foo', 'AA'], ['bar', 'CC'], ['baz', 'AA'], ['blag', 'AA'], ['flog', 'TT'], ['blob', 'TT']]
+        fasta = FakeFile(['>foo', 'AA', '>bar', 'CC', '>baz', 'AA', '>blag', 'AA', '>flog', 'TT', '>blob', 'TT'])
         minimum_counts = 2
-        self.derep = derep_fulllength.Dereplicator(entries, minimum_counts)
+        self.derep = derep_fulllength.Dereplicator(fasta, minimum_counts)
         
     def test_new_seq_id(self):
         '''should give increasing sequence ids'''
@@ -286,8 +287,9 @@ class TestDereplicate(unittest.TestCase):
     def test_fasta_entries(self):
         '''should give abundance-sorted entries'''
         fe = self.derep.new_fasta_entries()
-        self.assertEqual(fe.next(), '>seq0;counts=3\nAA')
-        self.assertEqual(fe.next(), '>seq2;counts=2\nTT')
+        record1 = fe.next()
+        record2 = fe.next()
+        self.assertEqual([record1.id, str(record1.seq), record2.id, str(record2.seq)], ['seq0;counts=3', 'AA', 'seq2;counts=2', 'TT'])
         
 
 class TestIndex(unittest.TestCase):
@@ -295,8 +297,8 @@ class TestIndex(unittest.TestCase):
         
     def test_parse_derep_fasta(self):
         '''should make a dictionary of fasta lines'''
-        fasta_lines = ['>seq0;counts=10', 'AAA', '>seq4;counts=23', 'TTT']
-        self.assertEqual(index.parse_derep_fasta(fasta_lines), {'AAA': 'seq0', 'TTT': 'seq4'})
+        fasta = FakeFile(['>seq0;counts=10', 'AAA', '>seq4;counts=23', 'TTT'])
+        self.assertEqual(index.parse_derep_fasta(fasta), {'AAA': 'seq0', 'TTT': 'seq4'})
         
     def test_sid_to_sample(self):
         '''should extract sample from fasta line'''
@@ -304,8 +306,8 @@ class TestIndex(unittest.TestCase):
         
     def test_parse_full_fasta(self):
         seq_sid = {'AAA': 'seq0', 'TTT': 'seq4'}
-        fasta_lines = ['>sample=donor1;1', 'AAA', '>sample=donor1;2', 'AAA', '>sample=donor1;3', 'TTT', '>sample=donorT;1', 'TTT']
-        abund = index.parse_full_fasta(fasta_lines, seq_sid)
+        fasta = FakeFile(['>sample=donor1;1', 'AAA', '>sample=donor1;2', 'AAA', '>sample=donor1;3', 'TTT', '>sample=donorT;1', 'TTT'])
+        abund = index.parse_full_fasta(fasta, seq_sid)
         self.assertEqual(abund, {('donor1', 'seq0'): 2, ('donor1', 'seq4'): 1, ('donorT', 'seq4'): 1})
         
 

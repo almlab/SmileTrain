@@ -18,7 +18,7 @@ import util, util_index
 
 def parse_derep_fasta(fasta):
     '''create a hash {sequence => ID} from fasta filename or filehandle'''
-    return {str(record.seq): util_index.parse_seq_id(record.id) for record in SeqIO.parse(fasta, 'fasta')}
+    return {str(record.seq): util_index.parse_seq_sid(record.id) for record in SeqIO.parse(fasta, 'fasta')}
 
 def sid_to_sample(sid):
     '''sample=donor1;400 -> donor1'''
@@ -46,9 +46,10 @@ def parse_full_fasta(fasta, seq_sid):
     abund = {}
     for record in SeqIO.parse(fasta, 'fasta'):
         sample = sid_to_sample(record.id)
+        seq = str(record.seq)
         
-        if record.seq in seq_sid:
-            seq_id = seq_sid[str(record.seq)]
+        if seq in seq_sid:
+            seq_id = seq_sid[seq]
             key = (sample, seq_id)
             
             if key in abund:

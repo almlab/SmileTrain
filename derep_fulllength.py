@@ -78,7 +78,7 @@ class Dereplicator():
         new_seq_ids = self.iter_seq_ids()
         
         # keep track of the highest sequence index used
-        for record in SeqIO.parse(fasta, 'fasta'):
+        for record in SeqIO.parse(self.fasta, 'fasta'):
             seq = str(record.seq)
             
             # if we haven't seen this sequence before, give it a new index
