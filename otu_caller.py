@@ -155,7 +155,7 @@ class OTU_Caller():
         
         if self.dry_run:
             cmds = ['python %s/check_fastq_format.py %s' %(self.library, f) for f in files]
-            print "\n".join(cmds)
+            message("\n".join(cmds), indent=0)
         else:
             check_fastq_format.check_illumina_format(files, 'illumina13')
     
@@ -328,7 +328,11 @@ class OTU_Caller():
         assert(util.is_executable(self.usearch))
         
         # check that the files are in the right format
-        check_fastq_format.check_illumina_format(self.ci, ['illumina18', 'ambiguous'])
+        if self.dry_run:
+            cmds = ['python %s/check_fastq_format.py %s' %(self.library, f) for f in self.ci]
+            message("\n".join(cmds), indent=0)
+        else:
+            check_fastq_format.check_illumina_format(self.ci, ['illumina18', 'ambiguous'])
 
         cmds = []
         for i in range(self.n_cpus):
