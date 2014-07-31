@@ -4,7 +4,7 @@
 Get the taxonomies for a seq table using greengenes (or whatever).
 '''
 
-import sys, argparse, tempfile, cPickle as pickle, ConfigParser
+import sys, argparse, tempfile, cPickle as pickle, ConfigParser, os
 from SmileTrain import ssub
 
 def seq_table_to_fasta(table_fh, fasta_fh):
@@ -12,7 +12,7 @@ def seq_table_to_fasta(table_fh, fasta_fh):
     # get the sequences (throwing away the first line "SEQUENCE")
     seqs = [line.split()[0] for line in table_fh]
     seq_header = seqs.pop(0)
-    assert(seq_header == "SEQUENCE")
+    assert(seq_header.lower() == "sequence")
     
     # write the fasta
     for i, seq in enumerate(seqs):
@@ -79,13 +79,14 @@ if __name__ == '__main__':
     submitter = ssub.Ssub()
     
     gg_fasta = os.path.join(gg_dir, "%s_otus.fasta" %(args.sid))
-    cmd, uc_fn = usearch_against_database_cmd(usearch, args.table, tmp_dir, gg_fasta, args.fid)
+    with open(args.table) as f:
+        cmd, uc_fn = usearch_against_database_cmd(usearch, f, tmp_dir, gg_fasta, args.fid)
     submitter.submit_and_wait([cmd])
     
     with open(uc_fn) as f:
-        ids = uc_to_seq_map(f)
+        ids = uc_to_ids(f)
     
-    with open(args.db) as f:
+    with open(gg_tax) as f:
         taxs = lookup_taxonomies(ids, f)
         
     args.output.write("\n".join(taxs))
