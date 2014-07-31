@@ -50,8 +50,15 @@ def uc_to_ids(uc_fh):
     
     return ids
 
-def lookup_taxonomies(ids, tax_pkl_fh):
+def lookup_taxonomies(ids, tax_pkl_fh, no_match=None, no_match_label=None):
     d = pickle.load(tax_pkl_fh)
+    
+    if no_match is not None:
+        if no_match_label is None:
+            raise RuntimeError("no match symbol specified (%s) but not label!" %(no_match))
+        
+        taxs[no_match] = no_match_label
+    
     taxs = [d[qid] for qid in ids]
     return taxs
 
@@ -63,6 +70,8 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--sid', default='99', help='greengenes repset identity (default: 99)')
     parser.add_argument('-i', '--fid', default='0.995', help='fractional identity to make hit (default: 0.995)')
     parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output file (default stdout)')
+    parser.add_argument('--no_match', '-n', default='*', help='no match indicator in uc (default: *)')
+    parser.add_argument('--no_match_label', '-l', default='k__; p__; c__; o__; f__; g__; s__', help='taxonomy for no match (default: Qiime empty)')
     
     args = parser.parse_args()
     
@@ -87,6 +96,6 @@ if __name__ == '__main__':
         ids = uc_to_ids(f)
     
     with open(gg_tax) as f:
-        taxs = lookup_taxonomies(ids, f)
+        taxs = lookup_taxonomies(ids, f, args.no_match, args.no_match_label)
         
     args.output.write("\n".join(taxs))
