@@ -28,13 +28,17 @@ def write_tmp_fasta(table_fh, tmp_dir):
     
     return fasta_fn
 
-def usearch_against_database_cmd(usearch, table_fh, tmp_dir, db, fid, strand='both'):
+def usearch_against_database_cmd(usearch, table_fh, tmp_dir, db, fid, no_hit=None, strand='both'):
     fasta_fn = write_tmp_fasta(table_fh, tmp_dir)
     uc_fh = tempfile.NamedTemporaryFile(suffix='.uc', delete=True, dir=tmp_dir)
     uc_fn = uc_fh.name
     uc_fh.close()
     
     cmd = "%s -usearch_global %s -uc %s -strand %s -id %s -db %s" %(usearch, fasta_fn, uc_fn, strand, fid, db)
+    
+    if no_hit is not None:
+        cmd += " -notmatched %s" %(no_hit)
+    
     print "  temporary fasta: %s" % fasta_fn
     print "  temporary uc: %s" % uc_fn
     return cmd, uc_fn
@@ -70,6 +74,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--sid', default='99', help='greengenes repset identity (default: 99)')
     parser.add_argument('-i', '--fid', default='0.995', help='fractional identity to make hit (default: 0.995)')
     parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output file (default stdout)')
+    parser.add_argument('--no_hit', default=None, help='get unmatched sequences as separate fasta?')
     parser.add_argument('--no_match', '-n', default='*', help='no match indicator in uc (default: *)')
     parser.add_argument('--no_match_label', '-l', default='k__; p__; c__; o__; f__; g__; s__', help='taxonomy for no match (default: Qiime empty)')
     
@@ -89,7 +94,7 @@ if __name__ == '__main__':
     
     gg_fasta = os.path.join(gg_dir, "%s_otus.fasta" %(args.sid))
     with open(args.table) as f:
-        cmd, uc_fn = usearch_against_database_cmd(usearch, f, tmp_dir, gg_fasta, args.fid)
+        cmd, uc_fn = usearch_against_database_cmd(usearch, f, tmp_dir, gg_fasta, args.fid, args.no_hit)
     submitter.submit_and_wait([cmd])
     
     with open(uc_fn) as f:
