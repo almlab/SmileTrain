@@ -171,7 +171,7 @@ def check_for_nonempty(filenames, dry_run=False):
     filenames = listify(filenames)
     
     if dry_run:
-        print "dry run: test that files are non-empty: " + " ".join(filenames)
+        message("dry run: test that files are non-empty: " + " ".join(filenames), indent=4)
     else:
         check_for_existence(filenames)
     
@@ -187,7 +187,7 @@ def check_for_collisions(filenames, dry_run=False):
     filenames = listify(filenames)
 
     if dry_run:
-        print "dry run: test that destinations are free: " + " ".join(filenames)
+        message("dry run: test that destinations are free: " + " ".join(filenames), indent=4)
     else:
         tests = [os.path.isfile(filename) for filename in filenames]
         if True in tests:

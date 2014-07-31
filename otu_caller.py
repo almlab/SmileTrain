@@ -64,7 +64,7 @@ def parse_args():
     group9.add_argument('--gold_db', default=config.get('Data', 'gold'), help='Gold 16S database')
     group11.add_argument('--sids', default='91,94,97,99', help='Sequence identities for clustering')
     group12.add_argument('--n_cpus', '-n', default = 1, type = int, help='Number of CPUs')
-    group12.add_argument('--dry_run', '-z', action='store_true', help='Submit no jobs; just print output commands')
+    group12.add_argument('--dry_run', '-z', action='store_true', help='submit no jobs; suppress file checks; ust print output commands')
     
     # parse arguments
     if __name__ == '__main__':
@@ -152,7 +152,12 @@ class OTU_Caller():
             files.append(self.r)
             
         message('Testing format of %s' %(" ".join(files)))
-        check_fastq_format.check_illumina_format(files, 'illumina13')
+        
+        if self.dry_run:
+            cmds = ['python %s/check_fastq_format.py %s' %(self.library, f) for f in files]
+            print "\n".join(cmds)
+        else:
+            check_fastq_format.check_illumina_format(files, 'illumina13')
     
     def split_fastq(self):
         '''Split forward and reverse reads (for parallel processing)'''
@@ -163,11 +168,11 @@ class OTU_Caller():
 
         # check for inputs and collisions of output
         if do_forward:
-            util.check_for_nonempty(self.f)
-            util.check_for_collisions(['%s.%s' %(self.f, i) for i in range(self.n_cpus)])
+            util.check_for_nonempty(self.f, self.dry_run)
+            util.check_for_collisions(['%s.%s' %(self.f, i) for i in range(self.n_cpus)], self.dry_run)
         if do_reverse:
-            util.check_for_nonempty(self.r)
-            util.check_for_collisions(['%s.%s' %(self.r, i) for i in range(self.n_cpus)])
+            util.check_for_nonempty(self.r, self.dry_run)
+            util.check_for_collisions(['%s.%s' %(self.r, i) for i in range(self.n_cpus)], self.dry_run)
         
         # Get list of commands
         cmds = []
@@ -191,12 +196,12 @@ class OTU_Caller():
         '''Convert to compatible fastq format'''
         
         if self.f:
-            util.check_for_nonempty(self.fi)
-            util.check_for_collisions(self.Fi)
+            util.check_for_nonempty(self.fi, self.dry_run)
+            util.check_for_collisions(self.Fi, self.dry_run)
             
         if self.r:
-            util.check_for_nonempty(self.ri)
-            util.check_for_collisions(self.Fi)
+            util.check_for_nonempty(self.ri, self.dry_run)
+            util.check_for_collisions(self.Fi, self.dry_run)
             
         cmds = []
         for i in range(self.n_cpus):
@@ -234,11 +239,11 @@ class OTU_Caller():
 
         # check for inputs and collisions of output
         if do_forward:
-            util.check_for_nonempty(self.fi)
-            util.check_for_collisions(self.Fi)
+            util.check_for_nonempty(self.fi, self.dry_run)
+            util.check_for_collisions(self.Fi, self.dry_run)
         if do_reverse:
-            util.check_for_nonempty(self.ri)
-            util.check_for_collisions(self.Ri)
+            util.check_for_nonempty(self.ri, self.dry_run)
+            util.check_for_collisions(self.Ri, self.dry_run)
         
         # get list of commands using forward, reverse, or both
         cmds = []
@@ -316,8 +321,8 @@ class OTU_Caller():
         '''Quality filter with truncqual and maximum expected error'''
         
         # validate input/output
-        util.check_for_nonempty(self.ci)
-        util.check_for_collisions(self.Ci)
+        util.check_for_nonempty(self.ci, self.dry_run)
+        util.check_for_collisions(self.Ci, self.dry_run)
         
         # check that usearch is ready to go
         assert(util.is_executable(self.usearch))
@@ -350,7 +355,7 @@ class OTU_Caller():
         
         # verify input & check for collisions with output
         util.check_for_nonempty(['q.fst', 'q.derep.fst'], dry_run=self.dry_run)
-        util.check_for_collisions('q.index')
+        util.check_for_collisions('q.index', self.dry_run)
         
         cmd = 'python %s/index.py q.fst q.derep.fst --output q.index' %(self.library)
         self.ssub.submit_and_wait([cmd], self.dry_run)
@@ -397,8 +402,8 @@ class OTU_Caller():
     def reference_mapping(self):
         '''Map reads to reference databases'''
         
-        util.check_for_nonempty(self.db)
-        util.check_for_collisions(self.uc)
+        util.check_for_nonempty(self.db, self.dry_run)
+        util.check_for_collisions(self.uc, self.dry_run)
 
         cmds = []
         for i in range(len(self.sids)):
@@ -411,56 +416,56 @@ class OTU_Caller():
     def open_reference_mapping(self):
         '''Makes new otus from reads missed in the original reference mapping, then maps to those otus'''
         
-        util.check_for_nonempty(self.uc)
-        util.check_for_collisions(self.open_fst)        # unmatched seqs go into a new source fasta
-        util.check_for_collisions(self.open_otu_tmp)    # rep seqs for otus made from those unmatched seqs
-        util.check_for_collisions(self.open_otu)        # same rep seqs, but renamed as OTUs
-        util.check_for_collisions(self.open_uc)         # mapping information of unmatched seqs to denovo OTUs
-        util.check_for_collisions(self.orig_uc)         # mapping information for reference-based matching
+        util.check_for_nonempty(self.uc, self.dry_run)
+        util.check_for_collisions(self.open_fst, self.dry_run)        # unmatched seqs go into a new source fasta
+        util.check_for_collisions(self.open_otu_tmp, self.dry_run)    # rep seqs for otus made from those unmatched seqs
+        util.check_for_collisions(self.open_otu, self.dry_run)        # same rep seqs, but renamed as OTUs
+        util.check_for_collisions(self.open_uc, self.dry_run)         # mapping information of unmatched seqs to denovo OTUs
+        util.check_for_collisions(self.orig_uc, self.dry_run)         # mapping information for reference-based matching
         
         # grab the unmatched sequences from the database-reference uc
         cmds = ['python %s/uc2denovo.py q.derep.fst %s --output %s' %(self.library, self.uc[i], self.open_fst[i]) \
                 for i in range(len(self.sids))]
         self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.open_fst)
+        util.check_for_nonempty(self.open_fst, self.dry_run)
         
         # denovo cluster those sequences
         cmds = ['%s -cluster_otus %s -otus %s -otu_radius_pct .%d' %(self.usearch, self.open_fst[i], self.open_otu[i], self.reference_map_pcts[i]) \
                 for i in range(len(self.sids))]
         self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.open_otu)
+        util.check_for_nonempty(self.open_otu, self.dry_run)
         
         # rename the OTUs in those representative sequences
         cmds = ['python %s/usearch_python/fasta_number.py %s OTU%d_ > %s' %(self.library, self.open_otu[i], self.sids[i], self.open_otu_tmp[i]) \
                 for i in range(len(self.sids))]
         self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.open_otu_tmp)
+        util.check_for_nonempty(self.open_otu_tmp, self.dry_run)
         
         # move the file with the renamed sequences into the spot as the final file
-        self.ssub.move_files(self.open_otu_tmp, self.open_otu)
-        util.check_for_nonempty(self.open_otu)
+        self.ssub.move_files(self.open_otu_tmp, self.open_otu, self.dry_run)
+        util.check_for_nonempty(self.open_otu, self.dry_run)
         
         # reference map against these new rep seqs
         cmds = ['%s -usearch_global %s -db %s -uc %s -strand both -id .%d' %(self.usearch, self.open_fst[i], self.open_otu[i], self.open_uc[i], self.reference_map_sids[i]) \
                 for i in range(len(self.sids))]
         self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.open_uc)
+        util.check_for_nonempty(self.open_uc, self.dry_run)
         
         # move the original uc files to different place
-        self.ssub.move_files(self.uc, self.orig_uc)
-        util.check_for_nonempty(self.orig_uc)
+        self.ssub.move_files(self.uc, self.orig_uc, self.dry_run)
+        util.check_for_nonempty(self.orig_uc, self.dry_run)
         
         # combine the uc files
         cmds = ['grep "^H" %s > %s; cat %s >> %s' %(self.orig_uc[i], self.uc[i], self.open_uc[i], self.uc[i]) \
                 for i in range(len(self.sids))]
         self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.uc)
+        util.check_for_nonempty(self.uc, self.dry_run)
     
     def make_otu_tables(self):
         '''Make OTU tables from UC file'''
         
-        util.check_for_nonempty(self.uc + ['q.index'])
-        util.check_for_collisions(self.xi)
+        util.check_for_nonempty(self.uc + ['q.index'], self.dry_run)
+        util.check_for_collisions(self.xi, self.dry_run)
 
         cmds = []
         for i in range(len(self.sids)):
@@ -473,21 +478,21 @@ class OTU_Caller():
             cmds.append(cmd)
         self.ssub.submit_and_wait(cmds, self.dry_run)
         
-        util.check_for_nonempty(self.xi)
+        util.check_for_nonempty(self.xi, self.dry_run)
         
     def make_seq_table(self):
         '''Make sequence table from the index file'''
         
-        util.check_for_nonempty('q.fst')
-        util.check_for_collisions('seq.txt')
+        util.check_for_nonempty('q.fst', self.dry_run)
+        util.check_for_collisions('seq.counts', self.dry_run)
 
-        cmd = 'python %s/seq_table.py %s --output %s' %(self.library, 'q.fst', 'seq.txt')
+        cmd = 'python %s/seq_table.py %s --output %s' %(self.library, 'q.fst', 'seq.counts')
         
         if self.barcodes is not None:
             cmd += ' --samples %s' %(self.barcodes)
         
         self.ssub.submit_and_wait([cmd], self.dry_run)
-        util.check_for_nonempty('seq.txt')
+        util.check_for_nonempty('seq.counts', self.dry_run)
     
 
 if __name__ == '__main__':
