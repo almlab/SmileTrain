@@ -91,4 +91,4 @@ if __name__ == '__main__':
         
     with open(args.fasta) as f:
         for line in table_lines(f, args.minimum_counts, samples):
-            print line
+            args.output.write(line + "\n")
