@@ -103,4 +103,4 @@ if __name__ == '__main__':
     with open(gg_tax) as f:
         taxs = lookup_taxonomies(ids, f, args.no_match, args.no_match_label)
         
-    args.output.write("\n".join(taxs))
+    args.output.write("\n".join(taxs) + "\n")
