@@ -54,6 +54,7 @@ if __name__ == '__main__':
     input_type.add_argument('-t', '--table', default=None, help='input otu table')
     input_type.add_argument('-u', '--uc', default=None, help='input uc file')
     input_type.add_argument('-l', '--list', default=None, help='input plain text list')
+    input_type.add_argument('-w', '--word', default=None, help='input a single ID')
     
     parser.add_argument('-i', '--no_match_id', default=None, help='OTU ID for no match (default "no_match" for table/list; "*" for uc)')
     parser.add_argument('-x', '--no_match_tax', default='k__; p__; c__; o__; f__; g__; s__', help='taxonomy for unmatched OTU ID (default is QIIME taxonomy format)')
@@ -69,6 +70,8 @@ if __name__ == '__main__':
     elif args.list is not None:
         ids = list_ids(args.list)
         if args.no_match_id is None: args.no_match_id = 'no_match'
+    elif args.word is not None:
+        ids = [args.word]
 
     # check if the database file ends in .pkl or .pickle
     # if it is, used a pickled dictionary
