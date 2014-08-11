@@ -20,7 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', default='fasta.pkl', help='output pickle file (default: fasta.pkl')
     args = parser.parse_args()
     
-    d = fasta_file_to_dict(input.fasta)
+    d = fasta_file_to_dict(args.fasta)
     
     # write the dictionary as a binary pickle
     with open(args.output, 'wb') as f:
