@@ -55,7 +55,7 @@ def file_format(fastq, max_entries=10):
             raise RuntimeError("could not verify format after %d entries" % max_entries)
         
         # make sure we can parse the at line
-        rid = util.fastq_at_line_to_id(record.id)
+        rid = util.parse_fastq_record_id(record)
         
         # check the quality line's character content
         return fastq_record_format(record)

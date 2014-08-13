@@ -36,7 +36,7 @@ class TestWithFiles(unittest.TestCase):
             shutil.rmtree(tmp_dir)
 
 
-def TestSplitFasta(TestFastaUtilities):
+def TestSplitFasta(TestWithFiles):
     def setUp(self):
         fasta_content = ">foo\nAAA\nAAA\n>bar\nCCC\n>baz\nTTT"
         fasta_fh, self.fasta_fn = tempfile.mkstemp(suffix='.fasta', dir=tmp_dir)
@@ -114,8 +114,7 @@ class TestFastqUtilities(TestWithFiles):
     def test_fastq_id_parsing(self):
         '''fastq_at_line_to_id should trim the starting @ and trailing /1 or /2'''
         
-        self.assertEqual(util.fastq_at_line_to_id("@lolapolooza:1234#ACGT/1"), "lolapolooza:1234#ACGT")
-        self.assertEqual(util.fastq_at_line_to_id("@lolapolooza:1234#ACGT/2"), "lolapolooza:1234#ACGT")
+        self.assertEqual(util.parse_fastq_record_id(self.fastq13_record), "lolapolooza:1234#ACGT")
         
     def test_fastq_ids(self):
         '''fastq_ids should get the right ids from some fastq entries'''

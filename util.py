@@ -48,11 +48,11 @@ def fastq_entry_list_to_string(entry):
     at_line, seq_line, quality_line = entry
     return "\n".join([at_line, seq_line, '+', quality_line])
 
-def fastq_at_line_to_id(line):
-    '''"@lolapolooza/1" -> "lolapolooza"'''
-    m = re.match('@(.+)/[12]', line)
+def parse_fastq_record_id(record):
+    '''BioPython fastq record "@lol/1" -> "lol"'''
+    m = re.match('^(.+)/[12]', record.id)
     if m is None:
-        raise RuntimeError("fastq at line did not parse: %s" % line)
+        raise RuntimeError("fastq record line did not parse: %s" % record.id)
     else:
         rid = m.group(1)
         
