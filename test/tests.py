@@ -36,33 +36,6 @@ class TestWithFiles(unittest.TestCase):
             shutil.rmtree(tmp_dir)
 
 
-class TestFastaUtilities(TestWithFiles):
-    '''tests for scripts and functions that do simple fasta manipulations'''
-
-    def setUp(self):
-        self.good_fasta_content = ">foo\nAAA\nAAA\n>bar\nCCC\n>baz\nTTT"
-        self.bad_fasta_content = ">foo\nAAA\nAAA\n>bar\n>baz\nTTT"
-
-    def test_fasta_entries_with_good_content(self):
-        '''fasta_entries should split the content as expected'''
-
-        fasta_lines = self.good_fasta_content.split('\n')
-        i = util.fasta_entries(fasta_lines)
-
-        self.assertEqual(i.next(), ["foo", "AAAAAA"])
-        self.assertEqual(i.next(), ["bar", "CCC"])
-        self.assertEqual(i.next(), ["baz", "TTT"])
-
-    def test_fasta_entries_with_bad_content(self):
-        '''fasta_entries should raise AssertionError when it gets two > lines back to back'''
-
-        fasta_lines = self.bad_fasta_content.split('\n')
-        i = util.fasta_entries(fasta_lines)
-
-        i.next()
-        with self.assertRaises(AssertionError):
-            i.next()
-
 def TestSplitFasta(TestFastaUtilities):
     def setUp(self):
         fasta_content = ">foo\nAAA\nAAA\n>bar\nCCC\n>baz\nTTT"
