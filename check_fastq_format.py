@@ -75,9 +75,9 @@ def fastq_record_format(record):
     min_score = min(scores)
     max_score = max(scores)
     
-    if min_score < 32:
+    if 1 <= min_score and min_score < 32 and max_score <= 41:
         return 'illumina18'
-    elif max_score > 41:
+    elif 32 <= min_score and 41 < max_score and max_score <= 71:
         return 'illumina13'
     elif min_score < 1 or max_score > 71:
         raise RuntimeError("quality scores don't match known encoding: min=%s max=%s" %(min_score, max_score))

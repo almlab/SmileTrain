@@ -83,7 +83,8 @@ def mismatches(seq, primer, w):
     return [I, D]
 
 def listify(inp):
-    '''Ensure that input is a list
+    '''
+    Ensure that input is a list
     
     inp : string or list
     

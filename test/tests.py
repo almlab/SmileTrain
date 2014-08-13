@@ -11,11 +11,19 @@ Most of these tests should be refactored into separate scripts.
 '''
 
 from SmileTrain.test import FakeFile
-import unittest, tempfile, subprocess, os, shutil
+import unittest, tempfile, subprocess, os, shutil, StringIO
+from Bio import SeqIO, Seq
 
 from SmileTrain import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index
 
 tmp_dir = 'tmp'
+
+def fake_fh(content):
+    '''make a fake filehandle with this content'''
+    fh = StringIO.StringIO()
+    fh.write(content)
+    fh.seek(0)
+    return fh
 
 class TestWithFiles(unittest.TestCase):
     '''tests that need to read and write files'''
@@ -99,10 +107,14 @@ class TestFastqUtilities(TestWithFiles):
         self.fastq13 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+\nABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefgh"""
         self.fastq18 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+\n"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHJ"""
         
-    def test_fastq_iterator(self):
-        it = util.fastq_iterator(self.good_fastq_content.split())
-        self.assertEqual(it.next(), ['@foo', 'AAA', '!!!'])
-        self.assertEqual(it.next(), ['@bar', 'CCC', '###'])
+        self.fastq13_fh = fake_fh(self.fastq13 + "\n")
+        self.fastq13_record = SeqIO.read(self.fastq13_fh, 'fastq')
+        
+        self.fastq18_fh = fake_fh(self.fastq18 + "\n")
+        self.fastq18_record = SeqIO.read(self.fastq18_fh, 'fastq')
+        
+        fh = fake_fh('''@lol:1234#ACGT/1\nAAAA\n+\nAh"J\n''')
+        self.fastq_ambig_record = SeqIO.read(fh, 'fastq')
         
     def test_split_fastq(self):
         '''split_fastq.py should split and trim content as expected'''
@@ -150,23 +162,17 @@ class TestFastqUtilities(TestWithFiles):
         out = intersect.fastq_entries_with_matching_ids(fastq_lines, ['lolapolooza:7890#TGCA']).next()
         self.assertEqual(out, '@lolapolooza:7890#TGCA/1\nGAATACTACGGGAGAGAAA\n+\nabcdefghijklmnopqrs')
         
-    def test_format_identification(self):
-        '''should discriminate Illumina 1.3-1.7 against 1.8 against trash'''
-        fastq13_quality = "AJ[h"
-        fastq18_quality = "AJ';"
-        ambiguous_fastq = "ABCJ"
-        mixed_fastq = "AJ[h';"
-        bad_fastq = "AJ{|"
+    def test_illumina13_id(self):
+        '''should find illumina13 format'''
+        self.assertEqual(check_fastq_format.fastq_record_format(self.fastq13_record), 'illumina13')
         
-        self.assertEqual(check_fastq_format.quality_line_format(fastq13_quality), 'illumina13')
-        self.assertEqual(check_fastq_format.quality_line_format(fastq18_quality), 'illumina18')
-        self.assertEqual(check_fastq_format.quality_line_format(ambiguous_fastq), 'ambiguous')
+    def test_illumina18_id(self):
+        '''should find illumina18 format'''
+        self.assertEqual(check_fastq_format.fastq_record_format(self.fastq18_record), 'illumina18')
         
-        with self.assertRaises(RuntimeError):
-            check_fastq_format.quality_line_format(mixed_fastq)
-            
-        with self.assertRaises(RuntimeError):
-            check_fastq_format.quality_line_format(bad_fastq)
+    def test_ambiguous_illumina_id(self):
+        '''should find ambiguous illumina format'''
+        self.assertEqual(check_fastq_format.fastq_record_format(self.fastq_ambig_record), 'ambiguous')
             
     def test_format_conversion(self):
         '''should convert Illumina 1.4-1.7 to our mixed format'''
