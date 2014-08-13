@@ -1,50 +1,6 @@
 import re, string, sys, time, itertools, os, subprocess
 import usearch_python.primer
 
-def fasta_entries(lines, output_type='list'):
-    '''
-    Yield [id, sequence] pairs from a fasta file. Sequence allowed to run over multiple lines.
-    
-    lines : sequence or iterator of strings
-        lines from the fasta file
-    output_type : 'list' or 'string'
-    
-    yields : list or string
-        [id (without the >), sequence] pairs if 'list'; ">id\nseq" if 'string'
-    '''
-
-    sid = None
-    sequence = ''
-    for line in lines:
-        line = line.rstrip()
-
-        # check if this is the first line
-        if sid is None:
-            assert(line.startswith('>'))
-            sid = line[1:]
-        else:
-            if line.startswith('>'):
-                assert(sid != '')
-                assert(sequence != '')
-
-                if output_type == 'list':
-                    yield [sid, sequence]
-                elif output_type == 'string':
-                    yield ">%s\n%s" %(sid, sequence)
-                else:
-                    raise RuntimeError("unknown output type %s" %(output_type))
-                
-                sid = line[1:]
-                sequence = ''
-            else:
-                sequence += line
-
-    if output_type == 'list':
-        yield [sid, sequence]
-    elif output_type == 'string':
-        yield ">%s\n%s" %(sid, sequence)
-    else:
-        raise RuntimeError("unknown output type %s" %(output_type))
 
 def fastq_iterator(lines, check_sigils=True, check_lengths=True, output_type='list'):
     '''
@@ -86,13 +42,6 @@ def fastq_iterator(lines, check_sigils=True, check_lengths=True, output_type='li
         elif output_type == 'string':
             yield fastq_entry_list_to_string(entry)
             
-def fasta_entry_list_to_string(entry):
-    '''[sequence id, sequence] -> newline-separated fasta entry'''
-    sid, sequence = entry
-    return ">%s\n%s" %(sid, sequence)
-
-def fasta_entries_to_string(entries):
-    return "\n".join([fasta_entry_list_to_string(entry) for entry in entries])
 
 def fastq_entry_list_to_string(entry):
     '''[at line, sequence line, quality line] -> new-line separated fastq entry'''
@@ -212,62 +161,6 @@ def error(text, indent=2):
     sys.stderr.write('%s%s\n' %(space, text))
     quit()
 
-def read_list(fn, dtype=str):
-    # read file as list
-    x = [dtype(line.rstrip()) for line in open(fn)]
-    return x
-
-def read_dataframe(fn, index_dtype=str, columns_dtype=str):
-    import pandas as pd
-    # read file as pandas dataframe
-    x = pd.read_table(fn, sep='\t', header=0, index_col=0)
-    x.index = x.index.astype(index_dtype)
-    x.columns = x.columns.astype(columns_dtype)
-    return x
-
-def read_tseries(fn):
-    import pandas as pd
-    # read file as pandas time series
-    return read_dataframe(fn, index_dtype=float, columns_dtype=str)
-
-def iter_fst(fn):
-    # generator that iterates through [sid, seq] pairs in a fasta file
-    sid = ''
-    seq = ''
-    for line in open(fn):
-        line = line.rstrip()
-        if line.startswith('>'):
-            if seq != '':
-                yield [sid, seq]
-            sid = line[1:]
-            seq = ''
-        else:
-            seq += line
-    yield [sid, seq]
-
-def iter_fsq(fn):
-    # generator that iterates through records in a fastq file
-    record = []
-    i = 0
-    for line in open(fn):
-        i += 1
-        if i % 4 == 1:
-            if len(record) > 0:
-                yield record
-            record = []
-        record.append(line.rstrip())
-    yield record
-
-def read_fst(fn, reverse=False):
-    # read fasta file as dictionary
-    fst = {}
-    for [sid, seq] in iterfst(fst):
-        if reverse == False:
-            fst[sid] = seq
-        elif reverse == True:
-            fst[seq] = sid
-    return fst
-
 def cycle(x):
     # an efficient way to cycle through a list (similar to itertools.cycle)
     while True:
@@ -284,9 +177,6 @@ class timer():
         self.t.append(time.time())
         return self.t[-1] - self.t.pop(0)
 
-rctab = string.maketrans('ACGTacgt','TGCAtgca')
-def reverse_complement(x):
-    return x[::-1].translate(rctab)
 
 banner = '''
  ________            _____ ______      ________                _____          
