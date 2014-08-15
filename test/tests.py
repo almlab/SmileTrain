@@ -18,7 +18,7 @@ from SmileTrain import util, remove_primers, derep_fulllength, intersect, check_
 
 tmp_dir = 'tmp'
 
-def fake_fh(content):
+def fake_fh(content=''):
     '''make a fake filehandle with this content'''
     fh = StringIO.StringIO()
     fh.write(content)
@@ -149,10 +149,12 @@ class TestFastqUtilities(TestWithFiles):
     def test_format_conversion(self):
         '''should convert Illumina 1.4-1.7 to our mixed format'''
         
-        entry13 = util.fastq_iterator(self.fastq13.split("\n")).next()
-        entry18 = util.fastq_iterator(self.fastq18.split("\n")).next()
+        record18 = convert_fastq.convert_record_illumina13_to_18(self.fastq13_record)
+        fh = fake_fh()
+        SeqIO.write(record18, fh, 'fastq')
+        entry18 = fh.getvalue()
         
-        self.assertEqual(convert_fastq.convert_entry(entry13), entry18)
+        self.assertEqual(entry18, self.fastq18)
         
     def test_format_check_right(self):
         '''should identify written file as correct format'''

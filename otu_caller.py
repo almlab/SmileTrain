@@ -206,10 +206,10 @@ class OTU_Caller():
         cmds = []
         for i in range(self.n_cpus):
             if self.f:
-                cmd = 'python %s/convert_fastq.py %s %s' %(self.library, self.fi[i], self.Fi[i])
+                cmd = 'python %s/convert_fastq.py %s > %s' %(self.library, self.fi[i], self.Fi[i])
                 cmds.append(cmd)
             if self.r:
-                cmd = 'python %s/convert_fastq.py %s %s' %(self.library, self.ri[i], self.Ri[i])
+                cmd = 'python %s/convert_fastq.py %s > %s' %(self.library, self.ri[i], self.Ri[i])
                 cmds.append(cmd)
                 
         self.ssub.submit_and_wait(cmds, out=self.dry_run)
