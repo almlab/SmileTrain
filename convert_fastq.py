@@ -10,25 +10,36 @@ pipeline, specifically:
 '''
 
 import itertools, os, os.path, sys, argparse, itertools, shutil
+from Bio import SeqIO
 import util
 
-def convert_entry(entry, check_id_parse=True):
-    at_line, seq_line, qua_line = entry
+def convert_record(record, offset=-31):
+    '''
+    Convert a BioPython fastq record
     
-    if check_id_parse:
-        # try parsing the id
-        rid = util.fastq_at_line_to_id(at_line)
+    record : Seq
+        to be converted
+    offset : int
+        how to change the quality score (default: -31, which goes from Illumina 1.3 to 1.8)
         
-    return [at_line, seq_line, util.illumina13_quality_to_18(qua_line)]
+    returns : Seq
+    '''
+    
+    scores = record.letter_annotations['phred_quality']
+    new_scores = [s + offset for s in scores]
+    record.scores = new_scores
+    return record
+
+def convert_record_illumina13_to_18(record):
+    return convert_record(record, offset=-31)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Convert a fastq from Illumina 1.3-1.7 format pipeline format')
+    parser = argparse.ArgumentParser(description='Convert a fastq from Illumina 1.3-1.7 format to 1.8 format')
     parser.add_argument('input', help='input fastq')
-    parser.add_argument('output', help='output fastq')
+    parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'), help='output fastq (default: stdout)')
     args = parser.parse_args()
     
-    with open(args.input) as i:
-        with open(args.output, 'w') as o:
-            for entry in util.fastq_iterator(i):
-                o.write(util.fastq_entry_list_to_string(convert_entry(entry)) + "\n")
+    for record in SeqIO.parse(args.input, 'fastq'):
+        record = convert_record_illumina13_to_18(record)
+        SeqIO.write(record, args.output, 'fastq')
