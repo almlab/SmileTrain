@@ -27,7 +27,7 @@ def convert_record(record, offset=-31):
     
     scores = record.letter_annotations['phred_quality']
     new_scores = [s + offset for s in scores]
-    record.scores = new_scores
+    record.letter_annotations['phred_quality'] = new_scores
     return record
 
 def convert_record_illumina13_to_18(record):
