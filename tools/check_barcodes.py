@@ -8,9 +8,10 @@ expected. Allow 0 mismatches.
 import argparse, sys, os, csv
 sys.path.append(os.path.normpath(os.path.abspath(__file__) + '/../..'))
 from SmileTrain import map_barcodes, util
+from Bio import SeqIO
 
 
-def count_barcodes(fastq_entries, barcode_map):
+def count_barcodes(fastq, barcode_map):
     '''count the number of appearances of each barcode in a fastq'''
     
     # initialize the count dictionary
@@ -18,8 +19,8 @@ def count_barcodes(fastq_entries, barcode_map):
     counts['mapped'] = 0
     counts['total'] = 0
     
-    for at_line, seq_line, qua_line in fastq_entries:
-        barcode_read, read_direction = map_barcodes.parse_barcode(at_line)
+    for record in SeqIO.parse(fastq, 'fastq'):
+        barcode_read, read_direction = map_barcodes.parse_barcode(record)
         if barcode_read in barcode_map:
             sample = barcode_map[barcode_read]
             counts[sample] += 1
@@ -55,7 +56,6 @@ if __name__ == '__main__':
     with open(args.barcodes) as f:
         barcode_map = map_barcodes.barcode_file_to_dictionary(f)
     
-    with open(args.fastq) as f:
-        counts = count_barcodes(util.fastq_iterator(f), barcode_map)
+    counts = count_barcodes(args.fastq, barcode_map)
     
     write_counts_report(counts, args.output)
