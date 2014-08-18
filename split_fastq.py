@@ -13,6 +13,7 @@ Used for early steps in the pipeline that are embarrassingly parallel.
 '''
 
 import itertools, os, os.path, sys, argparse, itertools, shutil
+from Bio import SeqIO
 import util
 
 def output_filenames(input_filename, k):
@@ -23,8 +24,8 @@ def split_fastq_entries(fastq, filenames):
     '''
     Send entries in the input to filenames, cycling over each filename.
     
-    fastq : list or iterator of strings
-        lines in the input fastq file
+    fastq : filename or filehandle
+        input
     filenames : list or iterator of strings
         output filenames
         
@@ -36,10 +37,8 @@ def split_fastq_entries(fastq, filenames):
     fh_cycler = util.cycle(fhs)
     
     # prepare an iterator over the fastq entries
-    fastqs = util.fastq_iterator(fastq, output_type='string')
-    
-    for entry, fh in itertools.izip(fastqs, fh_cycler):
-        fh.write("%s\n" % entry)
+    for record, fh in itertools.izip(SeqIO.parse(fastq, 'fastq'), fh_cycler):
+        SeqIO.write(record, fh, 'fastq')
         
 
 if __name__ == '__main__':
@@ -49,7 +48,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     filenames = output_filenames(args.fastq, args.n_files)
-    
     util.check_for_collisions(filenames)
     
     if len(filenames) == 1:
@@ -57,5 +55,4 @@ if __name__ == '__main__':
         shutil.copy(args.fastq, filenames[0])
     else:
         # split the file entry by entry
-        with open(args.fastq) as f:
-            split_fastq_entries(f, filenames)
+        split_fastq_entries(args.fastq, filenames)
