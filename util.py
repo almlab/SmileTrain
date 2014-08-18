@@ -2,52 +2,6 @@ import re, string, sys, time, itertools, os, subprocess
 import usearch_python.primer
 
 
-def fastq_iterator(lines, check_sigils=True, check_lengths=True, output_type='list'):
-    '''
-    Yield [at line, seq line, quality line] entries from a fastq file. All lines are right-
-    trimmed, and the plus line (line 3) is dropped.
-
-    lines : sequence or iterator of strings
-        lines from the fastq file
-    check_sigils : bool (default true)
-        assert that the first line starts with @ and the third with +?
-    check_lengths : bool (default true)
-        assert that the sequence and quality lines are the same length
-    output_type : string 'string' or 'list' (default 'list')
-        output format
-
-    Returns : if 'string', return a single string; if 'list', return a list [at line, sequence line, quality line]
-    '''
-
-    for at_line, seq_line, plus_line, quality_line in itertools.izip(*[iter(lines)] * 4):
-        # chomp all newlines
-        at_line = at_line.rstrip()
-        seq_line = seq_line.rstrip()
-        plus_line = plus_line.rstrip()
-        quality_line = quality_line.rstrip()
-
-        # check that the two lines with identifiers match our expectations
-        if check_sigils:
-            assert(at_line.startswith('@'))
-            assert(plus_line.startswith('+'))
-
-        # check that the sequence and quality lines have the same number of nucleotides
-        if check_lengths:
-            if len(seq_line) != len(quality_line):
-                raise RuntimeError("sequence and quality lines are of unequal length for ID %s" % at_line)
-
-        entry = [at_line, seq_line, quality_line]
-        if output_type == 'list':
-            yield entry
-        elif output_type == 'string':
-            yield fastq_entry_list_to_string(entry)
-            
-
-def fastq_entry_list_to_string(entry):
-    '''[at line, sequence line, quality line] -> new-line separated fastq entry'''
-    at_line, seq_line, quality_line = entry
-    return "\n".join([at_line, seq_line, '+', quality_line])
-
 def parse_fastq_record_id(record):
     '''BioPython fastq record "@lol/1" -> "lol"'''
     m = re.match('^(.+)/[12]', record.id)
@@ -148,28 +102,22 @@ def is_executable(filename):
     '''check if a filename exists and is executable'''
     return os.path.isfile(filename) and os.access(filename, os.X_OK)
 
-
 def message(text, indent=2):
-    # print message to stderr
+    '''print message to stderr'''
     space = ' ' * indent
     text = re.sub('\n', '\n%s' %(space), text)
     sys.stderr.write('%s%s\n' %(space, text))
 
 def error(text, indent=2):
-    # print message to stderr and quit
+    '''print message to stderr and quit'''
     space = ' ' * indent
     text = re.sub('\n', '\n%s' %(space), text)
     sys.stderr.write('%s%s\n' %(space, text))
     quit()
 
-def cycle(x):
-    # an efficient way to cycle through a list (similar to itertools.cycle)
-    while True:
-        for xi in x:
-            yield xi
 
 class timer():
-    # generator that measures elapsed time
+    '''generator that measures elapsed time'''
     def __init__(self):
         self.t = [time.time()]
     def __iter__(self):
