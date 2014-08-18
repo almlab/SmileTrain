@@ -78,7 +78,7 @@ class TestFastqUtilities(TestWithFiles):
         os.mkdir(tmp_dir)
         self.good_fastq_content = "@foo\nAAA\n+foo\n!!!\n@bar\nCCC\n+bar\n###"
         self.fastq13 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+\nABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefgh\n"""
-        self.fastq18 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+\n"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHJ\n"""
+        self.fastq18 = """@lolapolooza:1234#ACGT/1\nAATTAAGTCAAATTTGGCCTGGCCCAGTGTCCAATGTTGT\n+\n"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHI\n"""
         
         self.fastq13_fh = fake_fh(self.fastq13 + "\n")
         self.fastq13_record = SeqIO.read(self.fastq13_fh, 'fastq')
@@ -116,24 +116,6 @@ class TestFastqUtilities(TestWithFiles):
         
         self.assertEqual(util.parse_fastq_record_id(self.fastq13_record), "lolapolooza:1234#ACGT")
         
-    def test_fastq_ids(self):
-        '''fastq_ids should get the right ids from some fastq entries'''
-        
-        fastq1 = "@lolapolooza:1234#ACGT/1\nTAAAACATCATCATCAT\n+whatever\nabcdefghijklmnopq\n"
-        fastq2 = "@lolapolooza:7890#TGCA/1\nGAATACTACGGGAGAGAAA\n+whatever\nabcdefghijklmnopqrs\n"
-        fastq_lines = (fastq1 + fastq2).split('\n')
-        
-        ids = intersect.fastq_ids(fastq_lines)
-        self.assertEqual(ids, ["lolapolooza:1234#ACGT", "lolapolooza:7890#TGCA"])
-        
-    def test_fastq_id_match(self):
-        fastq1 = "@lolapolooza:1234#ACGT/1\nTAAAACATCATCATCAT\n+whatever\nabcdefghijklmnopq\n"
-        fastq2 = "@lolapolooza:7890#TGCA/1\nGAATACTACGGGAGAGAAA\n+whatever\nabcdefghijklmnopqrs\n"
-        fastq_lines = (fastq1 + fastq2).split('\n')
-        
-        out = intersect.fastq_entries_with_matching_ids(fastq_lines, ['lolapolooza:7890#TGCA']).next()
-        self.assertEqual(out, '@lolapolooza:7890#TGCA/1\nGAATACTACGGGAGAGAAA\n+\nabcdefghijklmnopqrs')
-        
     def test_illumina13_id(self):
         '''should find illumina13 format'''
         self.assertEqual(check_fastq_format.fastq_record_format(self.fastq13_record), 'illumina13')
@@ -153,7 +135,7 @@ class TestFastqUtilities(TestWithFiles):
         fh = fake_fh()
         SeqIO.write(record18, fh, 'fastq')
         entry18 = fh.getvalue()
-        
+            
         self.assertEqual(entry18, self.fastq18)
         
     def test_format_check_right(self):
@@ -205,36 +187,6 @@ class TestFileChecks(TestWithFiles):
     def test_check_for_collision_no(self):
         '''should identify destination as empty'''
         util.check_for_collisions(self.no_fn)
-        
-        
-class TestIntersect(TestWithFiles):
-    '''tests for merging reads'''
-    
-    def test_usearch_merge(self):
-        '''usearch should merge a perfectly matched pair of sequences'''
-        
-        # swo> I choose 300 random ACGTs, then took the first ~200 and last ~200, reverse
-        # complemented the last, gave them all the same quality code, and made up a name.
-        self.forward_fastq = "@foo/1\nGTTTTCTTCGCTTTATGGTGGTGGTAAAAGTGCTTCGATCTGCTAGATATCCCTCAGGAAAGTTTATGCCCGTGTCCGTTTGTTTGGGTAGATCTCTCACCCTTGGAATTCCAAGCGTTCAGGTATCCCACAATCGCTTCGATGACTCCGCCTCCTTATTATATACTTCGCCGATACGCAGCGCATGAAGAGTCATCGGGA\n+\n#########################################################################################################################################################################################################\n"
-        self.reverse_fastq = "@foo/2\nCGATATCCGTGGCTTAAGCTATATGCGATTTTGCAGAGCAGTCAAGGTCTCCCTGGGTAGATTAAAGGGCGAGCTCACGAAGAGATTACTACTCAACCCTCCCGATGACTCTTCATGCGCTGCGTATCGGCGAAGTATATAATAAGGAGGCGGAGTCATCGAAGCGATTGTGGGATACCTGAACGCTTGGAATTCCAAGG\n+\n########################################################################################################################################################################################################\n"
-        
-        fasta_fh, fasta_fn = tempfile.mkstemp(suffix='.fasta', dir=tmp_dir)
-        
-        with open('%s/f.fastq' % tmp_dir, 'w') as f:
-            f.write(self.forward_fastq)
-            
-        with open('%s/r.fastq' % tmp_dir, 'w') as f:
-            f.write(self.reverse_fastq)
-
-        # run usearch. usearch should output something that has "1  Exact overlaps" in it.
-        usearch_output = subprocess.check_output(['usearch', '-fastq_mergepairs', '%s/f.fastq' % tmp_dir, '-reverse', '%s/r.fastq' % tmp_dir, '-fastqout', '%s/out.fastq' % tmp_dir], stderr=subprocess.STDOUT)
-        self.assertRegexpMatches(usearch_output, '1\s+Exact overlaps')
-        
-        # check the output too
-        with open('%s/out.fastq' % tmp_dir, 'r') as f:
-            out_fastq = f.read()
-            
-        self.assertEqual(out_fastq, "@foo/1\nGTTTTCTTCGCTTTATGGTGGTGGTAAAAGTGCTTCGATCTGCTAGATATCCCTCAGGAAAGTTTATGCCCGTGTCCGTTTGTTTGGGTAGATCTCTCACCCTTGGAATTCCAAGCGTTCAGGTATCCCACAATCGCTTCGATGACTCCGCCTCCTTATTATATACTTCGCCGATACGCAGCGCATGAAGAGTCATCGGGAGGGTTGAGTAGTAATCTCTTCGTGAGCTCGCCCTTTAATCTACCCAGGGAGACCTTGACTGCTCTGCAAAATCGCATATAGCTTAAGCCACGGATATCG\n+\n####################################################################################################$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$###################################################################################################\n")
         
 
 class TestDereplicate(unittest.TestCase):
