@@ -27,7 +27,7 @@ if __name__ == '__main__':
     
     print "of %s entries, taking ~%s, or every %s-th" %(n_entries, frac, skip)
     
-    r = util_primer.PrimerRemover(open(args.fastq), args.primer, args.max_primer_diffs, skip=skip)
+    r = util_primer.PrimerRemover(args.fastq, args.primer, args.max_primer_diffs, skip=skip)
     r.check_entries()
     
     args.output.write(r.diagnostic_message())

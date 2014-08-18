@@ -32,7 +32,7 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--log', default=None, type=str, help='log file for successes, failures, and time elapsed')
     args = parser.parse_args()
 
-    r = util_primer.PrimerRemover(open(args.fastq), args.primer, args.max_primer_diffs)
+    r = util_primer.PrimerRemover(args.fastq, args.primer, args.max_primer_diffs)
     r.print_entries()
 
     if args.log is not None:
