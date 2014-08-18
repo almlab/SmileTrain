@@ -10,20 +10,13 @@ the tests folder and then cleaned up.
 Most of these tests should be refactored into separate scripts.
 '''
 
-from SmileTrain.test import FakeFile
+from SmileTrain.test import fake_fh
 import unittest, tempfile, subprocess, os, shutil, StringIO
 from Bio import SeqIO, Seq
 
 from SmileTrain import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index
 
 tmp_dir = 'tmp'
-
-def fake_fh(content=''):
-    '''make a fake filehandle with this content'''
-    fh = StringIO.StringIO()
-    fh.write(content)
-    fh.seek(0)
-    return fh
 
 class TestWithFiles(unittest.TestCase):
     '''tests that need to read and write files'''
@@ -193,7 +186,7 @@ class TestDereplicate(unittest.TestCase):
     '''tests for dereplication without samples'''
     
     def setUp(self):
-        fasta = FakeFile(['>foo', 'AA', '>bar', 'CC', '>baz', 'AA', '>blag', 'AA', '>flog', 'TT', '>blob', 'TT'])
+        fasta = fake_fh(['>foo', 'AA', '>bar', 'CC', '>baz', 'AA', '>blag', 'AA', '>flog', 'TT', '>blob', 'TT'])
         minimum_counts = 2
         self.derep = derep_fulllength.Dereplicator(fasta, minimum_counts)
         
@@ -229,7 +222,7 @@ class TestIndex(unittest.TestCase):
         
     def test_parse_derep_fasta(self):
         '''should make a dictionary of fasta lines'''
-        fasta = FakeFile(['>seq0;counts=10', 'AAA', '>seq4;counts=23', 'TTT'])
+        fasta = fake_fh(['>seq0;counts=10', 'AAA', '>seq4;counts=23', 'TTT'])
         self.assertEqual(index.parse_derep_fasta(fasta), {'AAA': 'seq0', 'TTT': 'seq4'})
         
     def test_sid_to_sample(self):
@@ -238,7 +231,7 @@ class TestIndex(unittest.TestCase):
         
     def test_parse_full_fasta(self):
         seq_sid = {'AAA': 'seq0', 'TTT': 'seq4'}
-        fasta = FakeFile(['>sample=donor1;1', 'AAA', '>sample=donor1;2', 'AAA', '>sample=donor1;3', 'TTT', '>sample=donorT;1', 'TTT'])
+        fasta = fake_fh(['>sample=donor1;1', 'AAA', '>sample=donor1;2', 'AAA', '>sample=donor1;3', 'TTT', '>sample=donorT;1', 'TTT'])
         abund = index.parse_full_fasta(fasta, seq_sid)
         self.assertEqual(abund, {('donor1', 'seq0'): 2, ('donor1', 'seq4'): 1, ('donorT', 'seq4'): 1})
         

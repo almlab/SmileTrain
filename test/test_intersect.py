@@ -4,18 +4,11 @@
 unit tests for intersect.py
 '''
 
-from SmileTrain.test import FakeFile
+from SmileTrain.test import fake_fh
 import unittest, tempfile, subprocess, os, shutil, StringIO
 from Bio import SeqIO, Seq
 
 from SmileTrain import util, intersect
-
-def fake_fh(content=''):
-    '''make a fake filehandle with this content'''
-    fh = StringIO.StringIO()
-    fh.write(content)
-    fh.seek(0)
-    return fh
 
 
 class TestFastqIDToReadID(unittest.TestCase):

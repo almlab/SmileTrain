@@ -1,6 +1,6 @@
 import unittest, tempfile, subprocess, os, shutil
 from SmileTrain import uc2denovo, util
-from SmileTrain.test import FakeFile
+from SmileTrain.test import fake_fh
 
 class TestMissedLabels(unittest.TestCase):
     '''tests for missing_labels'''
@@ -15,7 +15,7 @@ class TestMatchingFastaEntries(unittest.TestCase):
     '''tests for matching_fasta_entries'''
     def test_correct(self):
         '''should collect only the matching entries'''
-        old_fasta = FakeFile([">a", "AAA", ">b", "TTT", ">c", "GGG"])
+        old_fasta = fake_fh([">a", "AAA", ">b", "TTT", ">c", "GGG"])
         labels = ["a", "c"]
         expected_new_fasta = ">a\nAAA\n>c\nGGG\n"
         

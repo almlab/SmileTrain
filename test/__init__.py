@@ -1,9 +1,11 @@
-class FakeFile:
-    def __init__(self, lines):
-        self.lines = lines
-        
-    def readline(self):
-        if len(self.lines) > 0:
-            return self.lines.pop(0) + "\n"
-        else:
-            return ''
+import StringIO
+
+def fake_fh(content=''):
+    '''make a fake filehandle with this content'''
+    if isinstance(content, list):
+        content = "\n".join(content)
+    
+    fh = StringIO.StringIO()
+    fh.write(content)
+    fh.seek(0)
+    return fh
