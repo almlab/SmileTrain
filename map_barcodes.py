@@ -136,6 +136,9 @@ def renamed_fastq_records(fastq, barcode_map, max_barcode_diffs):
                 sample_counts[sample] = 1
 
         record.id = "sample=%s;%d/%s" %(sample, sample_counts[sample], read_direction)
+        
+        # expunge other parts of title
+        record.description = ''
         yield record
 
 
