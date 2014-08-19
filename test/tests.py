@@ -29,23 +29,6 @@ class TestWithFiles(unittest.TestCase):
             shutil.rmtree(tmp_dir)
 
 
-def TestSplitFasta(TestWithFiles):
-    def setUp(self):
-        fasta_content = ">foo\nAAA\nAAA\n>bar\nCCC\n>baz\nTTT"
-        self.fh = fake_fh(fasta_content)
-            
-    def test_split_fasta_by_hash(self):
-        '''split_fasta should split sequences as expected'''
-        
-        subprocess.call(['python', 'split_fasta.py', '--hash', self.fasta_fn, '2'])
-        
-        with open(self.fasta_fn + '.0') as f:
-            self.assertEqual(f.read(), ">foo\nAAAAAA\n>bar\nCCC\n")
-            
-        with open(self.fasta_fn + '.1') as f:
-            self.assertEqual(f.read(), ">baz\nTTT\n")
-
-
 class TestFastqUtilities(TestWithFiles):
     '''tests for functions and scripts that do fastq manipulations'''
     def setUp(self):
