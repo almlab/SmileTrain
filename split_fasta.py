@@ -45,14 +45,8 @@ def split_fasta_entries(fasta, fhs, by_hash=False):
     else:
         fh_cycler = itertools.cycle(fhs)
         
-        # prepare an iterator over the fastq entries
-        with open('/Users/scott/tmp/log', 'w') as f:
-            f.write(__file__)
-            for i, record in enumerate(SeqIO.parse(fasta, 'fasta')):
-                SeqIO.write(record, fhs[i % len(fhs)], 'fasta')
-                f.write("writing record {} to fh {}\n".format(record.id, fhs[i % len(fhs)]))
-        #for record, fh in itertools.izip(SeqIO.parse(fasta, 'fasta'), fh_cycler):
-        #    SeqIO.write(record, fh, 'fasta')
+        for record, fh in itertools.izip(SeqIO.parse(fasta, 'fasta'), fh_cycler):
+            SeqIO.write(record, fh, 'fasta')
 
         
 if __name__ == '__main__':
