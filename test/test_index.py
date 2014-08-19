@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 '''
-unit tests for ???
+unit tests for index.py
 '''
 
 from SmileTrain.test import fake_fh
