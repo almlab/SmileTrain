@@ -20,24 +20,23 @@ def output_filenames(input_filename, k):
     '''destination filenames foo.fastq.0, etc.'''
     return ['%s.%d' % (input_filename, i) for i in range(k)]
 
-def split_fastq_entries(fastq, filenames):
+def split_fastq_entries(fastq, fhs):
     '''
     Send entries in the input to filenames, cycling over each filename.
     
     fastq : filename or filehandle
         input
-    filenames : list or iterator of strings
+    outs : list or iterator of filehandles or filenames
         output filenames
         
     returns : nothing
     '''
     
     # open all the filehandles
-    fhs = [open(filename, 'w') for filename in filenames]
-    fh_cycler = util.cycle(fhs)
+    fhs_cycle = itertools.cycle(fhs)
     
     # prepare an iterator over the fastq entries
-    for record, fh in itertools.izip(SeqIO.parse(fastq, 'fastq'), fh_cycler):
+    for record, fh in itertools.izip(SeqIO.parse(fastq, 'fastq'), fhs_cycle):
         SeqIO.write(record, fh, 'fastq')
         
 

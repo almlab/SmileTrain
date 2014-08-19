@@ -81,28 +81,6 @@ class TestFastqUtilities(TestWithFiles):
         
         fh = fake_fh('''@lol:1234#ACGT/1\nAAAA\n+\nAh"J\n''')
         self.fastq_ambig_record = SeqIO.read(fh, 'fastq')
-        
-    def test_split_fastq(self):
-        '''split_fastq.py should split and trim content as expected'''
-        
-        fastq_fh, fastq_fn = tempfile.mkstemp(suffix='.fastq', dir=tmp_dir)
-        os.write(fastq_fh, self.good_fastq_content)
-        os.close(fastq_fh)
-        
-        subprocess.call(['python', 'split_fastq.py', fastq_fn, '2'])
-        
-        with open("%s.0" % fastq_fn) as f:
-            fastq_out0 = f.read()
-        # the plus line has been expunged
-        self.assertEqual(fastq_out0, "@foo\nAAA\n+\n!!!\n")
-        
-        with open("%s.1" % fastq_fn) as f:
-            fastq_out1 = f.read()    
-        self.assertEqual(fastq_out1, "@bar\nCCC\n+\n###\n")
-        
-        os.remove(fastq_fn)
-        for i in range(2):
-            os.remove("%s.%d" % (fastq_fn, i))
             
     def test_fastq_id_parsing(self):
         '''fastq_at_line_to_id should trim the starting @ and trailing /1 or /2'''
