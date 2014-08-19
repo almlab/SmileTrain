@@ -7,9 +7,19 @@ Illumina 1.3-1.7 format, specificially that
     * the quality line uses Sanger encoding (ascii offset 64, high score h to low score B)
 '''
 
-import itertools, os, os.path, sys, argparse, shutil
+import itertools, os, os.path, sys, argparse, shutil, re
 from Bio import SeqIO
 import util
+
+def parse_fastq_record_id(record):
+    '''BioPython fastq record "@lol/1" -> "lol"'''
+    m = re.match('^(.+)/[12]', record.id)
+    if m is None:
+        raise RuntimeError("fastq record line did not parse: %s" % record.id)
+    else:
+        rid = m.group(1)
+        
+    return rid
 
 def check_illumina_format(filenames, targets):
     '''
@@ -55,7 +65,7 @@ def file_format(fastq, max_entries=10):
             raise RuntimeError("could not verify format after %d entries" % max_entries)
         
         # make sure we can parse the at line
-        rid = util.parse_fastq_record_id(record)
+        rid = parse_fastq_record_id(record)
         
         # check the quality line's character content
         return fastq_record_format(record)

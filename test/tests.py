@@ -85,7 +85,7 @@ class TestFastqUtilities(TestWithFiles):
     def test_fastq_id_parsing(self):
         '''fastq_at_line_to_id should trim the starting @ and trailing /1 or /2'''
         
-        self.assertEqual(util.parse_fastq_record_id(self.fastq13_record), "lolapolooza:1234#ACGT")
+        self.assertEqual(check_fastq_format.parse_fastq_record_id(self.fastq13_record), "lolapolooza:1234#ACGT")
         
     def test_illumina13_id(self):
         '''should find illumina13 format'''

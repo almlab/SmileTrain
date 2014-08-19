@@ -1,17 +1,6 @@
 import re, string, sys, time, itertools, os, subprocess
 import usearch_python.primer
 
-
-def parse_fastq_record_id(record):
-    '''BioPython fastq record "@lol/1" -> "lol"'''
-    m = re.match('^(.+)/[12]', record.id)
-    if m is None:
-        raise RuntimeError("fastq record line did not parse: %s" % record.id)
-    else:
-        rid = m.group(1)
-        
-    return rid
-
 def listify(inp):
     '''
     Ensure that input is a list
