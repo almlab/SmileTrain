@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 '''
-unit tests for ???
+unit tests for split_fasta.py
 '''
 
 from SmileTrain.test import fake_fh
@@ -16,9 +16,8 @@ class TestSplitFastaEntries(unittest.TestCase):
         outs = [fake_fh() for x in range(3)]
         split_fasta.split_fasta_entries(self.fh, outs, 3)
     
-    def test_raise(self):
-        '''make sure the function raises an error when appropriate'''
-        pass
+    def test_correct_by_hash(self):
+        raise RuntimeError("test not implemented")
 
 
 if __name__ == '__main__':

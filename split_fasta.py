@@ -21,13 +21,13 @@ def output_filenames(input_filename, k):
     '''destination filenames foo.fastq.0, etc.'''
     return ['%s.%d' % (input_filename, i) for i in range(k)]
 
-def split_fasta_entries(fasta, filenames, by_hash=False):
+def split_fasta_entries(fasta, fhs, by_hash=False):
     '''
     Send entries in the input to filenames, cycling over each filename.
     
     fasta : filehandle or filename
         input fasta file
-    filenames : list or iterator of strings
+    fhs : list or iterator of filehandles or filenames
         output filenames
     by_hash : bool (default false)
         split based on hash value rather than just cycling
@@ -35,18 +35,15 @@ def split_fasta_entries(fasta, filenames, by_hash=False):
     returns : nothing
     '''
     
-    # open all the filehandles
-    fhs = [open(filename, 'w') for filename in filenames]
-    
     if by_hash:
         # make the function for determining which bin the sequences fall in
         h = lambda seq: hash(seq) % len(fhs)
         
         # pick the filehandle bashed on the sequence's hash, then write
         for record in SeqIO.parse(fasta, 'fasta'):
-            fhs[h(record.seq)].write(record.format('fasta'))
+            fhs[h(str(record.seq))].write(record.format('fasta'))
     else:
-        fh_cycler = util.cycle(fhs)
+        fh_cycler = itertools.cycle(fhs)
         
         # prepare an iterator over the fastq entries
         for record, fh in itertools.izip(SeqIO.parse(fasta, 'fasta'), fh_cycler):

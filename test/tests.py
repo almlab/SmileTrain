@@ -32,26 +32,7 @@ class TestWithFiles(unittest.TestCase):
 def TestSplitFasta(TestWithFiles):
     def setUp(self):
         fasta_content = ">foo\nAAA\nAAA\n>bar\nCCC\n>baz\nTTT"
-        fasta_fh, self.fasta_fn = tempfile.mkstemp(suffix='.fasta', dir=tmp_dir)
-        os.write(fasta_fh, self.good_fasta_content)
-        os.close(fasta_fh)
-        
-    def test_split_fasta(self):
-        '''split_fasta.py should split content as expected'''
-
-        subprocess.call(['python', 'split_fasta.py', self.fasta_fn, '3'])
-        with open(self.fasta_fn + '.0', 'r') as f:
-            self.assertEqual(f.read(), ">foo\nAAAAAA\n")
-            
-        with open(self.fasta_fn + '.1') as f:
-            self.assertEqual(f.read(), ">bar\nCCC\n")
-            
-        with open(self.fasta_fn + '.2') as f:
-            self.assertEqual(f.read(), ">baz\nTTT\n")
-
-        os.remove(self.fasta_fn)
-        for i in range(3):
-            os.remove("%s.%d" %(self.fasta_fn, i))
+        self.fh = fake_fh(fasta_content)
             
     def test_split_fasta_by_hash(self):
         '''split_fasta should split sequences as expected'''
