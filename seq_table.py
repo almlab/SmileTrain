@@ -91,5 +91,5 @@ if __name__ == '__main__':
     else:
         samples = None
         
-    for line in table_lines(fasta, args.minimum_counts, samples):
+    for line in table_lines(args.fasta, args.minimum_counts, samples):
         args.output.write(line + "\n")
