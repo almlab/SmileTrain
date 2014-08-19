@@ -20,7 +20,7 @@ def count_barcodes(fastq, barcode_map, max_entries):
     counts['total'] = 0
     
     for i, record in enumerate(SeqIO.parse(fastq, 'fastq')):
-        if i > max_entries:
+        if i >= max_entries:
             break
         
         barcode_read, read_direction = map_barcodes.parse_barcode(record)
