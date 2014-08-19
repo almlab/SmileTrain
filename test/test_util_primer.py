@@ -19,3 +19,8 @@ class TestRemovePrimers(unittest.TestCase):
         self.assertEqual(str(record.seq), 'CATCATCATCAT')
         self.assertEqual(record.letter_annotations['phred_quality'], [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17])
         self.assertEqual(self.primer_remover.n_successes, 1)
+     
+        
+class TestMistmatches(unittest.TestCase):
+    def test_correct(self):
+        self.assertEqual(util_primer.mismatches('TCAAAAGATGATGATGAT', 'AAAA', 15), (2, 0))

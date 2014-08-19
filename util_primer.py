@@ -3,6 +3,32 @@ from Bio import SeqRecord, SeqIO
 from SmileTrain import util
 import usearch_python.primer
 
+def mismatches(seq, primer, w):
+    '''
+    Calculate mismatches between a sequence and primer with window size w.
+    Returns the starting index and number of mismatches for the best match.
+    
+    Parameters
+    seq : string (or stringable)
+        target (longer) sequence
+    primer : string (or stringable)
+        query (shorter) sequence
+    w : int
+        window size (how many bases on the target to go in, at most)
+        
+    returns : tuple
+        (primer start index, differences in primer and sequence)
+    '''
+
+    I = 0
+    D = len(seq)
+    for i in range(w):
+        d = usearch_python.primer.MatchPrefix(seq[i:], primer)
+        if d < D:
+            I = i
+            D = d
+    return (I, D)
+
 class PrimerRemover():
     def __init__(self, fastq, primer, max_primer_diffs, output_type='string', skip=1):
         '''
@@ -45,7 +71,7 @@ class PrimerRemover():
             # take this entry if it's the n-th entry
             if self.position % self.skip == 0:
                 # find the best primer position in the sequence
-                primer_start_index, n_primer_diffs = util.mismatches(str(record.seq), self.primer, 15)
+                primer_start_index, n_primer_diffs = mismatches(str(record.seq), self.primer, 15)
     
                 # if we find a good match, trim the sequence and the
                 # quality line and yield a single string

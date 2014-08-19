@@ -12,30 +12,6 @@ def parse_fastq_record_id(record):
         
     return rid
 
-# Note that the 1.8 code J (score 41) has not equivalent in 1.3, so I just map h to J
-illumina13_codes = '''ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghh'''
-illumina18_codes = '''"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJ'''
-illumina_code_table = string.maketrans(illumina13_codes, illumina18_codes)
-
-def illumina13_quality_to_18(quality_line):
-    '''convert Illumina 1.3-1.7 quality scores to Illumina 1.8 quality scores'''
-    return quality_line.translate(illumina_code_table)
-
-def mismatches(seq, primer, w):
-    '''
-    Calculate mismatches between a sequence and primer with window size w.
-    Returns the starting index and number of mismatches for the best match.
-    '''
-
-    I = 0
-    D = len(seq)
-    for i in range(w):
-        d = usearch_python.primer.MatchPrefix(seq[i:], primer)
-        if d < D:
-            I = i
-            D = d
-    return [I, D]
-
 def listify(inp):
     '''
     Ensure that input is a list
