@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, os, re, select, stat, subprocess, sys, tempfile, time, ConfigParser, re, time
+import argparse, os, re, select, stat, subprocess, sys, tempfile, time, ConfigParser, re, time, itertools
 import xml.etree.ElementTree as ET
 from util import *
 
@@ -183,7 +183,7 @@ class Ssub():
         
         # initialize output files
         fhs, fns = zip(*[self.mktemp(suffix='.sh') for i in range(min(self.n_cpus, len(commands)))])
-        fhs_cycle = cycle(fhs)
+        fhs_cycle = itertools.cycle(fhs)
         
         # write commands to file
         for command in commands:
