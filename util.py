@@ -3,20 +3,18 @@ import usearch_python.primer
 
 def listify(inp):
     '''
-    Ensure that input is a list
+    Ensure that input is a list or tuple
     
-    inp : string or list
+    inp : list or single item
     
     returns : list
-        if input is a list, return that; otherwise return [string]
+        if input is a list, return that; otherwise return [item]
     '''
     
-    if isinstance(inp, str):
-        return [inp]
-    elif isinstance(inp, list):
+    if isinstance(inp, list) or isinstance(inp, tuple):
         return inp
     else:
-        raise RuntimeError("don't know how to stringify input: " + inp)
+        return [inp]
 
 def check_for_existence(filenames, dry_run=False):
     '''assert that each of filenames does exist'''

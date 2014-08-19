@@ -21,18 +21,18 @@ def parse_fastq_record_id(record):
         
     return rid
 
-def check_illumina_format(filenames, targets):
+def check_illumina_format(inputs, targets):
     '''
     Raise error if any of the input filenames are not in the desired format.
     
-    filenames : string, or iterable of strings
+    inputs : filenames or filehandle, or iterable of strings/filehandles
         files to be checked
     target : string, or iterable of strings
         'illumina13' or 'illumina18' or 'ambiguous', or some combination
     '''
     
     # convert to lists if required
-    filenames = util.listify(filenames)
+    inputs = util.listify(inputs)
     targets = util.listify(targets)
     
     # check that input targets are in acceptable list
@@ -42,15 +42,17 @@ def check_illumina_format(filenames, targets):
         raise ArgumentError("unrecognized format type(s): %s" % bad_targets)
     
     # check all the formats
-    formats = [file_format(fn) for fn in filenames]
+    formats = [file_format(i) for i in inputs]
     tests = [form in targets for form in formats]
-    bad_files = [fn for fn, test in zip(filenames, tests) if test == False]
-    bad_forms = set([form for form, test in zip(formats, tests) if test == False])
+    bad_files = [i for i, test in zip(i, tests) if test == False]
+    bad_forms = [form for form, test in zip(formats, tests) if test == False]
     
     # complain if something went wrong
     if False in tests:
-        bad_info = "\n".join([" ".join([fn, form]) for fn, form in zip(filenames, bad_forms)])
+        bad_info = "\n".join([" ".join([i, form]) for i, form in zip(bad_files, bad_forms)])
         raise RuntimeError("files do not appear to be in %s format: \n%s" % (targets, bad_info))
+    else:
+        return True
 
 def file_format(fastq, max_entries=10):
     '''
@@ -69,6 +71,8 @@ def file_format(fastq, max_entries=10):
         
         # check the quality line's character content
         return fastq_record_format(record)
+    
+    raise RuntimeError("fell off end")
         
 def fastq_record_format(record):
     '''
