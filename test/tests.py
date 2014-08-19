@@ -98,7 +98,7 @@ class TestDereplicate(unittest.TestCase):
         record1 = fe.next()
         record2 = fe.next()
         self.assertEqual([record1.id, str(record1.seq), record2.id, str(record2.seq)], ['seq0;counts=3', 'AA', 'seq2;counts=2', 'TT'])
-                
+
 
 def TestPipelineSteps(TestWithFiles):
     '''tests for file input/output for each pipeline step'''
