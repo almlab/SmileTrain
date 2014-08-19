@@ -27,8 +27,8 @@ def split_fasta_entries(fasta, fhs, by_hash=False):
     
     fasta : filehandle or filename
         input fasta file
-    fhs : list or iterator of filehandles or filenames
-        output filenames
+    fhs : list or iterator of filehandles 
+        output filehandles
     by_hash : bool (default false)
         split based on hash value rather than just cycling
         
@@ -41,13 +41,19 @@ def split_fasta_entries(fasta, fhs, by_hash=False):
         
         # pick the filehandle bashed on the sequence's hash, then write
         for record in SeqIO.parse(fasta, 'fasta'):
-            fhs[h(str(record.seq))].write(record.format('fasta'))
+            SeqIO.write(record, fhs[h(str(record.seq))], 'fasta')
     else:
         fh_cycler = itertools.cycle(fhs)
         
         # prepare an iterator over the fastq entries
-        for record, fh in itertools.izip(SeqIO.parse(fasta, 'fasta'), fh_cycler):
-            fh.write(record.format('fasta'))
+        with open('/Users/scott/tmp/log', 'w') as f:
+            f.write(__file__)
+            for i, record in enumerate(SeqIO.parse(fasta, 'fasta')):
+                SeqIO.write(record, fhs[i % len(fhs)], 'fasta')
+                f.write("writing record {} to fh {}\n".format(record.id, fhs[i % len(fhs)]))
+        #for record, fh in itertools.izip(SeqIO.parse(fasta, 'fasta'), fh_cycler):
+        #    SeqIO.write(record, fh, 'fasta')
+
         
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Split a fasta file foo.fasta into multiple fastq files foo.fasta.0, foo.fasta.1, etc.')
@@ -65,4 +71,4 @@ if __name__ == '__main__':
         shutil.copy(args.fasta, filenames[0])
     else:
         # split the file entry by entry
-        split_fasta_entries(args.fasta, filenames, by_hash=args.hash)
+        split_fasta_entries(args.fasta, [open(f, 'w') for f in filenames], by_hash=args.hash)
