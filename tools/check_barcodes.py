@@ -11,7 +11,7 @@ from SmileTrain import map_barcodes, util
 from Bio import SeqIO
 
 
-def count_barcodes(fastq, barcode_map):
+def count_barcodes(fastq, barcode_map, max_entries):
     '''count the number of appearances of each barcode in a fastq'''
     
     # initialize the count dictionary
@@ -19,7 +19,10 @@ def count_barcodes(fastq, barcode_map):
     counts['mapped'] = 0
     counts['total'] = 0
     
-    for record in SeqIO.parse(fastq, 'fastq'):
+    for i, record in enumerate(SeqIO.parse(fastq, 'fastq')):
+        if i > max_entries:
+            break
+        
         barcode_read, read_direction = map_barcodes.parse_barcode(record)
         if barcode_read in barcode_map:
             sample = barcode_map[barcode_read]
@@ -50,12 +53,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('fastq', help='input fastq')
     parser.add_argument('barcodes', help='input barcode mapping (or list of barcode)')
+    parser.add_argument('--max_entries', '-m', type=int, default=1000, help='entries to check (default: 1000)')
     parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output log (default stdout)')
     args = parser.parse_args()
     
     with open(args.barcodes) as f:
         barcode_map = map_barcodes.barcode_file_to_dictionary(f)
     
-    counts = count_barcodes(args.fastq, barcode_map)
+    counts = count_barcodes(args.fastq, barcode_map, args.max_entries)
     
     write_counts_report(counts, args.output)
