@@ -51,8 +51,8 @@ def parse_args():
     group1.add_argument('--open_ref_gg', action='store_true', help='Reference map (Greengenes) and then denovo cluster?')
     group1.add_argument('--seq_table', action='store_true', help='Make a sequence table?')
     group1.add_argument('--otu_table', action='store_true', help='Make OTU table?')
-    group2.add_argument('-f', help='Input fastq (forward)')
-    group2.add_argument('-r', help='Input fastq (reverse)')
+    group2.add_argument('--forward', '-f', help='Input fastq (forward)')
+    group2.add_argument('--reverse', '-r', help='Input fastq (reverse)')
     group2.add_argument('-p', help='Primer sequence (forward)')
     group2.add_argument('-q', help='Primer sequence (reverse)')
     group2.add_argument('--barcodes', '-b', default=None, help='Barcodes list')
@@ -82,7 +82,7 @@ def parse_args():
         raise RuntimeError("--demultiplex selected but no barcode mapping file specified")
     
     if args.check or args.split or args.convert or args.primer or args.merge or args.demultiplex or args.qfilter:
-        if args.f is None and args.r is None:
+        if args.forward is None and args.reverse is None:
             raise RuntimeError("no fastq files selected")
         
     return args
@@ -113,17 +113,17 @@ class OTU_Caller():
     def get_filenames(self):
         '''Generate filenames to use in pipeline'''
 
-        if self.f:
-            f_base = os.path.basename(self.f)
-        if self.r:
-            r_base = os.path.basename(self.r)
+        if self.forward:
+            f_base = os.path.basename(self.forward)
+        if self.reverse:
+            r_base = os.path.basename(self.reverse)
             
-        self.fi = ['%s.%d' %(self.f, i) for i in range(self.n_cpus)] # forward reads (split)
-        self.ri = ['%s.%d' %(self.r, i) for i in range(self.n_cpus)] # reverse reads (split)
-        self.mi = ['%s.%d.merge' %(self.f, i) for i in range(self.n_cpus)] # merged reads (split)
-        self.Fi = ['%s.%d.tmp' %(self.f, i) for i in range(self.n_cpus)] # forward reads (temp)
-        self.Ri = ['%s.%d.tmp' %(self.r, i) for i in range(self.n_cpus)] # reverse reads (temp)
-        self.Mi = ['%s.%d.tmp' %(self.f, i) for i in range(self.n_cpus)] # merged reads (temp)
+        self.fi = ['%s.%d' %(self.forward, i) for i in range(self.n_cpus)] # forward reads (split)
+        self.ri = ['%s.%d' %(self.reverse, i) for i in range(self.n_cpus)] # reverse reads (split)
+        self.mi = ['%s.%d.merge' %(self.forward, i) for i in range(self.n_cpus)] # merged reads (split)
+        self.Fi = ['%s.%d.tmp' %(self.forward, i) for i in range(self.n_cpus)] # forward reads (temp)
+        self.Ri = ['%s.%d.tmp' %(self.reverse, i) for i in range(self.n_cpus)] # reverse reads (temp)
+        self.Mi = ['%s.%d.tmp' %(self.forward, i) for i in range(self.n_cpus)] # merged reads (temp)
         self.ci = ['q.%d.fst' %(i) for i in range(self.n_cpus)] # current reads
         self.Ci = ['q.%d.tmp' %(i) for i in range(self.n_cpus)] # current reads (temp)
         self.oi = ['otus.%d.fst' %(sid) for sid in self.sids] # otu representative sequences
@@ -150,11 +150,11 @@ class OTU_Caller():
     def check_format(self):
         '''Make sure we have the correct input format'''
         files = []
-        if self.f:
-            files.append(self.f)
+        if self.forward:
+            files.append(self.forward)
         
-        if self.r:
-            files.append(self.r)
+        if self.reverse:
+            files.append(self.reverse)
             
         message('Testing format of %s' %(" ".join(files)))
         
@@ -168,24 +168,24 @@ class OTU_Caller():
         '''Split forward and reverse reads (for parallel processing)'''
 
         # do forward only if there is a forward file; similar for reverse
-        do_forward = self.f
-        do_reverse = self.r
+        do_forward = self.forward
+        do_reverse = self.reverse
 
         # check for inputs and collisions of output
         if do_forward:
-            util.check_for_nonempty(self.f, self.dry_run)
-            util.check_for_collisions(['%s.%s' %(self.f, i) for i in range(self.n_cpus)], self.dry_run)
+            util.check_for_nonempty(self.forward, self.dry_run)
+            util.check_for_collisions(['%s.%s' %(self.forward, i) for i in range(self.n_cpus)], self.dry_run)
         if do_reverse:
-            util.check_for_nonempty(self.r, self.dry_run)
-            util.check_for_collisions(['%s.%s' %(self.r, i) for i in range(self.n_cpus)], self.dry_run)
+            util.check_for_nonempty(self.reverse, self.dry_run)
+            util.check_for_collisions(['%s.%s' %(self.reverse, i) for i in range(self.n_cpus)], self.dry_run)
         
         # Get list of commands
         cmds = []
         if do_forward:
-            cmd = 'python %s/split_fastq.py %s %s' %(self.library, self.f, self.n_cpus)
+            cmd = 'python %s/split_fastq.py %s %s' %(self.library, self.forward, self.n_cpus)
             cmds.append(cmd)
         if do_reverse:
-            cmd = 'python %s/split_fastq.py %s %s' %(self.library, self.r, self.n_cpus)
+            cmd = 'python %s/split_fastq.py %s %s' %(self.library, self.reverse, self.n_cpus)
             cmds.append(cmd)
         
         # submit commands
@@ -200,32 +200,32 @@ class OTU_Caller():
     def convert_format(self):
         '''Convert to compatible fastq format'''
         
-        if self.f:
+        if self.forward:
             util.check_for_nonempty(self.fi, self.dry_run)
             util.check_for_collisions(self.Fi, self.dry_run)
             
-        if self.r:
+        if self.reverse:
             util.check_for_nonempty(self.ri, self.dry_run)
             util.check_for_collisions(self.Fi, self.dry_run)
             
         cmds = []
         for i in range(self.n_cpus):
-            if self.f:
+            if self.forward:
                 cmd = 'python %s/convert_fastq.py %s > %s' %(self.library, self.fi[i], self.Fi[i])
                 cmds.append(cmd)
-            if self.r:
+            if self.reverse:
                 cmd = 'python %s/convert_fastq.py %s > %s' %(self.library, self.ri[i], self.Ri[i])
                 cmds.append(cmd)
                 
         self.ssub.submit_and_wait(cmds, out=self.dry_run)
         
         # validate output and move files
-        if self.f:
+        if self.forward:
             util.check_for_nonempty(self.Fi, dry_run=self.dry_run)
             self.ssub.move_files(self.Fi, self.fi, out=self.dry_run)
             util.check_for_nonempty(self.fi, dry_run=self.dry_run)
 
-        if self.r:
+        if self.reverse:
             util.check_for_nonempty(self.Ri, dry_run=self.dry_run)
             self.ssub.move_files(self.Ri, self.ri, out=self.dry_run)
             util.check_for_nonempty(self.ri, dry_run=self.dry_run)
@@ -235,8 +235,8 @@ class OTU_Caller():
 
         # do forward only if there is a forward read file and a forward primer
         # similar for reverse
-        do_forward = self.f and self.p
-        do_reverse = self.r and self.q
+        do_forward = self.forward and self.p
+        do_reverse = self.reverse and self.q
 
         # check that something is being done
         if not (do_forward or do_reverse):
