@@ -77,8 +77,13 @@ def parse_args():
         args.check = args.split = args.convert = args.primers = args.merge = args.demultiplex = args.qfilter = args.dereplicate = args.index = args.ref_gg = args.otu_table = True
     args.sids = map(int, args.sids.split(','))
     
+    # check combinations
     if args.demultiplex and args.barcodes is None:
         raise RuntimeError("--demultiplex selected but no barcode mapping file specified")
+    
+    if args.check or args.split or args.convert or args.primer or args.merge or args.demultiplex or args.qfilter:
+        if args.f is None and args.r is None:
+            raise RuntimeError("no fastq files selected")
         
     return args
 
