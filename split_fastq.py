@@ -26,8 +26,8 @@ def split_fastq_entries(fastq, fhs):
     
     fastq : filename or filehandle
         input
-    outs : list or iterator of filehandles or filenames
-        output filenames
+    outs : list or iterator of filehandles
+        outputs
         
     returns : nothing
     '''
@@ -54,4 +54,4 @@ if __name__ == '__main__':
         shutil.copy(args.fastq, filenames[0])
     else:
         # split the file entry by entry
-        split_fastq_entries(args.fastq, filenames)
+        split_fastq_entries(args.fastq, [open(fn, 'w') for fn in filenames])
