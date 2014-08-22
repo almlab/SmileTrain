@@ -76,7 +76,7 @@ def parse_barcode(record):
     '''
     
     # match, e.g. @any_set_of_chars#ACGT/1 -> ACGT
-    m = re.match(".*#([ACGTN]+)/(\d)+", record.id)
+    m = re.match(".*#([ACGTN]+)/(\d)$", record.id)
 
     if m is None:
         raise RuntimeError("fastq id did not match expected format: %s" %(record.id))
@@ -86,7 +86,7 @@ def parse_barcode(record):
     read_direction = m.group(2)
     
     if read_direction not in ['1', '2']:
-        raise RuntimeError('read direction not 1 or 2: %s' %(at_line))
+        raise RuntimeError('read direction not 1 or 2: %s' %(record.id))
     
     return (barcode_read, read_direction)
     
