@@ -5,15 +5,11 @@ Convert the three-file raw Illumina data (forward, reverse, and index reads) int
 two-file format used by SmileTrain.
 '''
 
-import argparse, sys, os
+import argparse, sys, os, itertools
 sys.path.append(os.path.normpath(os.path.abspath(__file__) + '/../..'))
-from SmileTrain import util
+from Bio import SeqIO
 
-def lid(fastq_entry):
-    '''get the rid and convert "@M01056:blabla:1382 2:N:0:0" -> "@M01056:blabla:1382"'''
-    return fastq_entry[0].split()[0]
-
-def new_id_line(location, barcode, direction):
+def new_id(location, barcode, direction):
     '''(location, barcode, direction) -> location#barcode/direction'''
     return "%s#%s/%s" %(location, barcode, direction)
 
@@ -28,26 +24,25 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     
-    with open(args.forward_in) as fi, open(args.reverse_in) as ri, open(args.index) as index, open(args.forward_out, 'w') as fo, open(args.reverse_out, 'w') as ro:
-        fi_fq = util.fastq_iterator(fi)
-        ri_fq = util.fastq_iterator(ri)
-        i_fq = util.fastq_iterator(index)
+    with open(args.forward_out, 'w') as fo, open(args.reverse_out, 'w') as ro:
+        fi = SeqIO.parse(args.forward_in, 'fastq')
+        ri = SeqIO.parse(args.reverse_in, 'fastq')
+        ii = SeqIO.parse(args.index, 'fastq')
         
-        for fi_entry in fi_fq:
-            ri_entry = ri_fq.next()
-            i_entry = i_fq.next()
+        for fr, rr, ir in itertools.izip(fi, ri, ii):
+            # check that the reads match
+            if not (fr.id == rr.id == ir.id):
+                raise RuntimeError("ids in corresponding entries did not match: %s %s %s" %(fr.id, rr.id, ir.id))
             
-            # check that we are looking at the same location
-            assert(lid(fi_entry) == lid(ri_entry) == lid(i_entry))
+            # the barcode is the sequence from the index read
+            barcode = str(ir.seq)
             
-            # get new location id
-            location = lid(fi_entry)
-            barcode = i_entry[1]
+            # amend the ids on the forward and reverse entries
+            fr.id = new_id(fr.id, barcode, '1')
+            rr.id = new_id(rr.id, barcode, '2')
+            fr.description = ''
+            rr.description = ''
             
-            # make new forward and reverse entries
-            fo_entry = [new_id_line(location, barcode, "1"), fi_entry[1], fi_entry[2]]
-            ro_entry = [new_id_line(location, barcode, "2"), ri_entry[1], ri_entry[2]]
-            
-            # output the entries to their new places
-            fo.write(util.fastq_entry_list_to_string(fo_entry) + "\n")
-            ro.write(util.fastq_entry_list_to_string(ro_entry) + "\n")
+            # write the entries to their output files
+            SeqIO.write(fr, fo, 'fastq')
+            SeqIO.write(rr, ro, 'fastq')

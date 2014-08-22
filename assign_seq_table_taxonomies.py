@@ -5,6 +5,7 @@ Get the taxonomies for a seq table using greengenes (or whatever).
 '''
 
 import sys, argparse, tempfile, cPickle as pickle, ConfigParser, os
+from Bio import Seq, SeqIO, SeqRecord
 from SmileTrain import ssub
 
 def seq_table_to_fasta(table_fh, fasta_fh):
@@ -16,7 +17,8 @@ def seq_table_to_fasta(table_fh, fasta_fh):
     
     # write the fasta
     for i, seq in enumerate(seqs):
-        fasta_fh.write(">seq%s\n%s\n" %(i, seq))
+        record = SeqRecord.SeqRecord(Seq.Seq(seq), id="seq%s" %(i))
+        SeqIO.write(record, fasta_fh, 'fasta')
         
 def write_tmp_fasta(table_fh, tmp_dir):
     '''make a temporary fasta file'''
@@ -103,4 +105,4 @@ if __name__ == '__main__':
     with open(gg_tax) as f:
         taxs = lookup_taxonomies(ids, f, args.no_match, args.no_match_label)
         
-    args.output.write("\n".join(taxs))
+    args.output.write("\n".join(taxs) + "\n")

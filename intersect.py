@@ -9,12 +9,20 @@ being fed into the pipeline, that naming convention would need to change.
 '''
 
 import sys, argparse, re
+from Bio import SeqIO
 import util
 
+def fastq_id_to_read_id(fid):
+    '''trim off the /1 or /2'''
+    m = re.search("/[12]$", fid)
+    if not m:
+        raise RuntimeError("could not parse fastq id: %s" %(fid))
+    
+    return fid.rstrip("/12")
 
-def fastq_ids(lines):
-    '''Extract the read IDs (with no @) from a fastq file'''
-    return [util.fastq_at_line_to_id(at_line) for at_line, seq_line, quality_line in util.fastq_iterator(lines)]
+def fastq_ids(fastq):
+    '''extract the read IDs from a fastq file'''
+    return [fastq_id_to_read_id(record.id) for record in SeqIO.parse(fastq, 'fastq')]
 
 def common_ids(fastq1, fastq2):
     '''
@@ -34,14 +42,12 @@ def common_ids(fastq1, fastq2):
 
     return ids1.intersection(ids2)
 
-def fastq_entries_with_matching_ids(fastq, rids):
+def fastq_records_with_matching_ids(fastq, rids):
     '''yield a series of fastq entry strings drawn from the input whose IDs match those in the list'''
-
-    for at_line, seq_line, quality_line in util.fastq_iterator(fastq):
-        rid = util.fastq_at_line_to_id(at_line)
-
-        if rid in rids:
-            yield util.fastq_entry_list_to_string([at_line, seq_line, quality_line]) 
+    
+    for record in SeqIO.parse(fastq, 'fastq'):
+        if fastq_id_to_read_id(record.id) in rids:
+            yield record
 
 
 if __name__ == '__main__':
@@ -54,22 +60,17 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # read in the inputs and look for common ids
-    with open(args.forward_in, 'r') as f:
-        with open(args.reverse_in, 'r') as r:
-            rids = common_ids(f, r)
+    rids = common_ids(args.forward_in, args.reverse_in)
             
     # make sure that we are actually looking for something
     if len(rids) == 0:
         raise RuntimeError("no common IDs found in %s and %s" % (args.forward_in, args.reverse_in))
 
     # write the forward entries with reads with ids in the reverse entries
-    with open(args.forward_in, 'r') as i:
-        with open(args.forward_out, 'w') as o:
-            for entry in fastq_entries_with_matching_ids(i, rids):
-                o.write("%s\n" % entry)
-
-    # ditto for the revere reads
-    with open(args.reverse_in, 'r') as i:
-        with open(args.reverse_out, 'w') as o:
-            for entry in fastq_entries_with_matching_ids(i, rids):
-                o.write("%s\n" % entry)
+    with open(args.forward_out, 'w') as f:
+        for record in fastq_records_with_matching_ids(args.forward_in, rids):
+            SeqIO.write(record, f, 'fastq')
+        
+    with open(args.reverse_out, 'w') as f:
+        for record in fastq_records_with_matching_ids(args.reverse_in, rids):
+            SeqIO.write(record, f, 'fastq')

@@ -24,6 +24,7 @@ where the ;1 means it's the first read that mapped to donor1_day5.
 
 import usearch_python.primer, util
 import sys, argparse, string, itertools, re
+from Bio import SeqIO
 
 def barcode_file_to_dictionary(barcode_lines):
     '''parse a barcode mapping file into a dictionary {barcode: sample}'''
@@ -62,60 +63,59 @@ def best_barcode_match(known_barcodes, barcode):
 
     return min_mismatches, best_known_barcode
 
-def parse_barcode(at_line):
+def parse_barcode(record):
     '''
-    Extract the barcode read and direction from the at line
+    Extract the barcode read and direction from a BioPython SeqRecord
     
     Parameters
-    at_line : string
-        string starting with @ from fastq
+    record : SeqRecord
+        fastq record
     
     returns : tuple
         (barcode read, read direction), where direction is either '1' or '2'
     '''
     
     # match, e.g. @any_set_of_chars#ACGT/1 -> ACGT
-    m = re.match("@.*#([ACGTN]+)/(\d)+", at_line)
+    m = re.match(".*#([ACGTN]+)/(\d)$", record.id)
 
     if m is None:
-        raise RuntimeError("fastq line did not match expected format: %s" %(at_line))
+        raise RuntimeError("fastq id did not match expected format: %s" %(record.id))
 
     # pull out the read and direction from the match
     barcode_read = m.group(1)
     read_direction = m.group(2)
     
     if read_direction not in ['1', '2']:
-        raise RuntimeError('read direction not 1 or 2: %s' %(at_line))
+        raise RuntimeError('read direction not 1 or 2: %s' %(record.id))
     
     return (barcode_read, read_direction)
     
 
-def renamed_fastq_entries(fastq_lines, barcode_map, max_barcode_diffs):
+def renamed_fastq_records(fastq, barcode_map, max_barcode_diffs):
     '''
     Rename the read IDs in a fastq file with the corresponding sample name. Get the barcode
     read right from the ID line, look it up in the barcode map, and pick the best match.
 
     Parameters
-    fastq_lines : sequence or iterator of strings
-        the lines in the fastq file to be processed
+    fastq : filename or filehandle
+        input
     barcode_map : dictionary
         entries are {barcode: sample_name}
     max_barcode_diffs : int
         maximum number of mismatches between a barcode read and known barcode before throwing
         out that read
 
-    yields : list
-        fastq entry [renamed at line, sequence line, quality line]
+    yields : SeqRecord
+        fastq records
     '''
 
     # keep track of the computations where we align the barcode read to the known barcodes
     barcode_read_to_sample = {}
     sample_counts = {}
 
-    # get the fastq lines four at a time
-    for at_line, seq_line, quality_line in util.fastq_iterator(fastq_lines):
+    for record in SeqIO.parse(fastq, 'fastq'):
         # look for the barcode from the read ID line
-        barcode_read, read_direction = parse_barcode(at_line)
+        barcode_read, read_direction = parse_barcode(record)
         
         if barcode_read in barcode_read_to_sample:
             sample = barcode_read_to_sample[barcode_read]
@@ -134,8 +134,12 @@ def renamed_fastq_entries(fastq_lines, barcode_map, max_barcode_diffs):
                 sample = barcode_map[best_known_barcode]
                 barcode_read_to_sample[barcode_read] = sample
                 sample_counts[sample] = 1
+
+        record.id = "sample=%s;%d/%s" %(sample, sample_counts[sample], read_direction)
         
-        yield ["@sample=%s;%d/%s" %(sample, sample_counts[sample], read_direction), seq_line, quality_line]
+        # expunge other parts of title
+        record.description = ''
+        yield record
 
 
 if __name__ == '__main__':
@@ -144,6 +148,7 @@ if __name__ == '__main__':
     parser.add_argument('fastq', help='input fastq file')
     parser.add_argument('barcode', help='barcode mapping file')
     parser.add_argument('-m', '--max_barcode_diffs', default=0, type=int, help='maximum number of nucleotide mismatches in the barcode (default: 0)')
+    parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output fastq (default stdout)')
     args = parser.parse_args()
 
     # parse the barcode mapping file
@@ -151,6 +156,5 @@ if __name__ == '__main__':
         barcode_map = barcode_file_to_dictionary(f)
 
     # get a set of reads
-    with open(args.fastq, 'r') as f:
-        for entry in renamed_fastq_entries(f, barcode_map, args.max_barcode_diffs):
-            print util.fastq_entry_list_to_string(entry)
+    for record in renamed_fastq_records(args.fastq, barcode_map, args.max_barcode_diffs):
+        SeqIO.write(record, args.output, 'fastq')

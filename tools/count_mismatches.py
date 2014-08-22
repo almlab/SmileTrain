@@ -6,15 +6,8 @@ following sequences. If the two sequences are not the same length, you'll get a 
 answer.
 '''
 
-from SmileTrain import util
+from Bio import SeqIO
 import argparse, difflib
-
-def count_diffs(target, query):
-    l = len(target)
-    a = difflib.SequenceMatcher(a=target, b=query, autojunk=False)
-    r = a.ratio()
-    return l*(1.0 - r)
-
 
 
 if __name__ == '__main__':
@@ -23,15 +16,17 @@ if __name__ == '__main__':
     parser.add_argument('fasta', help='input fasta')
     args = parser.parse_args()
     
-    with open(args.fasta) as f:
-        entries = list(util.fasta_entries(f))
-    
-    target_label, target_seq = entries[0]
-    query_labels, query_seqs = zip(*entries)
-    diffs = [count_diffs(target_seq, query_seq) for query_seq in query_seqs]
-    max_diff = max(diffs)
-    
-    for query_label, diff in zip(query_labels, diffs):
-        print "{}\t{}".format(query_label, diff)
+    target = None
+    max_fraction = 0.0
+    for record in SeqIO.parse(args.fasta, 'fasta'):
+        if target is None:
+            target = str(record.seq)
+            l = len(target)
         
-    print "max\t{}".format(max_diff)
+        d = difflib.SequenceMatcher(a=target, b=str(record.seq), autojunk=False)
+        fraction = l*(1.0 - d.ratio())
+        print "{}\t{}".format(record.id, fraction)
+        
+        max_fraction = max(fraction, max_fraction)
+    
+    print "max\t{}".format(max_fraction)

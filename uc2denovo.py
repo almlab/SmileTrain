@@ -6,6 +6,7 @@ reference-based search.
 '''
 
 import uc2otus, util, argparse, sys, re
+from Bio import SeqIO
 
 def missed_labels(uc_lines):
     '''uc lines -> labels for missed sequences'''
@@ -17,14 +18,14 @@ def missed_labels(uc_lines):
             
     return labels
 
-def matching_fasta_entries(labels, fastas):
-    new_fasta = ""
-    for label, seq in fastas:
-        if label in labels:
-            new_fasta += ">%s\n%s\n" % (label, seq)
+def matching_fasta_entries(labels, fasta):
+    records = [record for record in SeqIO.parse(fasta, 'fasta') if record.id in labels]
     
-    return new_fasta
-            
+    # rename 'counts' to 'size' to match usearch
+    for record in records:
+        record.id = re.sub('counts', 'size', record.id)
+    
+    return records
             
 
 if __name__ == '__main__':
@@ -37,11 +38,6 @@ if __name__ == '__main__':
     
     with open(args.uc) as f:
         labels = missed_labels(f)
-        
-    with open(args.fasta) as f:
-        fastas = util.fasta_entries(f, output_type='list')
-        new_fasta = matching_fasta_entries(labels, fastas)
     
-    # rename size in label
-    new_fasta = re.sub('counts', 'size', new_fasta)
-    args.output.write(new_fasta)
+    records = matchind_fasta_entries(labels, SeqIO.parse(fasta, 'fasta'))
+    SeqIO.write(records, args.output, 'fasta')

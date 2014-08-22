@@ -7,29 +7,33 @@ Illumina 1.3-1.7 format, specificially that
     * the quality line uses Sanger encoding (ascii offset 64, high score h to low score B)
 '''
 
-import itertools, os, os.path, sys, argparse, shutil
+import itertools, os, os.path, sys, argparse, shutil, re
+from Bio import SeqIO
 import util
 
-def check_illumina_format(ifilenames, itargets):
+def parse_fastq_record_id(record):
+    '''BioPython fastq record "@lol/1" -> "lol"'''
+    m = re.match('^(.+)/[12]', record.id)
+    if m is None:
+        raise RuntimeError("fastq record line did not parse: %s" % record.id)
+    else:
+        rid = m.group(1)
+        
+    return rid
+
+def check_illumina_format(inputs, targets):
     '''
     Raise error if any of the input filenames are not in the desired format.
     
-    filenames : string, or iterable of strings
+    inputs : filenames or filehandle, or iterable of strings/filehandles
         files to be checked
     target : string, or iterable of strings
         'illumina13' or 'illumina18' or 'ambiguous', or some combination
     '''
     
     # convert to lists if required
-    if type(ifilenames) is str:
-        filenames = [ifilenames]
-    else:
-        filenames = ifilenames
-    
-    if type(itargets) is str:
-        targets = [itargets]
-    else:
-        targets = itargets
+    inputs = util.listify(inputs)
+    targets = util.listify(targets)
     
     # check that input targets are in acceptable list
     acceptable_targets = set(['illumina13', 'illumina18', 'ambiguous'])
@@ -37,18 +41,18 @@ def check_illumina_format(ifilenames, itargets):
         bad_targets = targets - acceptable_targets
         raise ArgumentError("unrecognized format type(s): %s" % bad_targets)
     
-    format_f = lambda fn: file_format(open(fn))
-    
     # check all the formats
-    formats = [file_format(open(fn)) for fn in filenames]
+    formats = [file_format(i) for i in inputs]
     tests = [form in targets for form in formats]
-    bad_files = [fn for fn, test in zip(filenames, tests) if test == False]
-    bad_forms = set([form for form, test in zip(formats, tests) if test == False])
+    bad_files = [i for i, test in zip(i, tests) if test == False]
+    bad_forms = [form for form, test in zip(formats, tests) if test == False]
     
     # complain if something went wrong
     if False in tests:
-        bad_info = "\n".join([" ".join([fn, form]) for fn, form in zip(filenames, bad_forms)])
+        bad_info = "\n".join([" ".join([i, form]) for i, form in zip(bad_files, bad_forms)])
         raise RuntimeError("files do not appear to be in %s format: \n%s" % (targets, bad_info))
+    else:
+        return True
 
 def file_format(fastq, max_entries=10):
     '''
@@ -58,38 +62,41 @@ def file_format(fastq, max_entries=10):
         'illumina13', 'illumin18', or 'ambiguous'
     '''
     
-    for i, (at_line, seq_line, qua_line) in enumerate(util.fastq_iterator(fastq)):
+    for i, record in enumerate(SeqIO.parse(fastq, 'fastq')):
         if i > max_entries:
             raise RuntimeError("could not verify format after %d entries" % max_entries)
         
         # make sure we can parse the at line
-        rid = util.fastq_at_line_to_id(at_line)
+        rid = parse_fastq_record_id(record)
         
         # check the quality line's character content
-        return quality_line_format(qua_line)
+        return fastq_record_format(record)
+    
+    raise RuntimeError("fell off end")
         
-def quality_line_format(line):
+def fastq_record_format(record):
     '''
     Guess the fastq format using the quality codes.
     
-    line : string
-        quality line from a fastq entry
+    record : BioPython Seq object
+        to be analyzed
         
     returns : 'illumina13', 'illumina18', 'ambiguous'
         either Illumina 1.3-1.7 (B--h), Illumina 1.8 ("--J), or ambiguous
     '''
     
-    matches_illumina13 = all([c in util.illumina13_codes for c in list(line)])
-    matches_illumina18 = all([c in util.illumina18_codes for c in list(line)])
+    scores = record.letter_annotations['phred_quality']
+    min_score = min(scores)
+    max_score = max(scores)
     
-    if matches_illumina13 and matches_illumina18:
-        return 'ambiguous'
-    elif matches_illumina13 and not matches_illumina18:
-        return 'illumina13'
-    elif matches_illumina18 and not matches_illumina13:
+    if 1 <= min_score and min_score < 32 and max_score <= 41:
         return 'illumina18'
-    elif not matches_illumina18 and not matches_illumina13:
-        raise RuntimeError("quality line doesn't match known encoding: %s" % line)
+    elif 32 <= min_score and 41 < max_score and max_score <= 71:
+        return 'illumina13'
+    elif min_score < 1 or max_score > 71:
+        raise RuntimeError("quality scores don't match known encoding: min=%s max=%s" %(min_score, max_score))
+    else:
+        return 'ambiguous'
 
 
 if __name__ == '__main__':

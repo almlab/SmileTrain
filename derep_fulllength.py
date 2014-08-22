@@ -32,21 +32,20 @@ The output file is sorted in order of decreasing abundance. Sequences with a min
 number of counts are dropped.
 '''
 
-import sys, argparse, re
+import sys, argparse, re, sys
+from Bio import SeqIO, SeqRecord, Seq
 import util
 
 class Dereplicator():
-    def __init__(self, fasta_entries, minimum_counts):
+    def __init__(self, fasta, minimum_counts):
         '''
-        fasta_entries : list or iterator
-            [sid (no >), sequence] pairs
+        fasta : fasta filename or handle
+            input fasta
         minimum_counts : int
             minimum number of counts to be included in output
-        by_sample : bool
-            dereplicate only within samples?
         '''
         
-        self.input_fasta_entries = fasta_entries
+        self.fasta = fasta
         self.minimum_counts = minimum_counts
         
         # process the data
@@ -77,7 +76,9 @@ class Dereplicator():
         new_seq_ids = self.iter_seq_ids()
         
         # keep track of the highest sequence index used
-        for sid, seq in self.input_fasta_entries:    
+        for record in SeqIO.parse(self.fasta, 'fasta'):
+            seq = str(record.seq)
+            
             # if we haven't seen this sequence before, give it a new index
             if seq not in self.seq_ids:
                 # this should be a new id
@@ -102,29 +103,25 @@ class Dereplicator():
         self.filtered_abundant_sequences = [seq for seq in sorted_seqs if self.abundances[seq] >= self.minimum_counts]
         self.filtered_abundant_ids = [self.seq_ids[seq] for seq in self.filtered_abundant_sequences]
     
-    def seq_to_entry(self, seq):
+    def seq_to_record(self, seq):
         '''seq_id, abundance -> >seq_id;counts=abundance\nACGT'''
-        
-        return ">%s;counts=%d\n%s" %(self.seq_ids[seq], self.abundances[seq], seq)
+        return SeqRecord.SeqRecord(Seq.Seq(seq), id="%s;counts=%d" %(self.seq_ids[seq], self.abundances[seq]), description='')
     
     def new_fasta_entries(self):
         '''yield the list of fasta lines in abundance order'''
         
         for seq in self.filtered_abundant_sequences:
-            yield self.seq_to_entry(seq)
+            yield self.seq_to_record(seq)
 
 
 if __name__ == '__main__':
     # parse command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('input', help='input fasta file')
-    parser.add_argument('output', help='output fasta file')
+    parser.add_argument('fasta', help='input fasta')
+    parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'), help='dereplicated fasta (default: stdout)')
     parser.add_argument('-m', '--minimum_counts', type=int, default=2, help='minimum times a sequence is included, otherwise it gets thrown out (default: 2)')
     args = parser.parse_args()
 
-    with open(args.input, 'r') as f:
-        derep = Dereplicator(util.fasta_entries(f), args.minimum_counts)
-        
-    with open(args.output, 'w') as o:
-        for entry in derep.new_fasta_entries():
-            o.write("%s\n" %(entry))
+    derep = Dereplicator(args.fasta, args.minimum_counts)
+    
+    SeqIO.write(derep.new_fasta_entries(), args.output, 'fasta')

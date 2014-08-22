@@ -1,6 +1,33 @@
 import re, string, sys, time, itertools, os, subprocess
+from Bio import SeqRecord, SeqIO
 from SmileTrain import util
 import usearch_python.primer
+
+def mismatches(seq, primer, w):
+    '''
+    Calculate mismatches between a sequence and primer with window size w.
+    Returns the starting index and number of mismatches for the best match.
+    
+    Parameters
+    seq : string (or stringable)
+        target (longer) sequence
+    primer : string (or stringable)
+        query (shorter) sequence
+    w : int
+        window size (how many bases on the target to go in, at most)
+        
+    returns : tuple
+        (primer start index, differences in primer and sequence)
+    '''
+
+    I = 0
+    D = len(seq)
+    for i in range(w):
+        d = usearch_python.primer.MatchPrefix(seq[i:], primer)
+        if d < D:
+            I = i
+            D = d
+    return (I, D)
 
 class PrimerRemover():
     def __init__(self, fastq, primer, max_primer_diffs, output_type='string', skip=1):
@@ -8,8 +35,8 @@ class PrimerRemover():
         Remove well-matched primers from sequences in a fastq file
 
         Parameters
-        fastq : sequence or iterator of strings
-            lines in the fastq file
+        fastq : filename or filehandle
+            input
         primer : string
             the primer sequence to be removed
         max_primer_diffs : int
@@ -20,7 +47,7 @@ class PrimerRemover():
             take only every n-th entry (so skip=1 means every entry)
         '''
 
-        self.fastq_iterator = util.fastq_iterator(fastq)
+        self.records = SeqIO.parse(fastq, 'fastq')
         self.primer = primer
         self.primer_length = len(self.primer)
         self.max_primer_diffs = max_primer_diffs
@@ -39,25 +66,21 @@ class PrimerRemover():
         '''iterator over successfully trimmed input fastq entries'''
 
         while True:
-            [at_line, seq_line, quality_line] = self.fastq_iterator.next()
+            record = self.records.next()
 
             # take this entry if it's the n-th entry
             if self.position % self.skip == 0:
                 # find the best primer position in the sequence
-                primer_start_index, n_primer_diffs = util.mismatches(seq_line, self.primer, 15)
+                primer_start_index, n_primer_diffs = mismatches(str(record.seq), self.primer, 15)
     
                 # if we find a good match, trim the sequence and the
                 # quality line and yield a single string
                 if n_primer_diffs <= self.max_primer_diffs:
                     primer_end_index = primer_start_index + self.primer_length
-                    trimmed_seq = seq_line[primer_end_index:]
-                    trimmed_quality = quality_line[primer_end_index:]
+                    new_record = SeqRecord.SeqRecord(seq=str(record.seq)[primer_end_index:], id=record.id, letter_annotations={'phred_quality': record.letter_annotations['phred_quality'][primer_end_index:]})
                     self.n_successes += 1
-    
-                    if self.output_type == 'string':
-                        return "\n".join([at_line, trimmed_seq, '+', trimmed_quality])
-                    elif self.output_type == 'list':
-                        return [at_line, trimmed_seq, trimmed_quality]
+                    
+                    return new_record
                 else:
                     self.n_failures += 1
                 
@@ -67,8 +90,9 @@ class PrimerRemover():
         '''print the successfully trimmed entries'''
 
         timer = util.timer()
-        for entry in self:
-            print entry
+        for record in self:
+            SeqIO.write(record, sys.stdout, 'fastq')
+
         self.elapsed_time = timer.next()
         
     def check_entries(self):
