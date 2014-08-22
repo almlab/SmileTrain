@@ -32,8 +32,8 @@ The output file is sorted in order of decreasing abundance. Sequences with a min
 number of counts are dropped.
 '''
 
-import sys, argparse, re
-from Bio import SeqIO, SeqRecord
+import sys, argparse, re, sys
+from Bio import SeqIO, SeqRecord, Seq
 import util
 
 class Dereplicator():
@@ -43,8 +43,6 @@ class Dereplicator():
             input fasta
         minimum_counts : int
             minimum number of counts to be included in output
-        by_sample : bool
-            dereplicate only within samples?
         '''
         
         self.fasta = fasta
@@ -107,7 +105,7 @@ class Dereplicator():
     
     def seq_to_record(self, seq):
         '''seq_id, abundance -> >seq_id;counts=abundance\nACGT'''
-        return SeqRecord.SeqRecord(seq, id="%s;counts=%d" %(self.seq_ids[seq], self.abundances[seq]))
+        return SeqRecord.SeqRecord(Seq.Seq(seq), id="%s;counts=%d" %(self.seq_ids[seq], self.abundances[seq]), description='')
     
     def new_fasta_entries(self):
         '''yield the list of fasta lines in abundance order'''
@@ -119,11 +117,11 @@ class Dereplicator():
 if __name__ == '__main__':
     # parse command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('input', help='input fasta file')
-    parser.add_argument('output', help='output fasta file')
+    parser.add_argument('fasta', help='input fasta')
+    parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'), help='dereplicated fasta (default: stdout)')
     parser.add_argument('-m', '--minimum_counts', type=int, default=2, help='minimum times a sequence is included, otherwise it gets thrown out (default: 2)')
     args = parser.parse_args()
 
-    derep = Dereplicator(args.input, args.minimum_counts)
+    derep = Dereplicator(args.fasta, args.minimum_counts)
     
     SeqIO.write(derep.new_fasta_entries(), args.output, 'fasta')
