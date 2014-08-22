@@ -355,7 +355,7 @@ class OTU_Caller():
     def dereplicate_reads(self):
         '''Concatenate files and dereplicate'''
 
-        cmd = 'python %s/derep_fulllength.py q.fst q.derep.fst' %(self.library)
+        cmd = 'python %s/derep_fulllength.py q.fst -o q.derep.fst' %(self.library)
         self.ssub.submit_and_wait([cmd], self.dry_run)
         util.check_for_nonempty('q.derep.fst', dry_run=self.dry_run)
         
