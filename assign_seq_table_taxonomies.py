@@ -17,7 +17,7 @@ def seq_table_to_fasta(table_fh, fasta_fh):
     
     # write the fasta
     for i, seq in enumerate(seqs):
-        record = SeqRecord.SeqRecord(Seq.Seq(seq), id="seq%s" %(i))
+        record = SeqRecord.SeqRecord(Seq.Seq(seq), id="seq%s" %(i), description='')
         SeqIO.write(record, fasta_fh, 'fasta')
         
 def write_tmp_fasta(table_fh, tmp_dir):
