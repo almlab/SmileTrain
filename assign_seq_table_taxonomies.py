@@ -57,13 +57,26 @@ def uc_to_ids(uc_fh):
     return ids
 
 def lookup_taxonomies(ids, tax_pkl_fh, no_match=None, no_match_label=None):
+    '''
+    Parameters
+    tax_pkl_fh : filehandle
+        pickled dictionary {label => taxonomy}
+    no_match : string
+        tax supplied when label is no_match
+    no_match_label : string
+        label for nonmatched sequences (like * in .uc)
+        
+    returns : list of strings
+        taxonomies
+    '''
+    
     d = pickle.load(tax_pkl_fh)
     
     if no_match is not None:
         if no_match_label is None:
             raise RuntimeError("no match symbol specified (%s) but not label!" %(no_match))
         
-        taxs[no_match] = no_match_label
+        d[no_match] = no_match_label
     
     taxs = [d[qid] for qid in ids]
     return taxs
