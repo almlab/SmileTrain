@@ -50,6 +50,7 @@ def parse_args():
     group1.add_argument('--ref_gg', default = False, action = 'store_true', help = 'Reference mapping (Greengenes)?')
     group1.add_argument('--open_ref_gg', action='store_true', help='Reference map (Greengenes) and then denovo cluster?')
     group1.add_argument('--seq_table', action='store_true', help='Make a sequence table?')
+    group1.add_argument('--seq_tax', action='store_true', help='Get taxonomies for sequence table?')
     group1.add_argument('--otu_table', action='store_true', help='Make OTU table?')
     group2.add_argument('--forward', '-f', help='Input fastq (forward)')
     group2.add_argument('--reverse', '-r', help='Input fastq (reverse)')
@@ -136,6 +137,7 @@ class OTU_Caller():
         self.open_uc = ['otus.%d.no_match.uc' %(sid) for sid in self.sids] # uclust output files, for open reference clustering
         self.open_otu_tmp = ['otus.%d.no_match.tmp' %(sid) for sid in self.sids] # otu rep seqs (tmp)
         self.open_otu = ['otus.%d.no_match.fst' %(sid) for sid in self.sids] # otu rep seqs
+        self.seq_tax_fn = 'seq.tax'
         
         # if reference-based clustering at 97%, make sure reads are 98.5% dissimilar
         self.reference_map_sids = [0.5*(100.0+float(sid)) for sid in self.sids]
@@ -502,6 +504,17 @@ class OTU_Caller():
         
         self.ssub.submit_and_wait([cmd], self.dry_run)
         util.check_for_nonempty('seq.counts', self.dry_run)
+        
+    def get_seq_tax(self):
+        '''Get taxonomies for sequences in the seq table'''
+        
+        util.check_for_nonempty('seq.counts', self.dry_run)
+        util.check_for_collisions(self.seq_tax_fn, self.dry_run)
+        
+        cmd = 'python %s/assign_seq_table_taxonomies.py %s --output %s' %(self.library, 'seq.counts', self.seq_tax_fn)
+        
+        self.ssub.submit_and_wait([cmd], self.dry_run)
+        util.check_for_nonempty(self.seq_tax_fn, self.dry_run)
     
 
 if __name__ == '__main__':
@@ -577,6 +590,10 @@ if __name__ == '__main__':
     if oc.seq_table:
         message('Making sequence table')
         oc.make_seq_table()
+        
+    if oc.seq_tax:
+        message('Assigning sequence table taxonomies')
+        oc.get_seq_tax()
     
     # Make OTU tables
     if oc.otu_table == True:

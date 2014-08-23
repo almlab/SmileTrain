@@ -4,9 +4,9 @@
 Get the taxonomies for a seq table using greengenes (or whatever).
 '''
 
-import sys, argparse, tempfile, cPickle as pickle, ConfigParser, os
+import sys, argparse, tempfile, cPickle as pickle, ConfigParser, os, subprocess
 from Bio import Seq, SeqIO, SeqRecord
-from SmileTrain import ssub
+
 
 def seq_table_to_fasta(table_fh, fasta_fh):
     '''convert sequence table entries to a fasta'''
@@ -17,7 +17,7 @@ def seq_table_to_fasta(table_fh, fasta_fh):
     
     # write the fasta
     for i, seq in enumerate(seqs):
-        record = SeqRecord.SeqRecord(Seq.Seq(seq), id="seq%s" %(i))
+        record = SeqRecord.SeqRecord(Seq.Seq(seq), id="seq%s" %(i), description='')
         SeqIO.write(record, fasta_fh, 'fasta')
         
 def write_tmp_fasta(table_fh, tmp_dir):
@@ -36,10 +36,10 @@ def usearch_against_database_cmd(usearch, table_fh, tmp_dir, db, fid, no_hit=Non
     uc_fn = uc_fh.name
     uc_fh.close()
     
-    cmd = "%s -usearch_global %s -uc %s -strand %s -id %s -db %s" %(usearch, fasta_fn, uc_fn, strand, fid, db)
+    cmd = [usearch, '-usearch_global', fasta_fn, '-uc', uc_fn, '-strand', strand, '-id', fid, '-db', db]
     
     if no_hit is not None:
-        cmd += " -notmatched %s" %(no_hit)
+        cmd += ['-notmatched', no_hit]
     
     print "  temporary fasta: %s" % fasta_fn
     print "  temporary uc: %s" % uc_fn
@@ -57,13 +57,26 @@ def uc_to_ids(uc_fh):
     return ids
 
 def lookup_taxonomies(ids, tax_pkl_fh, no_match=None, no_match_label=None):
+    '''
+    Parameters
+    tax_pkl_fh : filehandle
+        pickled dictionary {label => taxonomy}
+    no_match : string
+        tax supplied when label is no_match
+    no_match_label : string
+        label for nonmatched sequences (like * in .uc)
+        
+    returns : list of strings
+        taxonomies
+    '''
+    
     d = pickle.load(tax_pkl_fh)
     
     if no_match is not None:
         if no_match_label is None:
             raise RuntimeError("no match symbol specified (%s) but not label!" %(no_match))
         
-        taxs[no_match] = no_match_label
+        d[no_match] = no_match_label
     
     taxs = [d[qid] for qid in ids]
     return taxs
@@ -92,12 +105,11 @@ if __name__ == '__main__':
     library = config.get('Scripts', 'library')
     tmp_dir = config.get('User', 'tmp_directory')
     
-    submitter = ssub.Ssub()
-    
     gg_fasta = os.path.join(gg_dir, "%s_otus.fasta" %(args.sid))
     with open(args.table) as f:
         cmd, uc_fn = usearch_against_database_cmd(usearch, f, tmp_dir, gg_fasta, args.fid, args.no_hit)
-    submitter.submit_and_wait([cmd])
+    
+    subprocess.call(cmd)
     
     with open(uc_fn) as f:
         ids = uc_to_ids(f)
