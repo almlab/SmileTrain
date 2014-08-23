@@ -80,14 +80,14 @@ if __name__ == '__main__':
     # parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('fasta', help='input fasta file')
-    parser.add_argument('-s', '--samples', default=None, help='samples list (default: sorted names from fasta)')
+    parser.add_argument('-s', '--samples', default=None, help='samples list (samples in first field; default: sorted names from fasta)')
     parser.add_argument('-m', '--minimum_counts', type=int, default=2, help='minimum times a sequence is included, otherwise it gets thrown out (default: 2)')
     parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'), help='output file (default stdout)')
     args = parser.parse_args()
     
     if args.samples is not None:
         with open(args.samples) as f:
-            samples = [line.strip() for line in f]
+            samples = [line.split()[0] for line in f]
     else:
         samples = None
         
