@@ -137,7 +137,6 @@ class OTU_Caller():
         self.open_uc = ['otus.%d.no_match.uc' %(sid) for sid in self.sids] # uclust output files, for open reference clustering
         self.open_otu_tmp = ['otus.%d.no_match.tmp' %(sid) for sid in self.sids] # otu rep seqs (tmp)
         self.open_otu = ['otus.%d.no_match.fst' %(sid) for sid in self.sids] # otu rep seqs
-        
         self.seq_tax_fn = 'seq.tax'
         
         # if reference-based clustering at 97%, make sure reads are 98.5% dissimilar
