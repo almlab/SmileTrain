@@ -65,7 +65,7 @@ class Submitter():
             print "\n".join([" ".join(cmd) for cmd in cmds])
         else:
             for cmd in cmds:
-                os.command(cmd)
+                os.system(" ".join(cmd))
 
 
 # open the config file sister to this script
@@ -450,132 +450,83 @@ class OTU_Caller():
             cmds = []
             for i in range(len(self.sids)):
                 sid = self.sids[i]
-                cmd = 'python %s/usearch_python/fasta_number.py %s OTU%d_ > %s' %(self.library, self.oi[i], sid, self.Oi[i])
+                cmd = ['python', '%s/usearch_python/fasta_number.py' %(self.library), self.oi[i], 'OTU%d_' %(sid), '>', self.Oi[i]]
                 cmds.append(cmd)
-            self.ssub.submit_and_wait(cmds, self.dry_run)
-            util.check_for_nonempty(self.Oi, self.dry_run)
-            self.ssub.move_files(self.Oi, self.oi, self.dry_run)
-            util.check_for_nonempty(self.oi, self.dry_run)
+            self.sub.execute(cmds)
+            self.sub.check_for_nonempty(self.Oi)
+            self.sub.move_files(self.Oi, self.oi)
+            self.sub.check_for_nonempty(self.oi)
     
     def remove_chimeras(self):
         '''Remove chimeras using gold database'''
-
         cmds = []
         for i in range(len(self.sids)):
             sid = self.sids[i]
-            cmd = '%s -uchime_ref %s -db %s -nonchimeras %s -strand plus' %(self.usearch, self.oi[i], self.gold_db, self.Oi[i])
+            cmd = [self.usearch, '-uchime_ref', self.oi[i], '-db', self.gold_db, '-nochimeras', self.Oi[i], '-strand', 'plus']
             cmds.append(cmd)
-        self.ssub.submit_and_wait(cmds, self.dry_run)
+        self.sub.execute(cmds)
         
-        util.check_for_nonempty(self.Oi, self.dry_run)
-        self.ssub.move_files(self.Oi, self.oi, self.dry_run)
-        util.check_for_nonempty(self.oi, self.dry_run)
+        self.sub.check_for_nonempty(self.Oi)
+        self.sub.move_files(self.Oi, self.oi)
+        self.sub.check_for_nonempty(self.oi)
     
     def reference_mapping(self):
         '''Map reads to reference databases'''
-        
-        util.check_for_nonempty(self.db, self.dry_run)
-        util.check_for_collisions(self.uc, self.dry_run)
+        self.sub.check_for_nonempty(self.db)
+        self.sub.check_for_collisions(self.uc)
 
         cmds = []
         for i in range(len(self.sids)):
-            cmd = '%s -usearch_global q.derep.fst -db %s -uc %s -strand both -id .%d' %(self.usearch, self.db[i], self.uc[i], self.reference_map_sids[i])
+            cmd = [self.usearch, '-usearch_global', 'q.derep.fst', '-db', self.db[i], '-uc', self.uc[i], '-strand', 'both', '-id', '.%d' %(self.reference_map_sids[i])]
             cmds.append(cmd)
             
-        self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.uc, self.dry_run)
+        self.sub.execute(cmds)
+        self.sub.check_for_nonempty(self.uc)
         
     def open_reference_mapping(self):
         '''Makes new otus from reads missed in the original reference mapping, then maps to those otus'''
-        
-        util.check_for_nonempty(self.uc, self.dry_run)
-        util.check_for_collisions(self.open_fst, self.dry_run)        # unmatched seqs go into a new source fasta
-        util.check_for_collisions(self.open_otu_tmp, self.dry_run)    # rep seqs for otus made from those unmatched seqs
-        util.check_for_collisions(self.open_otu, self.dry_run)        # same rep seqs, but renamed as OTUs
-        util.check_for_collisions(self.open_uc, self.dry_run)         # mapping information of unmatched seqs to denovo OTUs
-        util.check_for_collisions(self.orig_uc, self.dry_run)         # mapping information for reference-based matching
-        
-        # grab the unmatched sequences from the database-reference uc
-        cmds = ['python %s/uc2denovo.py q.derep.fst %s --output %s' %(self.library, self.uc[i], self.open_fst[i]) \
-                for i in range(len(self.sids))]
-        self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.open_fst, self.dry_run)
-        
-        # denovo cluster those sequences
-        cmds = ['%s -cluster_otus %s -otus %s -otu_radius_pct .%d' %(self.usearch, self.open_fst[i], self.open_otu[i], self.reference_map_pcts[i]) \
-                for i in range(len(self.sids))]
-        self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.open_otu, self.dry_run)
-        
-        # rename the OTUs in those representative sequences
-        cmds = ['python %s/usearch_python/fasta_number.py %s OTU%d_ > %s' %(self.library, self.open_otu[i], self.sids[i], self.open_otu_tmp[i]) \
-                for i in range(len(self.sids))]
-        self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.open_otu_tmp, self.dry_run)
-        
-        # move the file with the renamed sequences into the spot as the final file
-        self.ssub.move_files(self.open_otu_tmp, self.open_otu, self.dry_run)
-        util.check_for_nonempty(self.open_otu, self.dry_run)
-        
-        # reference map against these new rep seqs
-        cmds = ['%s -usearch_global %s -db %s -uc %s -strand both -id .%d' %(self.usearch, self.open_fst[i], self.open_otu[i], self.open_uc[i], self.reference_map_sids[i]) \
-                for i in range(len(self.sids))]
-        self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.open_uc, self.dry_run)
-        
-        # move the original uc files to different place
-        self.ssub.move_files(self.uc, self.orig_uc, self.dry_run)
-        util.check_for_nonempty(self.orig_uc, self.dry_run)
-        
-        # combine the uc files
-        cmds = ['grep "^H" %s > %s; cat %s >> %s' %(self.orig_uc[i], self.uc[i], self.open_uc[i], self.uc[i]) \
-                for i in range(len(self.sids))]
-        self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.uc, self.dry_run)
+        raise RuntimeError("open reference mapping not implemented")
     
     def make_otu_tables(self):
-        '''Make OTU tables from UC file'''
-        
-        util.check_for_nonempty(self.uc + ['q.index'], self.dry_run)
-        util.check_for_collisions(self.xi, self.dry_run)
+        '''Make OTU tables from uc file'''    
+        self.sub.check_for_nonempty(self.uc + ['q.index'])
+        self.sub.check_for_collisions(self.xi)
 
         cmds = []
         for i in range(len(self.sids)):
-            cmd = 'python %s/uc2otus.py %s q.index --output %s' %(self.library, self.uc[i], self.xi[i])
+            cmd = ['python', '%s/uc2otus.py' %(self.library), self.uc[i], 'q.index', '--output', self.xi[i]]
             
             # if we have a barcode file, use that order for the sample columns
             if self.barcodes is not None:
-                cmd += ' --samples %s' %(self.barcodes)
+                cmd += ['--samples', self.barcodes]
             
             cmds.append(cmd)
-        self.ssub.submit_and_wait(cmds, self.dry_run)
+        self.sub.execute(cmds)
         
-        util.check_for_nonempty(self.xi, self.dry_run)
+        self.sub.check_for_nonempty(self.xi)
         
     def make_seq_table(self):
         '''Make sequence table from the index file'''
-        
-        util.check_for_nonempty('q.fst', self.dry_run)
-        util.check_for_collisions('seq.counts', self.dry_run)
+        self.sub.check_for_nonempty('q.fst')
+        self.sub.check_for_collisions('seq.counts')
 
-        cmd = 'python %s/seq_table.py %s --output %s' %(self.library, 'q.fst', 'seq.counts')
+        cmd = ['python', '%s/seq_table.py' %(self.library), 'q.fst', '--output', 'seq.counts']
         
         if self.barcodes is not None:
-            cmd += ' --samples %s' %(self.barcodes)
+            cmd += ['--samples', self.barcodes]
         
-        self.ssub.submit_and_wait([cmd], self.dry_run)
-        util.check_for_nonempty('seq.counts', self.dry_run)
+        self.sub.execute([cmd])
+        self.sub.check_for_nonempty('seq.counts')
         
     def get_seq_tax(self):
         '''Get taxonomies for sequences in the seq table'''
+        self.sub.check_for_nonempty('seq.counts')
+        self.sub.check_for_collisions(self.seq_tax_fn)
         
-        util.check_for_nonempty('seq.counts', self.dry_run)
-        util.check_for_collisions(self.seq_tax_fn, self.dry_run)
+        cmd = ['python', '%s/assign_seq_table_taxonomies.py' %(self.library), 'seq.counts', '--output', self.seq_tax_fn]
         
-        cmd = 'python %s/assign_seq_table_taxonomies.py %s --output %s' %(self.library, 'seq.counts', self.seq_tax_fn)
-        
-        self.ssub.submit_and_wait([cmd], self.dry_run)
-        util.check_for_nonempty(self.seq_tax_fn, self.dry_run)
+        self.sub.execute([cmd])
+        self.sub.check_for_nonempty(self.seq_tax_fn)
     
 
 if __name__ == '__main__':
