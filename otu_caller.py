@@ -365,17 +365,12 @@ class OTU_Caller():
         # check that usearch is ready to go
         self.sub.check_is_executable(self.usearch)
         
-        # Intersect forward and reverse reads
+        # check that forward and reverse reads intersect
         cmds = []
         for i in range(self.n_cpus):
-            cmd = ['python', '%s/intersect.py' %(self.library), self.fi[i], self.ri[i], self.Fi[i], self.Ri[i]]
+            cmd = ['python', '%s/check_intersect.py' %(self.library), self.fi[i], self.ri[i]]
             cmds.append(cmd)
         self.sub.execute(cmds)
-        
-        # make sure there was a nonempty result. copy to new location, and make sure the copy worked
-        self.sub.check_for_nonempty(self.Fi + self.Ri)
-        self.sub.move_files(self.Fi + self.Ri, self.fi + self.ri)
-        self.sub.check_for_nonempty(self.fi + self.ri)
         
         # Merge reads
         cmds = []
