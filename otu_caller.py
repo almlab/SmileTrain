@@ -28,16 +28,43 @@ class Submitter():
             self.dry_run = False
 
     def check_for_existence(self, fns):
-        util.check_for_existence(fns, dry_run=self.dry_run)
+        '''assert that each of filenames does exist'''
+
+        fns = utils.listify(fns)
+
+        if self.method == 'dry_run':
+            message("dry run: test for existence of files: " + " ".join(fns), indent=4)
+        else:
+            # running ls first seems to prevent spurious empties
+            subprocess.check_output(['ls', '-lah'])
+            tests = [os.path.isfile(fn) for fn in fns]
+            if False in tests:
+                bad_names = " ".join([fn for fn, test in zip(fns, tests) if test == False])
+                raise RuntimeError("file(s) missing: %s" % bad_names)
 
     def check_for_nonempty(self, fns):
-        util.check_for_nonempty(fns, dry_run=self.dry_run)
+        '''assert that each file exists and is nonempty'''
+        fns = utils.listify(fns)
+    
+        if self.method == 'dry_run':
+            message("dry run: test that files are non-empty: " + " ".join(fns), indent=4)
+        else:
+            self.check_for_existence(fns)
+            tests = [os.stat(fn).st_size > 0 for fn in fns]
+            if False in tests:
+                bad_names = " ".join([fn for fn, t in zip(fns, tests) if t == False])
+                raise RuntimeError("file(s) empty: " + bad_names)
 
     def check_for_collisions(self, fns):
-        util.check_for_collisions(fns, dry_run=self.dry_run)
+        if self.method == 'dry_run':
+            message("dry run: test that destinations are free: " + " ".join(filenames), indent=4)
+        else:
+            util.check_for_collisions(fns)
 
-    def is_executable(self, fn):
-        util.is_executable(fn)
+    def check_is_executable(self, fn):
+        '''check if a filename exists and is executable'''
+        if not (os.path.isfile(fn) and os.access(fn, os.X_OK)):
+            raise RuntimeError("file %s should be executable, but it is not" %(fn))
 
     def move_files(self, start_fns, end_fns):
         cmds = [['mv', x, y] for x, y in zip(start_fns, end_fns)]
