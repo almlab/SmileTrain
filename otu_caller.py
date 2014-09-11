@@ -30,7 +30,7 @@ class Submitter():
     def check_for_existence(self, fns):
         '''assert that each of filenames does exist'''
 
-        fns = utils.listify(fns)
+        fns = util.listify(fns)
 
         if self.method == 'dry_run':
             message("dry run: test for existence of files: " + " ".join(fns), indent=4)
@@ -44,7 +44,7 @@ class Submitter():
 
     def check_for_nonempty(self, fns):
         '''assert that each file exists and is nonempty'''
-        fns = utils.listify(fns)
+        fns = util.listify(fns)
     
         if self.method == 'dry_run':
             message("dry run: test that files are non-empty: " + " ".join(fns), indent=4)
