@@ -7,7 +7,7 @@ Options allow the user to run individual parts of the pipeline or the entire thi
 
 import argparse, os, ConfigParser, subprocess
 import ssub
-import util, check_fastq_format
+import util
 from util import *
 
 class Submitter():
@@ -218,11 +218,7 @@ class OTU_Caller():
         self.uc = ['otus.%d.uc' %(sid) for sid in self.sids] # uclust output files
         self.xi = ['otus.%d.counts' %(sid) for sid in self.sids] # otu tables (counts)
         
-        self.open_fst = ['q.%d.no_match.fst' %(sid) for sid in self.sids] # otu rep seqs
-        self.orig_uc = ['otus.%d.ref_db.uc' %(sid) for sid in self.sids] # uclust output for initial reference-based mapping
-        self.open_uc = ['otus.%d.no_match.uc' %(sid) for sid in self.sids] # uclust output files, for open reference clustering
-        self.open_otu_tmp = ['otus.%d.no_match.tmp' %(sid) for sid in self.sids] # otu rep seqs (tmp)
-        self.open_otu = ['otus.%d.no_match.fst' %(sid) for sid in self.sids] # otu rep seqs
+        self.open_fst = ['q.%d.no_match.fst' %(sid) for sid in self.sids] # unmatched seqs from ref mapping
         self.seq_tax_fn = 'seq.tax'
         
         # if reference-based clustering at 97%, make sure reads are 98.5% dissimilar
@@ -232,7 +228,7 @@ class OTU_Caller():
         # Get database for read mapping
         if self.denovo == True:
             self.db = self.oi
-        elif self.ref_gg == True:
+        elif self.ref_gg or self.open_ref_gg:
             self.db = ['%s/%d_otus.fasta' %(self.ggdb, sid) for sid in self.sids]
             
     def check_format(self):
@@ -496,14 +492,18 @@ class OTU_Caller():
         cmds = []
         for i in range(len(self.sids)):
             cmd = [self.usearch, '-usearch_global', 'q.derep.fst', '-db', self.db[i], '-uc', self.uc[i], '-strand', 'both', '-id', '.%d' %(self.reference_map_sids[i])]
+
+            if self.open_ref_gg:
+                cmd += '-notmatched', self.open_fst[i]
+
             cmds.append(cmd)
             
         self.sub.execute(cmds)
         self.sub.check_for_nonempty(self.uc)
-        
-    def open_reference_mapping(self):
-        '''Makes new otus from reads missed in the original reference mapping, then maps to those otus'''
-        raise RuntimeError("open reference mapping not implemented")
+
+        if self.open_ref_gg:
+            message("unmatches sequences left in following files. move them to a new work folder for de novo clustering.")
+            print "\n".join(self.open_fst)
     
     def make_otu_tables(self):
         '''Make OTU tables from uc file'''    
@@ -607,14 +607,9 @@ if __name__ == '__main__':
         oc.denovo_clustering(rename = True)
     
     # Map to reference database
-    if oc.ref_gg == True:
+    if oc.ref_gg or oc.open_ref_gg:
         message('Mapping to reference')
         oc.reference_mapping()
-        
-    # Open reference clustering
-    if oc.open_ref_gg:
-        message('Open reference-based clustering')
-        oc.open_reference_mapping()
         
     # Make sequence tables
     if oc.seq_table:
