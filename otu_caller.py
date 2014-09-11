@@ -440,9 +440,7 @@ class OTU_Caller():
         cmd = 'cat %s > q.fst' %(' '.join(self.Ci))
         self.sub.run_local([cmd])
         self.sub.check_for_nonempty('q.fst')
-        
-        cmd = 'rm %s' %(' '.join(self.Ci))
-        self.sub.run_local([cmd])
+        self.sub.rm_files(self.Ci)
     
     def dereplicate_reads(self):
         '''Concatenate files and dereplicate'''
