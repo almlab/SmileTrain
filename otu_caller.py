@@ -5,10 +5,50 @@ Main script in the pipeline. Produces lists of commands and submits them using s
 Options allow the user to run individual parts of the pipeline or the entire thing.
 '''
 
-import argparse, os, ConfigParser
+import argparse, os, ConfigParser, subprocess
 import ssub
 import util, check_fastq_format
 from util import *
+
+class Submitter():
+    '''runs jobs on a cluster, locally, or in a dry run'''
+    def __init__(self, method, n_cpus=1):
+        if method not in ['submit', 'local', 'dry_run']:
+            raise ArgumentError("unexpcted method %s passed to Submitter" %(method))
+
+        self.method = method
+
+        if method == 'dry_run':
+            self.dry_run = False
+        elif method == 'submit':
+            self.dry_run = True
+            self.ssub = ssub.Ssub()
+            self.ssub.n_cpus = n_cpus
+        elif method == 'local':
+            self.dry_run = True
+
+    def check_for_existence(self, fns):
+        util.check_for_existence(fns, dry_run=self.dry_run)
+
+    def check_for_nonempty(self, fns):
+        util.check_for_nonempty(fns, dry_run=self.dry_run)
+
+    def check_for_collisions(self, fns):
+        util.check_for_collisions(fns, dry_run=self.dry_run)
+
+    def is_executable(self, fn):
+        util.is_executable(fn)
+
+    def execute(self, cmds):
+        if self.method == 'submit':
+            self.ssub.submit_and_wait(cmds)
+        elif self.method == 'local':
+            for cmd in cmds:
+                print " ".join(cmd)
+                subprocess.check_call(cmd)
+        elif self.method == 'dry_run':
+            print "\n".join([" ".join(cmd) for cmd in cmds])
+
 
 # open the config file sister to this script
 config = ConfigParser.ConfigParser()
@@ -33,6 +73,7 @@ def parse_args():
     group10 = parser.add_argument_group('Indexing')
     group11 = parser.add_argument_group('Clustering')
     group12 = parser.add_argument_group('Options')
+    group_run = parser.add_mutually_exclusive_group()
     
     # add arguments
     group1.add_argument('--all', action='store_true', help='Run primer, merge, demultiplex, filter, derep, index, ref_gg, and otu?')
@@ -65,7 +106,8 @@ def parse_args():
     group9.add_argument('--gold_db', default=config.get('Data', 'gold'), help='Gold 16S database')
     group11.add_argument('--sids', default='91,94,97,99', help='Sequence identities for clustering')
     group12.add_argument('--n_cpus', '-n', default = 1, type = int, help='Number of CPUs')
-    group12.add_argument('--dry_run', '-z', action='store_true', help='submit no jobs; suppress file checks; ust print output commands')
+    group_run.add_argument('--dry_run', '-z', action='store_true', help='submit no jobs; suppress file checks; just print output commands')
+    group_run.add_argument('--local', '-l', action='store_true', help='execute all tasks locally')
     
     # parse arguments
     if __name__ == '__main__':
@@ -108,8 +150,14 @@ class OTU_Caller():
 
         # create an internal ssub object. this way we can set ssub's options without
         # relying on the command line.
-        self.ssub = ssub.Ssub()
-        self.ssub.n_cpus = self.n_cpus
+        if self.dry_run:
+            method = 'dry_run'
+        elif self.local:
+            method = 'local'
+        else:
+            method = 'submit'
+
+        self.sub = Submitter(method, n_cpus=self.n_cpus)
     
     def get_filenames(self):
         '''Generate filenames to use in pipeline'''
@@ -159,12 +207,9 @@ class OTU_Caller():
             files.append(self.reverse)
             
         message('Testing format of %s' %(" ".join(files)))
-        
-        if self.dry_run:
-            cmds = ['python %s/check_fastq_format.py %s' %(self.library, f) for f in files]
-            message("\n".join(cmds), indent=0)
-        else:
-            check_fastq_format.check_illumina_format(files, 'illumina13')
+
+        cmds = [['python', '%s/check_fastq_format.py' %(self.library), f] for f in files]
+        self.sub.execute(cmds)
     
     def split_fastq(self):
         '''Split forward and reverse reads (for parallel processing)'''
@@ -175,19 +220,19 @@ class OTU_Caller():
 
         # check for inputs and collisions of output
         if do_forward:
-            util.check_for_nonempty(self.forward, self.dry_run)
-            util.check_for_collisions(['%s.%s' %(self.forward, i) for i in range(self.n_cpus)], self.dry_run)
+            self.check_for_nonempty(self.forward, self.dry_run)
+            self.check_for_collisions(['%s.%s' %(self.forward, i) for i in range(self.n_cpus)], self.dry_run)
         if do_reverse:
-            util.check_for_nonempty(self.reverse, self.dry_run)
-            util.check_for_collisions(['%s.%s' %(self.reverse, i) for i in range(self.n_cpus)], self.dry_run)
+            self.check_for_nonempty(self.reverse, self.dry_run)
+            self.check_for_collisions(['%s.%s' %(self.reverse, i) for i in range(self.n_cpus)], self.dry_run)
         
         # Get list of commands
         cmds = []
         if do_forward:
-            cmd = 'python %s/split_fastq.py %s %s' %(self.library, self.forward, self.n_cpus)
+            cmd = ['python', '%s/split_fastq.py' %(self.library), self.forward, self.n_cpus]
             cmds.append(cmd)
         if do_reverse:
-            cmd = 'python %s/split_fastq.py %s %s' %(self.library, self.reverse, self.n_cpus)
+            cmd = ['python', '%s/split_fastq.py' %(self.library), self.reverse, self.n_cpus]
             cmds.append(cmd)
         
         # submit commands
