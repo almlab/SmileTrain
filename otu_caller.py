@@ -19,13 +19,13 @@ class Submitter():
         self.method = method
 
         if method == 'dry_run':
-            self.dry_run = False
-        elif method == 'submit':
             self.dry_run = True
+        elif method == 'submit':
+            self.dry_run = False
             self.ssub = ssub.Ssub()
             self.ssub.n_cpus = n_cpus
         elif method == 'local':
-            self.dry_run = True
+            self.dry_run = False
 
     def check_for_existence(self, fns):
         util.check_for_existence(fns, dry_run=self.dry_run)
@@ -39,7 +39,18 @@ class Submitter():
     def is_executable(self, fn):
         util.is_executable(fn)
 
+    def move_files(self, start_fns, end_fns):
+        cmds = [['mv', x, y] for x, y in zip(start_fns, end_fns)]
+        self.execute(cmds)
+
+    def rm_files(self, fns):
+        cmds = [['rm', fn] for fn in fns]
+        self.execute(cmds)
+
     def execute(self, cmds):
+        # recast all parts of the command to strings
+        cmds = [[str(x) for x in cmd] for cmd in cmds]
+
         if self.method == 'submit':
             self.ssub.submit_and_wait(cmds)
         elif self.method == 'local':
@@ -48,6 +59,13 @@ class Submitter():
                 subprocess.check_call(cmd)
         elif self.method == 'dry_run':
             print "\n".join([" ".join(cmd) for cmd in cmds])
+
+    def run_local(self, cmds):
+        if self.method == 'dry_run':
+            print "\n".join([" ".join(cmd) for cmd in cmds])
+        else:
+            for cmd in cmds:
+                os.command(cmd)
 
 
 # open the config file sister to this script
@@ -220,11 +238,11 @@ class OTU_Caller():
 
         # check for inputs and collisions of output
         if do_forward:
-            self.check_for_nonempty(self.forward, self.dry_run)
-            self.check_for_collisions(['%s.%s' %(self.forward, i) for i in range(self.n_cpus)], self.dry_run)
+            self.sub.check_for_nonempty(self.forward)
+            self.sub.check_for_collisions(['%s.%s' %(self.forward, i) for i in range(self.n_cpus)])
         if do_reverse:
-            self.check_for_nonempty(self.reverse, self.dry_run)
-            self.check_for_collisions(['%s.%s' %(self.reverse, i) for i in range(self.n_cpus)], self.dry_run)
+            self.sub.check_for_nonempty(self.reverse)
+            self.sub.check_for_collisions(['%s.%s' %(self.reverse, i) for i in range(self.n_cpus)])
         
         # Get list of commands
         cmds = []
@@ -236,46 +254,46 @@ class OTU_Caller():
             cmds.append(cmd)
         
         # submit commands
-        self.ssub.submit_and_wait(cmds, out=self.dry_run)
+        self.sub.execute(cmds)
 
         # validate output
         if do_forward:
-            util.check_for_nonempty(self.fi, self.dry_run)
+            self.sub.check_for_nonempty(self.fi)
         if do_reverse:
-            util.check_for_nonempty(self.ri, self.dry_run)
+            self.sub.check_for_nonempty(self.ri)
             
     def convert_format(self):
         '''Convert to compatible fastq format'''
         
         if self.forward:
-            util.check_for_nonempty(self.fi, self.dry_run)
-            util.check_for_collisions(self.Fi, self.dry_run)
+            self.sub.check_for_nonempty(self.fi)
+            self.sub.check_for_collisions(self.Fi)
             
         if self.reverse:
-            util.check_for_nonempty(self.ri, self.dry_run)
-            util.check_for_collisions(self.Fi, self.dry_run)
+            self.sub.check_for_nonempty(self.ri)
+            self.sub.check_for_collisions(self.Fi)
             
         cmds = []
         for i in range(self.n_cpus):
             if self.forward:
-                cmd = 'python %s/convert_fastq.py %s > %s' %(self.library, self.fi[i], self.Fi[i])
+                cmd = ['python', '%s/convert_fastq.py' %(self.library), self.fi[i], '--output', self.Fi[i]]
                 cmds.append(cmd)
             if self.reverse:
-                cmd = 'python %s/convert_fastq.py %s > %s' %(self.library, self.ri[i], self.Ri[i])
+                cmd = ['python', '%s/convert_fastq.py' %(self.library), self.ri[i], '--output', self.Ri[i]]
                 cmds.append(cmd)
                 
-        self.ssub.submit_and_wait(cmds, out=self.dry_run)
+        self.sub.execute(cmds)
         
         # validate output and move files
         if self.forward:
-            util.check_for_nonempty(self.Fi, dry_run=self.dry_run)
-            self.ssub.move_files(self.Fi, self.fi, out=self.dry_run)
-            util.check_for_nonempty(self.fi, dry_run=self.dry_run)
+            self.sub.check_for_nonempty(self.Fi)
+            self.sub.move_files(self.Fi, self.fi)
+            self.sub.check_for_nonempty(self.fi)
 
         if self.reverse:
-            util.check_for_nonempty(self.Ri, dry_run=self.dry_run)
-            self.ssub.move_files(self.Ri, self.ri, out=self.dry_run)
-            util.check_for_nonempty(self.ri, dry_run=self.dry_run)
+            self.sub.check_for_nonempty(self.Ri)
+            self.sub.move_files(self.Ri, self.ri)
+            self.sub.check_for_nonempty(self.ri)
     
     def remove_primers(self):
         '''Remove diversity region + primer and discard reads with > 2 mismatches'''
@@ -291,93 +309,93 @@ class OTU_Caller():
 
         # check for inputs and collisions of output
         if do_forward:
-            util.check_for_nonempty(self.fi, self.dry_run)
-            util.check_for_collisions(self.Fi, self.dry_run)
+            self.sub.check_for_nonempty(self.fi)
+            self.sub.check_for_collisions(self.Fi)
         if do_reverse:
-            util.check_for_nonempty(self.ri, self.dry_run)
-            util.check_for_collisions(self.Ri, self.dry_run)
+            self.sub.check_for_nonempty(self.ri)
+            self.sub.check_for_collisions(self.Ri)
         
         # get list of commands using forward, reverse, or both
         cmds = []
         for i in range(self.n_cpus):
             if do_forward:
-                cmd = 'python %s/remove_primers.py %s %s --max_primer_diffs %d > %s' %(self.library, self.fi[i], self.p, self.p_mismatch, self.Fi[i])
+                cmd = ['python', '%s/remove_primers.py' %(self.library), self.fi[i], self.p, '--max_primer_diffs', self.p_mismatch, '--output', self.Fi[i]]
                 cmds.append(cmd)
             if do_reverse:
-                cmd = 'python %s/remove_primers.py %s %s --max_primer_diffs %d > %s' %(self.library, self.ri[i], self.q, self.p_mismatch, self.Ri[i])
+                cmd = ['python', '%s/remove_primers.py' %(self.library), self.ri[i], self.p, '--max_primer_diffs', self.p_mismatch, '--output', self.Ri[i]]
                 cmds.append(cmd)
         
         # submit commands
-        self.ssub.submit_and_wait(cmds, out=self.dry_run)
+        self.sub.execute(cmds)
 
         # validate output and move files
         if do_forward:
-            util.check_for_nonempty(self.Fi, dry_run=self.dry_run)
-            self.ssub.move_files(self.Fi, self.fi, out=self.dry_run)
-            util.check_for_nonempty(self.fi, dry_run=self.dry_run)
+            self.sub.check_for_nonempty(self.Fi)
+            self.sub.move_files(self.Fi, self.fi)
+            self.sub.check_for_nonempty(self.fi)
 
         if do_reverse:
-            util.check_for_nonempty(self.Ri, dry_run=self.dry_run)
-            self.ssub.move_files(self.Ri, self.ri, out=self.dry_run)
-            util.check_for_nonempty(self.ri, dry_run=self.dry_run)
+            self.sub.check_for_nonempty(self.Ri)
+            self.sub.move_files(self.Ri, self.ri)
+            self.sub.check_for_nonempty(self.ri)
     
     def merge_reads(self):
         '''Merge forward and reverse reads using USEARCH'''
 
         # check for inputs and collisions
-        util.check_for_nonempty(self.fi + self.ri, dry_run=self.dry_run)
-        util.check_for_collisions(self.Fi + self.Ri, dry_run=self.dry_run)
+        self.sub.check_for_nonempty(self.fi + self.ri)
+        self.sub.check_for_collisions(self.Fi + self.Ri)
         
         # check that usearch is ready to go
-        assert(util.is_executable(self.usearch))
+        assert(self.sub.is_executable(self.usearch))
         
         # Intersect forward and reverse reads
         cmds = []
         for i in range(self.n_cpus):
-            cmd = 'python %s/intersect.py %s %s %s %s' %(self.library, self.fi[i], self.ri[i], self.Fi[i], self.Ri[i])
+            cmd = ['python', '%s/intersect.py' %(self.library), self.fi[i], self.ri[i], self.Fi[i], self.Ri[i]]
             cmds.append(cmd)
-        self.ssub.submit_and_wait(cmds, out = self.dry_run)
+        self.sub.execute(cmds)
         
         # make sure there was a nonempty result. copy to new location, and make sure the copy worked
-        util.check_for_nonempty(self.Fi + self.Ri, dry_run=self.dry_run)
-        self.ssub.move_files(self.Fi + self.Ri, self.fi + self.ri, out = self.dry_run)
-        util.check_for_nonempty(self.fi + self.ri, dry_run=self.dry_run)
+        self.sub.check_for_nonempty(self.Fi + self.Ri)
+        self.sub.move_files(self.Fi + self.Ri, self.fi + self.ri)
+        self.sub.check_for_nonempty(self.fi + self.ri)
         
         # Merge reads
         cmds = []
         for i in range(self.n_cpus):
-            cmd = '%s -fastq_mergepairs %s -reverse %s -fastq_truncqual %d -fastqout %s' %(self.usearch, self.fi[i], self.ri[i], self.truncqual, self.mi[i])
+            cmd = [self.usearch, '-fastq_mergepairs', self.fi[i], '-reverse', self.ri[i], '-fastq_truncqual', self.truncqual, '-fastqout', self.mi[i]]
             cmds.append(cmd)
-        self.ssub.submit_and_wait(cmds, out = self.dry_run)
+        self.sub.execute(cmds)
         
-        util.check_for_nonempty(self.mi, dry_run=self.dry_run)
-        self.ssub.remove_files(self.fi + self.ri, out = self.dry_run)
+        self.sub.check_for_nonempty(self.mi)
+        self.sub.rm_files(self.fi + self.ri)
     
     def demultiplex_reads(self):
         '''Demultiplex samples using index and barcodes'''
         
-        util.check_for_nonempty(self.ci, dry_run=self.dry_run)
-        util.check_for_collisions(self.Ci, dry_run=self.dry_run)
+        self.sub.check_for_nonempty(self.ci)
+        self.sub.check_for_collisions(self.Ci)
 
         cmds = []
         for i in range(self.n_cpus):
-            cmd = 'python %s/map_barcodes.py %s %s --max_barcode_diffs %d > %s' %(self.library, self.ci[i], self.barcodes, self.b_mismatch, self.Ci[i])
+            cmd = ['python', '%s/map_barcodes.py' %(self.library), self.ci[i], self.barcodes, '--max_barcode_diffs', self.b_mismatch, '--output', self.Ci[i]]
             cmds.append(cmd)
-        self.ssub.submit_and_wait(cmds, self.dry_run)
+        self.sub.execute(cmds)
         
-        util.check_for_nonempty(self.Ci, dry_run=self.dry_run)
-        self.ssub.move_files(self.Ci, self.ci, self.dry_run)
-        util.check_for_nonempty(self.ci, dry_run=self.dry_run)
+        self.sub.check_for_nonempty(self.Ci)
+        self.sub.move_files(self.Ci, self.ci)
+        self.sub.check_for_nonempty(self.ci)
     
     def quality_filter(self):
         '''Quality filter with truncqual and maximum expected error'''
         
         # validate input/output
-        util.check_for_nonempty(self.ci, self.dry_run)
-        util.check_for_collisions(self.Ci, self.dry_run)
+        self.sub.check_for_nonempty(self.ci)
+        self.sub.check_for_collisions(self.Ci)
         
         # check that usearch is ready to go
-        assert(util.is_executable(self.usearch))
+        assert(self.sub.is_executable(self.usearch))
         
         # check that the files are in the right format
         if self.dry_run:
@@ -388,46 +406,44 @@ class OTU_Caller():
 
         cmds = []
         for i in range(self.n_cpus):
-            cmd = '%s -fastq_filter %s -fastq_truncqual %d -fastq_maxee %f -fastaout %s' %(self.usearch, self.ci[i], self.truncqual, self.maxee, self.Ci[i])
+            cmd = [self.usearch, '-fastq_filter', self.ci[i], '-fastq_truncqual', self.truncqual, '-fastq_maxee', self.maxee, '-fastaout', self.Ci[i]]
             cmds.append(cmd)
-        self.ssub.submit_and_wait(cmds, self.dry_run)
+        self.sub.submit_and_wait(cmds)
         
         cmd = 'cat %s > q.fst' %(' '.join(self.Ci))
-        self.ssub.run_local([cmd], out = self.dry_run)
-        util.check_for_nonempty('q.fst', dry_run=self.dry_run)
+        self.sub.run_local([cmd])
+        self.sub.check_for_nonempty('q.fst')
         
         cmd = 'rm %s' %(' '.join(self.Ci))
-        self.ssub.run_local([cmd], out = self.dry_run)
+        self.sub.run_local([cmd])
     
     def dereplicate_reads(self):
         '''Concatenate files and dereplicate'''
 
-        cmd = 'python %s/derep_fulllength.py q.fst -o q.derep.fst' %(self.library)
-        self.ssub.submit_and_wait([cmd], self.dry_run)
-        util.check_for_nonempty('q.derep.fst', dry_run=self.dry_run)
+        cmd = ['python',  '%s/derep_fulllength.py' %(self.library), 'q.fst', '--output', 'q.derep.fst']
+        self.sub.execute([cmd])
+        self.sub.check_for_nonempty('q.derep.fst')
         
     def make_index(self):
         '''Make an index file'''
-        
         # verify input & check for collisions with output
-        util.check_for_nonempty(['q.fst', 'q.derep.fst'], dry_run=self.dry_run)
-        util.check_for_collisions('q.index', self.dry_run)
+        self.sub.check_for_nonempty(['q.fst', 'q.derep.fst'])
+        self.sub.check_for_collisions('q.index')
         
-        cmd = 'python %s/index.py q.fst q.derep.fst --output q.index' %(self.library)
-        self.ssub.submit_and_wait([cmd], self.dry_run)
+        cmd = ['python', '%s/index.py' %(self.library), 'q.fst', 'q.derep.fst', '--output', 'q.index']
+        self.sub.execute([cmd])
         
-        util.check_for_nonempty('q.index', dry_run=self.dry_run)
+        self.sub.check_for_nonempty('q.index')
     
     def denovo_clustering(rename=True):
         '''Denovo clustering with USEARCH'''
-
         cmds = []
         for i in range(len(self.sids)):
             sid = self.sids[i]
-            cmd = '%s -cluster_otus q.derep.fst -otus %s -otuid .%d' %(self.usearch, self.oi[i], sid)
+            cmd = [self.usearch, '-cluster_otus', 'q.derep.fst', '-otus', self.oi[i], '-otuid', '.%d' %(sid)]
             cmds.append(cmd)
-        self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.oi, self.dry_run)
+        self.sub.execute(cmds)
+        self.sub.check_for_nonempty(self.oi)
         
         # Rename OTUs
         if rename == True:
