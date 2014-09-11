@@ -528,7 +528,7 @@ class OTU_Caller():
         self.sub.check_for_nonempty('q.fst')
         self.sub.check_for_collisions('seq.counts')
 
-        cmd = ['python', '%s/seq_table.py' %(self.library), 'q.fst', '--output', 'seq.counts']
+        cmd = ['python', '%s/seq_table.py' %(self.library), 'q.fst', 'q.derep.fst', '--output', 'seq.counts']
         
         if self.barcodes is not None:
             cmd += ['--samples', self.barcodes]
