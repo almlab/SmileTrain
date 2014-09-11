@@ -363,7 +363,7 @@ class OTU_Caller():
         self.sub.check_for_collisions(self.Fi + self.Ri)
         
         # check that usearch is ready to go
-        assert(self.sub.is_executable(self.usearch))
+        self.sub.check_is_executable(self.usearch)
         
         # Intersect forward and reverse reads
         cmds = []
