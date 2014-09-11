@@ -87,13 +87,6 @@ class Submitter():
         elif self.method == 'dry_run':
             print "\n".join([" ".join(cmd) for cmd in cmds])
 
-    def run_local(self, cmds):
-        if self.method == 'dry_run':
-            print "\n".join([" ".join(cmd) for cmd in cmds])
-        else:
-            for cmd in cmds:
-                os.system(" ".join(cmd))
-
 
 # open the config file sister to this script
 config = ConfigParser.ConfigParser()
@@ -437,8 +430,8 @@ class OTU_Caller():
             cmds.append(cmd)
         self.sub.submit_and_wait(cmds)
         
-        cmd = 'cat %s > q.fst' %(' '.join(self.Ci))
-        self.sub.run_local([cmd])
+        cmd = ['python', '%s/combine_fasta.py' %(self.library), '--output', 'q.fst'] + self.Ci
+        self.sub.execute(cmd)
         self.sub.check_for_nonempty('q.fst')
         self.sub.rm_files(self.Ci)
     
