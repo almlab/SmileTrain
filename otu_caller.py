@@ -141,6 +141,7 @@ def parse_args():
     group6.add_argument('--merged', action='store_true', help='Files were merged in a previous step?')
     group7.add_argument('--truncqual', default = 2, type = int, help = '')
     group7.add_argument('--maxee', default = 2., type = float, help = 'Maximum expected error (UPARSE)')
+    group7.add_argument('--trunclen', default=0, type=int, help='truncate all sequences to some length?')   # 0 means no truncation
     group9.add_argument('--gold_db', default=config.get('Data', 'gold'), help='Gold 16S database')
     group11.add_argument('--sids', default='91,94,97,99', help='Sequence identities for clustering')
     group12.add_argument('--n_cpus', '-n', default = 1, type = int, help='Number of CPUs')
@@ -418,6 +419,10 @@ class OTU_Caller():
         cmds = []
         for i in range(self.n_cpus):
             cmd = [self.usearch, '-fastq_filter', self.ci[i], '-fastq_truncqual', self.truncqual, '-fastq_maxee', self.maxee, '-fastaout', self.Ci[i]]
+
+            if args.trunclen > 0:
+                cmd += ['-fastq_trunclen', str(args.trunclen)]
+
             cmds.append(cmd)
         self.sub.submit_and_wait(cmds)
         
