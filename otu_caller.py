@@ -122,7 +122,8 @@ def parse_args():
     group1.add_argument('--merge', action='store_true', help='Merge forward and reverse reads?')
     group1.add_argument('--demultiplex', default = False, action = 'store_true', help = 'Demultiplex?')
     group1.add_argument('--qfilter', default = False, action = 'store_true', help = 'Quality filter?')
-    group1.add_argument('--chimeras', default = False, action = 'store_true', help = 'Chimera slay?')
+    group1.add_argument('--ref_chimera', action='store_true', help='Slay chimeras using reference database?')
+    group1.add_argument('--chimera', action='store_true', help='Slay chimeras de novo with usearch?')
     group1.add_argument('--dereplicate', action='store_true', help='Dereplicate?')
     group1.add_argument('--index', action='store_true', help='Make index file?')
     group1.add_argument('--denovo', default = False, action = 'store_true', help = 'Denovo clustering (UPARSE)?')
@@ -471,7 +472,7 @@ class OTU_Caller():
             self.sub.move_files(self.Oi, self.oi)
             self.sub.check_for_nonempty(self.oi)
     
-    def remove_chimeras(self):
+    def remove_reference_chimeras(self):
         '''Remove chimeras using gold database'''
         cmds = []
         for i in range(len(self.sids)):
@@ -484,6 +485,15 @@ class OTU_Caller():
         self.sub.move_files(self.Oi, self.oi)
         self.sub.check_for_nonempty(self.oi)
     
+    def remove_denovo_chimeras(self):
+        '''remove chimeras identified de novo by usearch'''
+        cmds = [[self.usearch, '-uchime_denovo', self.oi[i], '-nochimeras', self.Oi[i], '-strand', 'plus'] for i in range(len(self.sids))]
+        self.sub.execute(cmds)
+
+        self.sub.check_for_nonempty(self.Oi)
+        self.sub.move_files(self.Oi, self.oi)
+        self.sub.check_for_nonempty(self.oi)
+
     def reference_mapping(self):
         '''Map reads to reference databases'''
         self.sub.check_for_nonempty(self.db)
@@ -605,6 +615,15 @@ if __name__ == '__main__':
     if oc.denovo == True:
         message('Denovo clustering')
         oc.denovo_clustering(rename = True)
+
+    # Chimera removal
+    if oc.ref_chimera:
+        message("Removing chimeras by reference")
+        oc.remove_reference_chimeras()
+
+    if oc.chimera:
+        message("Removing chimeras de novo with uchime")
+        oc.remove_denovo_chimeras()
     
     # Map to reference database
     if oc.ref_gg or oc.open_ref_gg:
