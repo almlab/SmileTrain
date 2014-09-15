@@ -9,6 +9,7 @@ import argparse, os, ConfigParser, subprocess
 import ssub
 import util
 from util import *
+import check_fastq_format
 
 class Submitter():
     '''runs jobs on a cluster, locally, or in a dry run'''
@@ -57,7 +58,7 @@ class Submitter():
 
     def check_for_collisions(self, fns):
         if self.method == 'dry_run':
-            message("dry run: test that destinations are free: " + " ".join(filenames), indent=4)
+            message("dry run: test that destinations are free: " + " ".join(fns), indent=4)
         else:
             util.check_for_collisions(fns)
 
@@ -76,14 +77,25 @@ class Submitter():
 
     def execute(self, cmds):
         # recast all parts of the command to strings
-        cmds = [[str(x) for x in cmd] for cmd in cmds]
+        # swo> I regret this hack. It's to make spp's redirect command work.
+        #cmds = [[str(x) for x in cmd] for cmd in cmds]
+        def recast_cmd(cmd):
+            if type(cmd) is str:
+                return [cmd]
+            elif type(cmd) is list:
+                return [str(x) for x in cmd]
+
+        cmds = [recast_cmd(cmd) for cmd in cmds]
 
         if self.method == 'submit':
             self.ssub.submit_and_wait(cmds)
         elif self.method == 'local':
             for cmd in cmds:
                 print " ".join(cmd)
-                subprocess.check_call(cmd)
+                if len(cmd) > 1:
+                    subprocess.check_call(cmd)
+                elif len(cmd) == 1:
+                    subprocess.check_call(cmd[0], shell=True)
         elif self.method == 'dry_run':
             print "\n".join([" ".join(cmd) for cmd in cmds])
 
@@ -110,7 +122,8 @@ def parse_args():
     group9 = parser.add_argument_group('Chimeras')
     group10 = parser.add_argument_group('Indexing')
     group11 = parser.add_argument_group('Clustering')
-    group12 = parser.add_argument_group('Options')
+    group12 = parser.add_argument_group('dbOTU options')
+    group13 = parser.add_argument_group('Options')
     group_run = parser.add_mutually_exclusive_group()
     
     # add arguments
@@ -122,7 +135,8 @@ def parse_args():
     group1.add_argument('--merge', action='store_true', help='Merge forward and reverse reads?')
     group1.add_argument('--demultiplex', default = False, action = 'store_true', help = 'Demultiplex?')
     group1.add_argument('--qfilter', default = False, action = 'store_true', help = 'Quality filter?')
-    group1.add_argument('--chimeras', default = False, action = 'store_true', help = 'Chimera slay?')
+    group1.add_argument('--ref_chimeras', action='store_true', help='Slay chimeras using reference database?')
+    group1.add_argument('--chimeras', action='store_true', help='Slay chimeras de novo with usearch?')
     group1.add_argument('--dereplicate', action='store_true', help='Dereplicate?')
     group1.add_argument('--index', action='store_true', help='Make index file?')
     group1.add_argument('--denovo', default = False, action = 'store_true', help = 'Denovo clustering (UPARSE)?')
@@ -130,6 +144,7 @@ def parse_args():
     group1.add_argument('--open_ref_gg', action='store_true', help='Reference map (Greengenes) and then denovo cluster?')
     group1.add_argument('--seq_table', action='store_true', help='Make a sequence table?')
     group1.add_argument('--seq_tax', action='store_true', help='Get taxonomies for sequence table?')
+    group1.add_argument('--dbotu', action='store_true', help='Call OTUs using dbOTUs?')
     group1.add_argument('--otu_table', action='store_true', help='Make OTU table?')
     group2.add_argument('--forward', '-f', help='Input fastq (forward)')
     group2.add_argument('--reverse', '-r', help='Input fastq (reverse)')
@@ -141,9 +156,15 @@ def parse_args():
     group6.add_argument('--merged', action='store_true', help='Files were merged in a previous step?')
     group7.add_argument('--truncqual', default = 2, type = int, help = '')
     group7.add_argument('--maxee', default = 2., type = float, help = 'Maximum expected error (UPARSE)')
+    group7.add_argument('--trunclen', default=0, type=int, help='truncate all sequences to some length?')   # 0 means no truncation
     group9.add_argument('--gold_db', default=config.get('Data', 'gold'), help='Gold 16S database')
     group11.add_argument('--sids', default='91,94,97,99', help='Sequence identities for clustering')
-    group12.add_argument('--n_cpus', '-n', default = 1, type = int, help='Number of CPUs')
+    group12.add_argument('--alignref', default=config.get('dbOTU', 'alignref'), help='Reference alignment')
+    group12.add_argument('--minlength', default=250, type=int, help='Minimum sequence length after alignment')
+    group12.add_argument('--k_fold', default=0.0, type=float, help='k_fold change of OTU rep abundance over sequence to be merged')
+    group12.add_argument('--pval', default=1e-4, type=float, help='p-value threshold for merge into existing OTU')
+    group12.add_argument('--dbotu_chimeras', action='store_true', help='Remove chimeras de novo from dbOTUs?')
+    group13.add_argument('--n_cpus', '-n', default = 1, type = int, help='Number of CPUs')
     group_run.add_argument('--dry_run', '-z', action='store_true', help='submit no jobs; suppress file checks; just print output commands')
     group_run.add_argument('--local', '-l', action='store_true', help='execute all tasks locally')
     
@@ -406,7 +427,7 @@ class OTU_Caller():
         self.sub.check_for_collisions(self.Ci)
         
         # check that usearch is ready to go
-        assert(self.sub.is_executable(self.usearch))
+        self.sub.check_is_executable(self.usearch)
         
         # check that the files are in the right format
         if self.dry_run:
@@ -418,11 +439,16 @@ class OTU_Caller():
         cmds = []
         for i in range(self.n_cpus):
             cmd = [self.usearch, '-fastq_filter', self.ci[i], '-fastq_truncqual', self.truncqual, '-fastq_maxee', self.maxee, '-fastaout', self.Ci[i]]
+
+            if self.trunclen > 0:
+                cmd += ['-fastq_trunclen', self.trunclen]
+
             cmds.append(cmd)
-        self.sub.submit_and_wait(cmds)
+        self.sub.execute(cmds)
         
         cmd = ['python', '%s/combine_fasta.py' %(self.library), '--output', 'q.fst'] + self.Ci
-        self.sub.execute(cmd)
+        #swo> I regret this hack; i need to [] the cmd
+        self.sub.execute([cmd])
         self.sub.check_for_nonempty('q.fst')
         self.sub.rm_files(self.Ci)
     
@@ -466,19 +492,43 @@ class OTU_Caller():
             self.sub.move_files(self.Oi, self.oi)
             self.sub.check_for_nonempty(self.oi)
     
-    def remove_chimeras(self):
+    def remove_reference_chimeras(self):
         '''Remove chimeras using gold database'''
         cmds = []
         for i in range(len(self.sids)):
             sid = self.sids[i]
-            cmd = [self.usearch, '-uchime_ref', self.oi[i], '-db', self.gold_db, '-nochimeras', self.Oi[i], '-strand', 'plus']
+            cmd = [self.usearch, '-uchime_ref', self.oi[i], '-db', self.gold_db, '-nonchimeras', self.Oi[i], '-strand', 'plus']
             cmds.append(cmd)
         self.sub.execute(cmds)
         
         self.sub.check_for_nonempty(self.Oi)
         self.sub.move_files(self.Oi, self.oi)
         self.sub.check_for_nonempty(self.oi)
+
+    def remove_dbotu_chimeras(self):
+        '''remove dbotu chimeras de novo'''
+        perllib = config.get('dbOTU', 'perllib')
+
+        cmds = []
+        cmd = 'perl %s/fasta2filter_from_mat_SmileTrain.pl unique.dbOTU.mat q.derep.fst > unique.dbOTU.ng.fasta' % perllib
+        cmds.append(cmd)
+        cmd = '%s -uchime_denovo unique.dbOTU.ng.fasta -nonchimeras unique.dbOTU.nonchimera.fasta -strand plus' % self.usearch
+        cmds.append(cmd)
+        cmd = 'perl %s/filter_mat_from_fasta_SmileTrain.pl unique.dbOTU.mat unique.dbOTU.nonchimera.fasta > unique.dbOTU.nonchimera.mat' % perllib
+        cmds.append(cmd)
+
+        self.sub.execute(cmds)
+        self.sub.check_for_nonempty('unique.dbOTU.nonchimera.fasta')
     
+    def remove_denovo_chimeras(self):
+        '''remove chimeras identified de novo by usearch'''
+        cmds = [[self.usearch, '-uchime_denovo', self.oi[i], '-nonchimeras', self.Oi[i], '-strand', 'plus'] for i in range(len(self.sids))]
+        self.sub.execute(cmds)
+
+        self.sub.check_for_nonempty(self.Oi)
+        self.sub.move_files(self.Oi, self.oi)
+        self.sub.check_for_nonempty(self.oi)
+
     def reference_mapping(self):
         '''Map reads to reference databases'''
         self.sub.check_for_nonempty(self.db)
@@ -499,6 +549,24 @@ class OTU_Caller():
         if self.open_ref_gg:
             message("unmatches sequences left in following files. move them to a new work folder for de novo clustering.")
             print "\n".join(self.open_fst)
+
+    def call_dbotus(self):
+        '''Call otus using dbotu algorithm'''
+        perllib = config.get('dbOTU', 'perllib')
+        mothur = config.get('dbOTU', 'mothur')
+        caller = config.get('dbOTU', 'caller')
+
+        cmds = []
+        cmds.append(['perl', '%s/temp_071514.pl' % perllib, 'q.derep.fst', 'q.index', 'unique'])
+        cmds.append([mothur, '#align.seqs(fasta=unique.fa, reference=%s)' %(self.alignref)])
+        cmds.append([mothur, '#screen.seqs(fasta=unique.align, start=5, minlength=%d)' %(self.minlength)])
+        cmds.append('perl %s/filter_mat_from_fasta.pl unique.f0.mat unique.good.align > unique.f0.good.mat' %(perllib))
+        cmds.append(['python', caller, 'unique.f0.good.mat', 'unique.good.align', 'unique.dbOTU', '-k', str(self.k_fold), '-p', str(self.pval)])
+        cmds.append([mothur, '#degap.seqs(fasta=unique.dbOTU.fasta)'])
+
+        self.sub.execute(cmds)
+
+        self.sub.check_for_nonempty(['unique.dbOTU.list', 'unique.dbOTU.ng.fasta', 'unique.dbOTU.mat', 'unique.dbOTU.log'])
     
     def make_otu_tables(self):
         '''Make OTU tables from uc file'''    
@@ -605,6 +673,24 @@ if __name__ == '__main__':
     if oc.ref_gg or oc.open_ref_gg:
         message('Mapping to reference')
         oc.reference_mapping()
+
+    # Call dbOTUs
+    if oc.dbotu:
+        message("Calling dbOTUs")
+        oc.call_dbotus()
+
+    # Chimera removal
+    if oc.ref_chimeras:
+        message("Removing chimeras by reference")
+        oc.remove_reference_chimeras()
+
+    if oc.chimeras:
+        message("Removing chimeras de novo with uchime")
+        oc.remove_denovo_chimeras()
+
+    if oc.dbotu_chimeras:
+        message("Removing chimeras from dbOTUs de novo")
+        oc.remove_dbotu_chimeras()
         
     # Make sequence tables
     if oc.seq_table:

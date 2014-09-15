@@ -4,7 +4,7 @@
 Combine multiple fasta files.
 '''
 
-import argparse
+import argparse, sys
 from Bio import SeqIO
         
 if __name__ == '__main__':
