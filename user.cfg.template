@@ -2,7 +2,7 @@
 username=user
 cluster=coyote
 tmp_directory=/net/radiodurans/alm/user/tmp
-usearch=/net/radiodurans/alm/swo/bin/usearch
+usearch=/net/radiodurans/alm/user/bin/usearch
 queue=speedy
 
 [Scripts]
@@ -13,3 +13,8 @@ bashrc=/net/radiodurans/alm/user/lib/SmileTrain/bashrcs/coyote.sh
 greengenes=/net/radiodurans/alm/lab/db/gg_13_5/gg_13_8_otus/rep_set
 greengenes_taxonomy=/net/radiodurans/alm/lab/db/gg_13_5/pickles/gg_13_5_taxonomy.pkl
 gold=/net/radiodurans/alm/lab/db/gold/gold.fasta
+
+[dbOTU]
+alignref=/path/to/silva.bacteria.m45.25434.11887.m668.filter.fasta
+perllib=/path/to/dbOTUcaller/perllib/
+caller=/path/to/dbOTUcaller/dbOTUcaller.py
