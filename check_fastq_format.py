@@ -107,10 +107,10 @@ if __name__ == '__main__':
     with open(args.fastq) as f:
         format_guess = file_format(f)
         if format_guess == 'illumina13':
-            print "Looks like Illumina 1.3-1.7 format. Proceed with the pipeline!"
+            print "Illumina 1.3-1.7 format"
         elif format_guess == 'illumina18':
-            print "Looks like Illumina 1.8 format. You may need to convert. Beware..."
+            print "Illumina 1.8 format"
         elif format_guess == 'ambiguous':
-            print "Could be either 1.3-1.7 or 1.8 format. Ambiguous. Proceed with caution."
+            print "Could be either 1.3-1.7 or 1.8 format. Ambiguous."
         else:
             raise RuntimeError

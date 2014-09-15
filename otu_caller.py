@@ -5,10 +5,88 @@ Main script in the pipeline. Produces lists of commands and submits them using s
 Options allow the user to run individual parts of the pipeline or the entire thing.
 '''
 
-import argparse, os, ConfigParser
+import argparse, os, ConfigParser, subprocess
 import ssub
-import util, check_fastq_format
+import util
 from util import *
+
+class Submitter():
+    '''runs jobs on a cluster, locally, or in a dry run'''
+    def __init__(self, method, n_cpus=1):
+        if method not in ['submit', 'local', 'dry_run']:
+            raise ArgumentError("unexpcted method %s passed to Submitter" %(method))
+
+        self.method = method
+
+        if method == 'dry_run':
+            self.dry_run = True
+        elif method == 'submit':
+            self.dry_run = False
+            self.ssub = ssub.Ssub()
+            self.ssub.n_cpus = n_cpus
+        elif method == 'local':
+            self.dry_run = False
+
+    def check_for_existence(self, fns):
+        '''assert that each of filenames does exist'''
+
+        fns = util.listify(fns)
+
+        if self.method == 'dry_run':
+            message("dry run: test for existence of files: " + " ".join(fns), indent=4)
+        else:
+            # running ls first seems to prevent spurious empties
+            subprocess.check_output(['ls', '-lah'])
+            tests = [os.path.isfile(fn) for fn in fns]
+            if False in tests:
+                bad_names = " ".join([fn for fn, test in zip(fns, tests) if test == False])
+                raise RuntimeError("file(s) missing: %s" % bad_names)
+
+    def check_for_nonempty(self, fns):
+        '''assert that each file exists and is nonempty'''
+        fns = util.listify(fns)
+    
+        if self.method == 'dry_run':
+            message("dry run: test that files are non-empty: " + " ".join(fns), indent=4)
+        else:
+            self.check_for_existence(fns)
+            tests = [os.stat(fn).st_size > 0 for fn in fns]
+            if False in tests:
+                bad_names = " ".join([fn for fn, t in zip(fns, tests) if t == False])
+                raise RuntimeError("file(s) empty: " + bad_names)
+
+    def check_for_collisions(self, fns):
+        if self.method == 'dry_run':
+            message("dry run: test that destinations are free: " + " ".join(filenames), indent=4)
+        else:
+            util.check_for_collisions(fns)
+
+    def check_is_executable(self, fn):
+        '''check if a filename exists and is executable'''
+        if not (os.path.isfile(fn) and os.access(fn, os.X_OK)):
+            raise RuntimeError("file %s should be executable, but it is not" %(fn))
+
+    def move_files(self, start_fns, end_fns):
+        cmds = [['mv', x, y] for x, y in zip(start_fns, end_fns)]
+        self.execute(cmds)
+
+    def rm_files(self, fns):
+        cmds = [['rm', fn] for fn in fns]
+        self.execute(cmds)
+
+    def execute(self, cmds):
+        # recast all parts of the command to strings
+        cmds = [[str(x) for x in cmd] for cmd in cmds]
+
+        if self.method == 'submit':
+            self.ssub.submit_and_wait(cmds)
+        elif self.method == 'local':
+            for cmd in cmds:
+                print " ".join(cmd)
+                subprocess.check_call(cmd)
+        elif self.method == 'dry_run':
+            print "\n".join([" ".join(cmd) for cmd in cmds])
+
 
 # open the config file sister to this script
 config = ConfigParser.ConfigParser()
@@ -33,6 +111,7 @@ def parse_args():
     group10 = parser.add_argument_group('Indexing')
     group11 = parser.add_argument_group('Clustering')
     group12 = parser.add_argument_group('Options')
+    group_run = parser.add_mutually_exclusive_group()
     
     # add arguments
     group1.add_argument('--all', action='store_true', help='Run primer, merge, demultiplex, filter, derep, index, ref_gg, and otu?')
@@ -65,7 +144,8 @@ def parse_args():
     group9.add_argument('--gold_db', default=config.get('Data', 'gold'), help='Gold 16S database')
     group11.add_argument('--sids', default='91,94,97,99', help='Sequence identities for clustering')
     group12.add_argument('--n_cpus', '-n', default = 1, type = int, help='Number of CPUs')
-    group12.add_argument('--dry_run', '-z', action='store_true', help='submit no jobs; suppress file checks; ust print output commands')
+    group_run.add_argument('--dry_run', '-z', action='store_true', help='submit no jobs; suppress file checks; just print output commands')
+    group_run.add_argument('--local', '-l', action='store_true', help='execute all tasks locally')
     
     # parse arguments
     if __name__ == '__main__':
@@ -108,8 +188,14 @@ class OTU_Caller():
 
         # create an internal ssub object. this way we can set ssub's options without
         # relying on the command line.
-        self.ssub = ssub.Ssub()
-        self.ssub.n_cpus = self.n_cpus
+        if self.dry_run:
+            method = 'dry_run'
+        elif self.local:
+            method = 'local'
+        else:
+            method = 'submit'
+
+        self.sub = Submitter(method, n_cpus=self.n_cpus)
     
     def get_filenames(self):
         '''Generate filenames to use in pipeline'''
@@ -132,11 +218,7 @@ class OTU_Caller():
         self.uc = ['otus.%d.uc' %(sid) for sid in self.sids] # uclust output files
         self.xi = ['otus.%d.counts' %(sid) for sid in self.sids] # otu tables (counts)
         
-        self.open_fst = ['q.%d.no_match.fst' %(sid) for sid in self.sids] # otu rep seqs
-        self.orig_uc = ['otus.%d.ref_db.uc' %(sid) for sid in self.sids] # uclust output for initial reference-based mapping
-        self.open_uc = ['otus.%d.no_match.uc' %(sid) for sid in self.sids] # uclust output files, for open reference clustering
-        self.open_otu_tmp = ['otus.%d.no_match.tmp' %(sid) for sid in self.sids] # otu rep seqs (tmp)
-        self.open_otu = ['otus.%d.no_match.fst' %(sid) for sid in self.sids] # otu rep seqs
+        self.open_fst = ['q.%d.no_match.fst' %(sid) for sid in self.sids] # unmatched seqs from ref mapping
         self.seq_tax_fn = 'seq.tax'
         
         # if reference-based clustering at 97%, make sure reads are 98.5% dissimilar
@@ -146,7 +228,7 @@ class OTU_Caller():
         # Get database for read mapping
         if self.denovo == True:
             self.db = self.oi
-        elif self.ref_gg == True:
+        elif self.ref_gg or self.open_ref_gg:
             self.db = ['%s/%d_otus.fasta' %(self.ggdb, sid) for sid in self.sids]
             
     def check_format(self):
@@ -159,12 +241,9 @@ class OTU_Caller():
             files.append(self.reverse)
             
         message('Testing format of %s' %(" ".join(files)))
-        
-        if self.dry_run:
-            cmds = ['python %s/check_fastq_format.py %s' %(self.library, f) for f in files]
-            message("\n".join(cmds), indent=0)
-        else:
-            check_fastq_format.check_illumina_format(files, 'illumina13')
+
+        cmds = [['python', '%s/check_fastq_format.py' %(self.library), f] for f in files]
+        self.sub.execute(cmds)
     
     def split_fastq(self):
         '''Split forward and reverse reads (for parallel processing)'''
@@ -175,62 +254,62 @@ class OTU_Caller():
 
         # check for inputs and collisions of output
         if do_forward:
-            util.check_for_nonempty(self.forward, self.dry_run)
-            util.check_for_collisions(['%s.%s' %(self.forward, i) for i in range(self.n_cpus)], self.dry_run)
+            self.sub.check_for_nonempty(self.forward)
+            self.sub.check_for_collisions(['%s.%s' %(self.forward, i) for i in range(self.n_cpus)])
         if do_reverse:
-            util.check_for_nonempty(self.reverse, self.dry_run)
-            util.check_for_collisions(['%s.%s' %(self.reverse, i) for i in range(self.n_cpus)], self.dry_run)
+            self.sub.check_for_nonempty(self.reverse)
+            self.sub.check_for_collisions(['%s.%s' %(self.reverse, i) for i in range(self.n_cpus)])
         
         # Get list of commands
         cmds = []
         if do_forward:
-            cmd = 'python %s/split_fastq.py %s %s' %(self.library, self.forward, self.n_cpus)
+            cmd = ['python', '%s/split_fastq.py' %(self.library), self.forward, self.n_cpus]
             cmds.append(cmd)
         if do_reverse:
-            cmd = 'python %s/split_fastq.py %s %s' %(self.library, self.reverse, self.n_cpus)
+            cmd = ['python', '%s/split_fastq.py' %(self.library), self.reverse, self.n_cpus]
             cmds.append(cmd)
         
         # submit commands
-        self.ssub.submit_and_wait(cmds, out=self.dry_run)
+        self.sub.execute(cmds)
 
         # validate output
         if do_forward:
-            util.check_for_nonempty(self.fi, self.dry_run)
+            self.sub.check_for_nonempty(self.fi)
         if do_reverse:
-            util.check_for_nonempty(self.ri, self.dry_run)
+            self.sub.check_for_nonempty(self.ri)
             
     def convert_format(self):
         '''Convert to compatible fastq format'''
         
         if self.forward:
-            util.check_for_nonempty(self.fi, self.dry_run)
-            util.check_for_collisions(self.Fi, self.dry_run)
+            self.sub.check_for_nonempty(self.fi)
+            self.sub.check_for_collisions(self.Fi)
             
         if self.reverse:
-            util.check_for_nonempty(self.ri, self.dry_run)
-            util.check_for_collisions(self.Fi, self.dry_run)
+            self.sub.check_for_nonempty(self.ri)
+            self.sub.check_for_collisions(self.Fi)
             
         cmds = []
         for i in range(self.n_cpus):
             if self.forward:
-                cmd = 'python %s/convert_fastq.py %s > %s' %(self.library, self.fi[i], self.Fi[i])
+                cmd = ['python', '%s/convert_fastq.py' %(self.library), self.fi[i], '--output', self.Fi[i]]
                 cmds.append(cmd)
             if self.reverse:
-                cmd = 'python %s/convert_fastq.py %s > %s' %(self.library, self.ri[i], self.Ri[i])
+                cmd = ['python', '%s/convert_fastq.py' %(self.library), self.ri[i], '--output', self.Ri[i]]
                 cmds.append(cmd)
                 
-        self.ssub.submit_and_wait(cmds, out=self.dry_run)
+        self.sub.execute(cmds)
         
         # validate output and move files
         if self.forward:
-            util.check_for_nonempty(self.Fi, dry_run=self.dry_run)
-            self.ssub.move_files(self.Fi, self.fi, out=self.dry_run)
-            util.check_for_nonempty(self.fi, dry_run=self.dry_run)
+            self.sub.check_for_nonempty(self.Fi)
+            self.sub.move_files(self.Fi, self.fi)
+            self.sub.check_for_nonempty(self.fi)
 
         if self.reverse:
-            util.check_for_nonempty(self.Ri, dry_run=self.dry_run)
-            self.ssub.move_files(self.Ri, self.ri, out=self.dry_run)
-            util.check_for_nonempty(self.ri, dry_run=self.dry_run)
+            self.sub.check_for_nonempty(self.Ri)
+            self.sub.move_files(self.Ri, self.ri)
+            self.sub.check_for_nonempty(self.ri)
     
     def remove_primers(self):
         '''Remove diversity region + primer and discard reads with > 2 mismatches'''
@@ -246,93 +325,88 @@ class OTU_Caller():
 
         # check for inputs and collisions of output
         if do_forward:
-            util.check_for_nonempty(self.fi, self.dry_run)
-            util.check_for_collisions(self.Fi, self.dry_run)
+            self.sub.check_for_nonempty(self.fi)
+            self.sub.check_for_collisions(self.Fi)
         if do_reverse:
-            util.check_for_nonempty(self.ri, self.dry_run)
-            util.check_for_collisions(self.Ri, self.dry_run)
+            self.sub.check_for_nonempty(self.ri)
+            self.sub.check_for_collisions(self.Ri)
         
         # get list of commands using forward, reverse, or both
         cmds = []
         for i in range(self.n_cpus):
             if do_forward:
-                cmd = 'python %s/remove_primers.py %s %s --max_primer_diffs %d > %s' %(self.library, self.fi[i], self.p, self.p_mismatch, self.Fi[i])
+                cmd = ['python', '%s/remove_primers.py' %(self.library), self.fi[i], self.p, '--max_primer_diffs', self.p_mismatch, '--output', self.Fi[i]]
                 cmds.append(cmd)
             if do_reverse:
-                cmd = 'python %s/remove_primers.py %s %s --max_primer_diffs %d > %s' %(self.library, self.ri[i], self.q, self.p_mismatch, self.Ri[i])
+                cmd = ['python', '%s/remove_primers.py' %(self.library), self.ri[i], self.p, '--max_primer_diffs', self.p_mismatch, '--output', self.Ri[i]]
                 cmds.append(cmd)
         
         # submit commands
-        self.ssub.submit_and_wait(cmds, out=self.dry_run)
+        self.sub.execute(cmds)
 
         # validate output and move files
         if do_forward:
-            util.check_for_nonempty(self.Fi, dry_run=self.dry_run)
-            self.ssub.move_files(self.Fi, self.fi, out=self.dry_run)
-            util.check_for_nonempty(self.fi, dry_run=self.dry_run)
+            self.sub.check_for_nonempty(self.Fi)
+            self.sub.move_files(self.Fi, self.fi)
+            self.sub.check_for_nonempty(self.fi)
 
         if do_reverse:
-            util.check_for_nonempty(self.Ri, dry_run=self.dry_run)
-            self.ssub.move_files(self.Ri, self.ri, out=self.dry_run)
-            util.check_for_nonempty(self.ri, dry_run=self.dry_run)
+            self.sub.check_for_nonempty(self.Ri)
+            self.sub.move_files(self.Ri, self.ri)
+            self.sub.check_for_nonempty(self.ri)
     
     def merge_reads(self):
         '''Merge forward and reverse reads using USEARCH'''
 
         # check for inputs and collisions
-        util.check_for_nonempty(self.fi + self.ri, dry_run=self.dry_run)
-        util.check_for_collisions(self.Fi + self.Ri, dry_run=self.dry_run)
+        self.sub.check_for_nonempty(self.fi + self.ri)
+        self.sub.check_for_collisions(self.Fi + self.Ri)
         
         # check that usearch is ready to go
-        assert(util.is_executable(self.usearch))
+        self.sub.check_is_executable(self.usearch)
         
-        # Intersect forward and reverse reads
+        # check that forward and reverse reads intersect
         cmds = []
         for i in range(self.n_cpus):
-            cmd = 'python %s/intersect.py %s %s %s %s' %(self.library, self.fi[i], self.ri[i], self.Fi[i], self.Ri[i])
+            cmd = ['python', '%s/check_intersect.py' %(self.library), self.fi[i], self.ri[i]]
             cmds.append(cmd)
-        self.ssub.submit_and_wait(cmds, out = self.dry_run)
-        
-        # make sure there was a nonempty result. copy to new location, and make sure the copy worked
-        util.check_for_nonempty(self.Fi + self.Ri, dry_run=self.dry_run)
-        self.ssub.move_files(self.Fi + self.Ri, self.fi + self.ri, out = self.dry_run)
-        util.check_for_nonempty(self.fi + self.ri, dry_run=self.dry_run)
+        self.sub.execute(cmds)
         
         # Merge reads
         cmds = []
         for i in range(self.n_cpus):
-            cmd = '%s -fastq_mergepairs %s -reverse %s -fastq_truncqual %d -fastqout %s' %(self.usearch, self.fi[i], self.ri[i], self.truncqual, self.mi[i])
+            cmd = [self.usearch, '-fastq_mergepairs', self.fi[i], '-reverse', self.ri[i], '-fastq_truncqual', self.truncqual, '-fastqout', self.mi[i]]
             cmds.append(cmd)
-        self.ssub.submit_and_wait(cmds, out = self.dry_run)
+        self.sub.execute(cmds)
         
-        util.check_for_nonempty(self.mi, dry_run=self.dry_run)
-        self.ssub.remove_files(self.fi + self.ri, out = self.dry_run)
+        self.sub.check_for_nonempty(self.mi)
+        self.sub.rm_files(self.fi + self.ri)
     
     def demultiplex_reads(self):
         '''Demultiplex samples using index and barcodes'''
         
-        util.check_for_nonempty(self.ci, dry_run=self.dry_run)
-        util.check_for_collisions(self.Ci, dry_run=self.dry_run)
+        self.sub.check_for_nonempty(self.ci)
+        self.sub.check_for_collisions(self.Ci)
 
         cmds = []
         for i in range(self.n_cpus):
-            cmd = 'python %s/map_barcodes.py %s %s --max_barcode_diffs %d > %s' %(self.library, self.ci[i], self.barcodes, self.b_mismatch, self.Ci[i])
+            cmd = ['python', '%s/map_barcodes.py' %(self.library), self.ci[i], self.barcodes, '--max_barcode_diffs', self.b_mismatch, '--output', self.Ci[i]]
             cmds.append(cmd)
-        self.ssub.submit_and_wait(cmds, self.dry_run)
+        self.sub.execute(cmds)
         
-        util.check_for_nonempty(self.Ci, dry_run=self.dry_run)
-        self.ssub.move_files(self.Ci, self.ci, self.dry_run)
-        util.check_for_nonempty(self.ci, dry_run=self.dry_run)
+        self.sub.check_for_nonempty(self.Ci)
+        self.sub.move_files(self.Ci, self.ci)
+        self.sub.check_for_nonempty(self.ci)
     
     def quality_filter(self):
         '''Quality filter with truncqual and maximum expected error'''
         
         # validate input/output
-        util.check_for_nonempty(self.ci, self.dry_run)
-        util.check_for_collisions(self.Ci, self.dry_run)
+        self.sub.check_for_nonempty(self.ci)
+        self.sub.check_for_collisions(self.Ci)
         
         # check that usearch is ready to go
-        assert(util.is_executable(self.usearch))
+        assert(self.sub.is_executable(self.usearch))
         
         # check that the files are in the right format
         if self.dry_run:
@@ -343,178 +417,129 @@ class OTU_Caller():
 
         cmds = []
         for i in range(self.n_cpus):
-            cmd = '%s -fastq_filter %s -fastq_truncqual %d -fastq_maxee %f -fastaout %s' %(self.usearch, self.ci[i], self.truncqual, self.maxee, self.Ci[i])
+            cmd = [self.usearch, '-fastq_filter', self.ci[i], '-fastq_truncqual', self.truncqual, '-fastq_maxee', self.maxee, '-fastaout', self.Ci[i]]
             cmds.append(cmd)
-        self.ssub.submit_and_wait(cmds, self.dry_run)
+        self.sub.submit_and_wait(cmds)
         
-        cmd = 'cat %s > q.fst' %(' '.join(self.Ci))
-        self.ssub.run_local([cmd], out = self.dry_run)
-        util.check_for_nonempty('q.fst', dry_run=self.dry_run)
-        
-        cmd = 'rm %s' %(' '.join(self.Ci))
-        self.ssub.run_local([cmd], out = self.dry_run)
+        cmd = ['python', '%s/combine_fasta.py' %(self.library), '--output', 'q.fst'] + self.Ci
+        self.sub.execute(cmd)
+        self.sub.check_for_nonempty('q.fst')
+        self.sub.rm_files(self.Ci)
     
     def dereplicate_reads(self):
         '''Concatenate files and dereplicate'''
 
-        cmd = 'python %s/derep_fulllength.py q.fst -o q.derep.fst' %(self.library)
-        self.ssub.submit_and_wait([cmd], self.dry_run)
-        util.check_for_nonempty('q.derep.fst', dry_run=self.dry_run)
+        cmd = ['python',  '%s/derep_fulllength.py' %(self.library), 'q.fst', '--output', 'q.derep.fst']
+        self.sub.execute([cmd])
+        self.sub.check_for_nonempty('q.derep.fst')
         
     def make_index(self):
         '''Make an index file'''
-        
         # verify input & check for collisions with output
-        util.check_for_nonempty(['q.fst', 'q.derep.fst'], dry_run=self.dry_run)
-        util.check_for_collisions('q.index', self.dry_run)
+        self.sub.check_for_nonempty(['q.fst', 'q.derep.fst'])
+        self.sub.check_for_collisions('q.index')
         
-        cmd = 'python %s/index.py q.fst q.derep.fst --output q.index' %(self.library)
-        self.ssub.submit_and_wait([cmd], self.dry_run)
+        cmd = ['python', '%s/index.py' %(self.library), 'q.fst', 'q.derep.fst', '--output', 'q.index']
+        self.sub.execute([cmd])
         
-        util.check_for_nonempty('q.index', dry_run=self.dry_run)
+        self.sub.check_for_nonempty('q.index')
     
     def denovo_clustering(rename=True):
         '''Denovo clustering with USEARCH'''
-
         cmds = []
         for i in range(len(self.sids)):
             sid = self.sids[i]
-            cmd = '%s -cluster_otus q.derep.fst -otus %s -otuid .%d' %(self.usearch, self.oi[i], sid)
+            cmd = [self.usearch, '-cluster_otus', 'q.derep.fst', '-otus', self.oi[i], '-otuid', '.%d' %(sid)]
             cmds.append(cmd)
-        self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.oi, self.dry_run)
+        self.sub.execute(cmds)
+        self.sub.check_for_nonempty(self.oi)
         
         # Rename OTUs
         if rename == True:
             cmds = []
             for i in range(len(self.sids)):
                 sid = self.sids[i]
-                cmd = 'python %s/usearch_python/fasta_number.py %s OTU%d_ > %s' %(self.library, self.oi[i], sid, self.Oi[i])
+                cmd = ['python', '%s/usearch_python/fasta_number.py' %(self.library), self.oi[i], 'OTU%d_' %(sid), '>', self.Oi[i]]
                 cmds.append(cmd)
-            self.ssub.submit_and_wait(cmds, self.dry_run)
-            util.check_for_nonempty(self.Oi, self.dry_run)
-            self.ssub.move_files(self.Oi, self.oi, self.dry_run)
-            util.check_for_nonempty(self.oi, self.dry_run)
+            self.sub.execute(cmds)
+            self.sub.check_for_nonempty(self.Oi)
+            self.sub.move_files(self.Oi, self.oi)
+            self.sub.check_for_nonempty(self.oi)
     
     def remove_chimeras(self):
         '''Remove chimeras using gold database'''
-
         cmds = []
         for i in range(len(self.sids)):
             sid = self.sids[i]
-            cmd = '%s -uchime_ref %s -db %s -nonchimeras %s -strand plus' %(self.usearch, self.oi[i], self.gold_db, self.Oi[i])
+            cmd = [self.usearch, '-uchime_ref', self.oi[i], '-db', self.gold_db, '-nochimeras', self.Oi[i], '-strand', 'plus']
             cmds.append(cmd)
-        self.ssub.submit_and_wait(cmds, self.dry_run)
+        self.sub.execute(cmds)
         
-        util.check_for_nonempty(self.Oi, self.dry_run)
-        self.ssub.move_files(self.Oi, self.oi, self.dry_run)
-        util.check_for_nonempty(self.oi, self.dry_run)
+        self.sub.check_for_nonempty(self.Oi)
+        self.sub.move_files(self.Oi, self.oi)
+        self.sub.check_for_nonempty(self.oi)
     
     def reference_mapping(self):
         '''Map reads to reference databases'''
-        
-        util.check_for_nonempty(self.db, self.dry_run)
-        util.check_for_collisions(self.uc, self.dry_run)
+        self.sub.check_for_nonempty(self.db)
+        self.sub.check_for_collisions(self.uc)
 
         cmds = []
         for i in range(len(self.sids)):
-            cmd = '%s -usearch_global q.derep.fst -db %s -uc %s -strand both -id .%d' %(self.usearch, self.db[i], self.uc[i], self.reference_map_sids[i])
+            cmd = [self.usearch, '-usearch_global', 'q.derep.fst', '-db', self.db[i], '-uc', self.uc[i], '-strand', 'both', '-id', '.%d' %(self.reference_map_sids[i])]
+
+            if self.open_ref_gg:
+                cmd += '-notmatched', self.open_fst[i]
+
             cmds.append(cmd)
             
-        self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.uc, self.dry_run)
-        
-    def open_reference_mapping(self):
-        '''Makes new otus from reads missed in the original reference mapping, then maps to those otus'''
-        
-        util.check_for_nonempty(self.uc, self.dry_run)
-        util.check_for_collisions(self.open_fst, self.dry_run)        # unmatched seqs go into a new source fasta
-        util.check_for_collisions(self.open_otu_tmp, self.dry_run)    # rep seqs for otus made from those unmatched seqs
-        util.check_for_collisions(self.open_otu, self.dry_run)        # same rep seqs, but renamed as OTUs
-        util.check_for_collisions(self.open_uc, self.dry_run)         # mapping information of unmatched seqs to denovo OTUs
-        util.check_for_collisions(self.orig_uc, self.dry_run)         # mapping information for reference-based matching
-        
-        # grab the unmatched sequences from the database-reference uc
-        cmds = ['python %s/uc2denovo.py q.derep.fst %s --output %s' %(self.library, self.uc[i], self.open_fst[i]) \
-                for i in range(len(self.sids))]
-        self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.open_fst, self.dry_run)
-        
-        # denovo cluster those sequences
-        cmds = ['%s -cluster_otus %s -otus %s -otu_radius_pct .%d' %(self.usearch, self.open_fst[i], self.open_otu[i], self.reference_map_pcts[i]) \
-                for i in range(len(self.sids))]
-        self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.open_otu, self.dry_run)
-        
-        # rename the OTUs in those representative sequences
-        cmds = ['python %s/usearch_python/fasta_number.py %s OTU%d_ > %s' %(self.library, self.open_otu[i], self.sids[i], self.open_otu_tmp[i]) \
-                for i in range(len(self.sids))]
-        self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.open_otu_tmp, self.dry_run)
-        
-        # move the file with the renamed sequences into the spot as the final file
-        self.ssub.move_files(self.open_otu_tmp, self.open_otu, self.dry_run)
-        util.check_for_nonempty(self.open_otu, self.dry_run)
-        
-        # reference map against these new rep seqs
-        cmds = ['%s -usearch_global %s -db %s -uc %s -strand both -id .%d' %(self.usearch, self.open_fst[i], self.open_otu[i], self.open_uc[i], self.reference_map_sids[i]) \
-                for i in range(len(self.sids))]
-        self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.open_uc, self.dry_run)
-        
-        # move the original uc files to different place
-        self.ssub.move_files(self.uc, self.orig_uc, self.dry_run)
-        util.check_for_nonempty(self.orig_uc, self.dry_run)
-        
-        # combine the uc files
-        cmds = ['grep "^H" %s > %s; cat %s >> %s' %(self.orig_uc[i], self.uc[i], self.open_uc[i], self.uc[i]) \
-                for i in range(len(self.sids))]
-        self.ssub.submit_and_wait(cmds, self.dry_run)
-        util.check_for_nonempty(self.uc, self.dry_run)
+        self.sub.execute(cmds)
+        self.sub.check_for_nonempty(self.uc)
+
+        if self.open_ref_gg:
+            message("unmatches sequences left in following files. move them to a new work folder for de novo clustering.")
+            print "\n".join(self.open_fst)
     
     def make_otu_tables(self):
-        '''Make OTU tables from UC file'''
-        
-        util.check_for_nonempty(self.uc + ['q.index'], self.dry_run)
-        util.check_for_collisions(self.xi, self.dry_run)
+        '''Make OTU tables from uc file'''    
+        self.sub.check_for_nonempty(self.uc + ['q.index'])
+        self.sub.check_for_collisions(self.xi)
 
         cmds = []
         for i in range(len(self.sids)):
-            cmd = 'python %s/uc2otus.py %s q.index --output %s' %(self.library, self.uc[i], self.xi[i])
+            cmd = ['python', '%s/uc2otus.py' %(self.library), self.uc[i], 'q.index', '--output', self.xi[i]]
             
             # if we have a barcode file, use that order for the sample columns
             if self.barcodes is not None:
-                cmd += ' --samples %s' %(self.barcodes)
+                cmd += ['--samples', self.barcodes]
             
             cmds.append(cmd)
-        self.ssub.submit_and_wait(cmds, self.dry_run)
+        self.sub.execute(cmds)
         
-        util.check_for_nonempty(self.xi, self.dry_run)
+        self.sub.check_for_nonempty(self.xi)
         
     def make_seq_table(self):
         '''Make sequence table from the index file'''
-        
-        util.check_for_nonempty('q.fst', self.dry_run)
-        util.check_for_collisions('seq.counts', self.dry_run)
+        self.sub.check_for_nonempty('q.fst')
+        self.sub.check_for_collisions('seq.counts')
 
-        cmd = 'python %s/seq_table.py %s --output %s' %(self.library, 'q.fst', 'seq.counts')
+        cmd = ['python', '%s/seq_table.py' %(self.library), 'q.fst', 'q.derep.fst', '--output', 'seq.counts']
         
         if self.barcodes is not None:
-            cmd += ' --samples %s' %(self.barcodes)
+            cmd += ['--samples', self.barcodes]
         
-        self.ssub.submit_and_wait([cmd], self.dry_run)
-        util.check_for_nonempty('seq.counts', self.dry_run)
+        self.sub.execute([cmd])
+        self.sub.check_for_nonempty('seq.counts')
         
     def get_seq_tax(self):
         '''Get taxonomies for sequences in the seq table'''
+        self.sub.check_for_nonempty('seq.counts')
+        self.sub.check_for_collisions(self.seq_tax_fn)
         
-        util.check_for_nonempty('seq.counts', self.dry_run)
-        util.check_for_collisions(self.seq_tax_fn, self.dry_run)
+        cmd = ['python', '%s/assign_seq_table_taxonomies.py' %(self.library), 'seq.counts', '--output', self.seq_tax_fn]
         
-        cmd = 'python %s/assign_seq_table_taxonomies.py %s --output %s' %(self.library, 'seq.counts', self.seq_tax_fn)
-        
-        self.ssub.submit_and_wait([cmd], self.dry_run)
-        util.check_for_nonempty(self.seq_tax_fn, self.dry_run)
+        self.sub.execute([cmd])
+        self.sub.check_for_nonempty(self.seq_tax_fn)
     
 
 if __name__ == '__main__':
@@ -577,14 +602,9 @@ if __name__ == '__main__':
         oc.denovo_clustering(rename = True)
     
     # Map to reference database
-    if oc.ref_gg == True:
+    if oc.ref_gg or oc.open_ref_gg:
         message('Mapping to reference')
         oc.reference_mapping()
-        
-    # Open reference clustering
-    if oc.open_ref_gg:
-        message('Open reference-based clustering')
-        oc.open_reference_mapping()
         
     # Make sequence tables
     if oc.seq_table:

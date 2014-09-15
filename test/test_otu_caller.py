@@ -1,20 +1,14 @@
 #!/usr/bin/env python
 
 '''
-Unit tests for the pipeline.
-
-There is a child class TestWithFiles. This should be used as the parent for classes that
-include tests that require reading and writing files. These files should be written into
-the tests folder and then cleaned up.
-
-Most of these tests should be refactored into separate scripts.
+Unit tests for otu_caller.py
 '''
 
 from SmileTrain.test import fake_fh
 import unittest, tempfile, subprocess, os, shutil, StringIO
 from Bio import SeqIO, Seq
 
-from SmileTrain import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index
+from SmileTrain import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index, otu_caller
 
 tmp_dir = 'tmp'
 
@@ -27,7 +21,7 @@ class TestWithFiles(unittest.TestCase):
     def tearDown(self):
         if os.path.isdir(tmp_dir):
             shutil.rmtree(tmp_dir)
-    
+
             
 class TestFileChecks(TestWithFiles):
     '''tests for utilities that make queries about files'''
@@ -43,26 +37,32 @@ class TestFileChecks(TestWithFiles):
         no_fh, self.no_fn = tempfile.mkstemp(dir=tmp_dir)
         os.close(no_fh)
         os.unlink(self.no_fn)
+
+        self.sub = otu_caller.Submitter(method='local')
         
-    def test_check_for_existence(self):
-        '''should identify files as existing or not'''
+    def test_check_for_existence_empty(self):
+        '''should identify empty files as existing'''
+        self.sub.check_for_existence(self.empty_fn)
+    
+    def test_check_for_existence_full(self):
+        '''should identify full file as existing'''
+        self.sub.check_for_existence(self.full_fn)
         
-        # the empty and full files should exist
-        util.check_for_existence(self.empty_fn)
-        util.check_for_existence(self.full_fn)
-        
-        # but the file we deleted shouldn't
-        with self.assertRaises(RuntimeError):
-            util.check_for_existence(self.no_fn)
+    def test_check_for_existence_no(self):
+        '''should identify deleted file as missing'''
+        self.assertRaises(RuntimeError, self.sub.check_for_existence, self.no_fn)
             
-    def test_check_for_collision_yes(self):
-        '''should identify files as existing'''
-        self.assertRaises(RuntimeError, util.check_for_collisions, self.empty_fn)
-        self.assertRaises(RuntimeError, util.check_for_collisions, self.full_fn)
+    def test_check_for_collision_empty(self):
+        '''should identify empty file as colliding'''
+        self.assertRaises(RuntimeError, self.sub.check_for_collisions, self.empty_fn)
+
+    def test_check_for_collision_empty(self):
+        '''should identify full file as colliding'''
+        self.assertRaises(RuntimeError, self.sub.check_for_collisions, self.full_fn)
         
     def test_check_for_collision_no(self):
         '''should identify destination as empty'''
-        util.check_for_collisions(self.no_fn)
+        self.sub.check_for_collisions(self.no_fn)
         
 
 def TestPipelineSteps(TestWithFiles):

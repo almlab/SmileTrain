@@ -30,7 +30,7 @@ def mismatches(seq, primer, w):
     return (I, D)
 
 class PrimerRemover():
-    def __init__(self, fastq, primer, max_primer_diffs, output_type='string', skip=1):
+    def __init__(self, fastq, primer, max_primer_diffs, output_type='string', skip=1, out=sys.stdout):
         '''
         Remove well-matched primers from sequences in a fastq file
 
@@ -54,6 +54,7 @@ class PrimerRemover():
 
         self.output_type = output_type
         self.skip = skip
+        self.out = out
         
         self.n_successes = 0
         self.n_failures = 0
@@ -91,7 +92,7 @@ class PrimerRemover():
 
         timer = util.timer()
         for record in self:
-            SeqIO.write(record, sys.stdout, 'fastq')
+            SeqIO.write(record, self.out, 'fastq')
 
         self.elapsed_time = timer.next()
         

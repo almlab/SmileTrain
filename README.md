@@ -5,9 +5,7 @@ SmileTrain
 SmileTrain is developed against Python 2.7.3.
 
 ## Documentation
-Documents are being moved into the github wiki (in the right-hand panel).
-
-Documentation was previously is in the `doc` subfolder. To compile on Linux or Mac, run `make` (or use `make help` if you want to see your options) in the `doc` folder to create the html files in `doc/_build/html`. On Windows, you need to use make.bat somehow.
+Documents in the github wiki (in the right-hand panel). A (possibly old) copy is in the `doc/` folder.
 
 Scripts are annotated with docstrings that can be read using pydoc. To view documentation for script.py, run `pydoc script`.
 
