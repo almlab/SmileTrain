@@ -128,7 +128,7 @@ def parse_args():
     
     # add arguments
     group1.add_argument('--all', action='store_true', help='Run primer, merge, demultiplex, filter, derep, index, ref_gg, and otu?')
-    group1.add_argument('--check', action='store_true', help='Check input file format?')
+    group1.add_argument('--check', action='store_true', help='Check input file format and intersection?')
     group1.add_argument('--split', action='store_true', help='Split the fastq files?')
     group1.add_argument('--convert', action='store_true', help='Convert fastq format?')
     group1.add_argument('--primers', action='store_true', help='Remove primers?')
@@ -264,6 +264,10 @@ class OTU_Caller():
         message('Testing format of %s' %(" ".join(files)))
 
         cmds = [['python', '%s/check_fastq_format.py' %(self.library), f] for f in files]
+
+        if self.forward and self.reverse:
+            cmds += ['python', '%s/check_intersect.py', self.forward, self.reverse]
+
         self.sub.execute(cmds)
     
     def split_fastq(self):

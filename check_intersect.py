@@ -9,14 +9,19 @@ import sys, argparse, itertools
 from Bio import SeqIO
 import util
 
-def check_fastq_id(fid, direction):
-    if not fid.endswith("/%s" %(direction)):
-        raise RuntimeError("fastq id not correct direction: '%s' should end in '%s'" %(fid, direction))
+def check_matching_fastq_ids(forward_id, reverse_id):
+    if not forward_id.endswith("/1"):
+        raise RuntimeError("fastq id not correct direction: '%s' should end in 1" % forward_id)
+
+    if not reverse_id.endswith("/2"):
+        raise RuntimeError("fastq id not correct direction: '%s' should end in 2" % reverse_id)
+
+    if forward_id.rstrip("/12") != reverse_id.rstrip("/12"):
+        raise RuntimeError("fastq ids did not match: '%s' and '%s'" % (forward_id, reverse_id))
 
 def check_for_paired_ids(forward_fastq, reverse_fastq):
     for forward_record, reverse_record in itertools.izip(SeqIO.parse(forward_fastq, 'fastq'), SeqIO.parse(reverse_fastq, 'fastq')):
-        check_fastq_id(forward_record.id, '1')
-        check_fastq_id(reverse_record.id, '2')
+        check_matching_fastq_ids(forward_record.id, reverse_record.id)
 
 
 if __name__ == '__main__':
