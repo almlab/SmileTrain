@@ -132,6 +132,7 @@ def parse_args():
     group1.add_argument('--split', action='store_true', help='Split the fastq files?')
     group1.add_argument('--convert', action='store_true', help='Convert fastq format?')
     group1.add_argument('--primers', action='store_true', help='Remove primers?')
+    group1.add_argument('--intersect', action='store_true', help='Remove unmatched reads?')
     group1.add_argument('--merge', action='store_true', help='Merge forward and reverse reads?')
     group1.add_argument('--demultiplex', default = False, action = 'store_true', help = 'Demultiplex?')
     group1.add_argument('--qfilter', default = False, action = 'store_true', help = 'Quality filter?')
@@ -379,6 +380,20 @@ class OTU_Caller():
             self.sub.check_for_nonempty(self.Ri)
             self.sub.move_files(self.Ri, self.ri)
             self.sub.check_for_nonempty(self.ri)
+
+    def intersect_reads(self):
+        '''If one read is removed because of primers, remove its pair also'''
+        self.sub.check_for_collisions(self.Fi + self.Ri)
+
+        if not (self.forward and self.reverse):
+            raise RuntimeError("To intersect reads, forward and reverse fastq's must be specified")
+
+        cmds = [['python', '%s/intersect_reads.py' %(self.library), fi, ri, Fi, Ri] for fi, ri, Fi, Ri in zip(self.fi, self.ri, self.Fi, self.Ri)]
+        self.sub.execute(cmds)
+
+        self.sub.check_for_nonempty(self.Fi + self.Ri)
+        self.sub.move_files(self.Fi + self.Ri, self.fi + self.ri)
+        self.sub.check_for_nonempty(self.fi + self.ri)
     
     def merge_reads(self):
         '''Merge forward and reverse reads using USEARCH'''
@@ -647,6 +662,11 @@ if __name__ == '__main__':
         oc.ci = oc.mi
     else:
         oc.ci = oc.fi
+
+    # Intersect reads
+    if oc.intersect:
+        message("Intersecting reads")
+        oc.intersect_reads()
     
     # Demultiplex
     if oc.demultiplex == True:
