@@ -359,7 +359,7 @@ class OTU_Caller():
                 cmd = ['python', '%s/remove_primers.py' %(self.library), self.fi[i], self.p, '--max_primer_diffs', self.p_mismatch, '--output', self.Fi[i]]
                 cmds.append(cmd)
             if do_reverse:
-                cmd = ['python', '%s/remove_primers.py' %(self.library), self.ri[i], self.p, '--max_primer_diffs', self.p_mismatch, '--output', self.Ri[i]]
+                cmd = ['python', '%s/remove_primers.py' %(self.library), self.ri[i], self.q, '--max_primer_diffs', self.p_mismatch, '--output', self.Ri[i]]
                 cmds.append(cmd)
         
         # submit commands
