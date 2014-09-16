@@ -131,9 +131,8 @@ def parse_args():
     group1.add_argument('--check', action='store_true', help='Check input file format and intersection?')
     group1.add_argument('--split', action='store_true', help='Split the fastq files?')
     group1.add_argument('--convert', action='store_true', help='Convert fastq format?')
-    group1.add_argument('--primers', action='store_true', help='Remove primers?')
-    group1.add_argument('--intersect', action='store_true', help='Remove unmatched reads?')
     group1.add_argument('--merge', action='store_true', help='Merge forward and reverse reads?')
+    group1.add_argument('--primers', action='store_true', help='Remove primers?')
     group1.add_argument('--demultiplex', default = False, action = 'store_true', help = 'Demultiplex?')
     group1.add_argument('--qfilter', default = False, action = 'store_true', help = 'Quality filter?')
     group1.add_argument('--ref_chimeras', action='store_true', help='Slay chimeras using reference database?')
@@ -344,6 +343,7 @@ class OTU_Caller():
         # similar for reverse
         do_forward = self.forward and self.p
         do_reverse = self.reverse and self.q
+        do_both = do_forward and do_reverse
 
         # check that something is being done
         if not (do_forward or do_reverse):
