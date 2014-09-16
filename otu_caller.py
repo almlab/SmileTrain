@@ -128,10 +128,11 @@ def parse_args():
     
     # add arguments
     group1.add_argument('--all', action='store_true', help='Run primer, merge, demultiplex, filter, derep, index, ref_gg, and otu?')
-    group1.add_argument('--check', action='store_true', help='Check input file format?')
+    group1.add_argument('--check', action='store_true', help='Check input file format and intersection?')
     group1.add_argument('--split', action='store_true', help='Split the fastq files?')
     group1.add_argument('--convert', action='store_true', help='Convert fastq format?')
     group1.add_argument('--primers', action='store_true', help='Remove primers?')
+    group1.add_argument('--intersect', action='store_true', help='Remove unmatched reads?')
     group1.add_argument('--merge', action='store_true', help='Merge forward and reverse reads?')
     group1.add_argument('--demultiplex', default = False, action = 'store_true', help = 'Demultiplex?')
     group1.add_argument('--qfilter', default = False, action = 'store_true', help = 'Quality filter?')
@@ -264,6 +265,10 @@ class OTU_Caller():
         message('Testing format of %s' %(" ".join(files)))
 
         cmds = [['python', '%s/check_fastq_format.py' %(self.library), f] for f in files]
+
+        if self.forward and self.reverse:
+            cmds += ['python', '%s/check_intersect.py', self.forward, self.reverse]
+
         self.sub.execute(cmds)
     
     def split_fastq(self):
@@ -359,7 +364,7 @@ class OTU_Caller():
                 cmd = ['python', '%s/remove_primers.py' %(self.library), self.fi[i], self.p, '--max_primer_diffs', self.p_mismatch, '--output', self.Fi[i]]
                 cmds.append(cmd)
             if do_reverse:
-                cmd = ['python', '%s/remove_primers.py' %(self.library), self.ri[i], self.p, '--max_primer_diffs', self.p_mismatch, '--output', self.Ri[i]]
+                cmd = ['python', '%s/remove_primers.py' %(self.library), self.ri[i], self.q, '--max_primer_diffs', self.p_mismatch, '--output', self.Ri[i]]
                 cmds.append(cmd)
         
         # submit commands
@@ -375,6 +380,20 @@ class OTU_Caller():
             self.sub.check_for_nonempty(self.Ri)
             self.sub.move_files(self.Ri, self.ri)
             self.sub.check_for_nonempty(self.ri)
+
+    def intersect_reads(self):
+        '''If one read is removed because of primers, remove its pair also'''
+        self.sub.check_for_collisions(self.Fi + self.Ri)
+
+        if not (self.forward and self.reverse):
+            raise RuntimeError("To intersect reads, forward and reverse fastq's must be specified")
+
+        cmds = [['python', '%s/intersect_reads.py' %(self.library), fi, ri, Fi, Ri] for fi, ri, Fi, Ri in zip(self.fi, self.ri, self.Fi, self.Ri)]
+        self.sub.execute(cmds)
+
+        self.sub.check_for_nonempty(self.Fi + self.Ri)
+        self.sub.move_files(self.Fi + self.Ri, self.fi + self.ri)
+        self.sub.check_for_nonempty(self.fi + self.ri)
     
     def merge_reads(self):
         '''Merge forward and reverse reads using USEARCH'''
@@ -558,11 +577,11 @@ class OTU_Caller():
 
         cmds = []
         cmds.append(['perl', '%s/temp_071514.pl' % perllib, 'q.derep.fst', 'q.index', 'unique'])
-        cmds.append([mothur, '#align.seqs(fasta=unique.fa, reference=%s)' %(self.alignref)])
-        cmds.append([mothur, '#screen.seqs(fasta=unique.align, start=5, minlength=%d)' %(self.minlength)])
+        cmds.append([mothur, '"#align.seqs(fasta=unique.fa, reference=%s)"' %(self.alignref)])
+        cmds.append([mothur, '"#screen.seqs(fasta=unique.align, start=5, minlength=%d)"' %(self.minlength)])
         cmds.append('perl %s/filter_mat_from_fasta.pl unique.f0.mat unique.good.align > unique.f0.good.mat' %(perllib))
         cmds.append(['python', caller, 'unique.f0.good.mat', 'unique.good.align', 'unique.dbOTU', '-k', str(self.k_fold), '-p', str(self.pval)])
-        cmds.append([mothur, '#degap.seqs(fasta=unique.dbOTU.fasta)'])
+        cmds.append([mothur, '"#degap.seqs(fasta=unique.dbOTU.fasta)"'])
 
         self.sub.execute(cmds)
 
@@ -643,6 +662,11 @@ if __name__ == '__main__':
         oc.ci = oc.mi
     else:
         oc.ci = oc.fi
+
+    # Intersect reads
+    if oc.intersect:
+        message("Intersecting reads")
+        oc.intersect_reads()
     
     # Demultiplex
     if oc.demultiplex == True:
