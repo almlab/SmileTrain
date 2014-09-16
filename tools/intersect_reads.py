@@ -10,7 +10,7 @@ being fed into the pipeline, that naming convention would need to change.
 
 import sys, argparse, re
 from Bio import SeqIO
-import util
+from SmileTrain import util
 
 def fastq_id_to_read_id(fid):
     '''trim off the /1 or /2'''
