@@ -558,11 +558,11 @@ class OTU_Caller():
 
         cmds = []
         cmds.append(['perl', '%s/temp_071514.pl' % perllib, 'q.derep.fst', 'q.index', 'unique'])
-        cmds.append([mothur, '#align.seqs(fasta=unique.fa, reference=%s)' %(self.alignref)])
-        cmds.append([mothur, '#screen.seqs(fasta=unique.align, start=5, minlength=%d)' %(self.minlength)])
+        cmds.append([mothur, '"#align.seqs(fasta=unique.fa, reference=%s)"' %(self.alignref)])
+        cmds.append([mothur, '"#screen.seqs(fasta=unique.align, start=5, minlength=%d)"' %(self.minlength)])
         cmds.append('perl %s/filter_mat_from_fasta.pl unique.f0.mat unique.good.align > unique.f0.good.mat' %(perllib))
         cmds.append(['python', caller, 'unique.f0.good.mat', 'unique.good.align', 'unique.dbOTU', '-k', str(self.k_fold), '-p', str(self.pval)])
-        cmds.append([mothur, '#degap.seqs(fasta=unique.dbOTU.fasta)'])
+        cmds.append([mothur, '"#degap.seqs(fasta=unique.dbOTU.fasta)"'])
 
         self.sub.execute(cmds)
 
