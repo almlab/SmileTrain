@@ -108,7 +108,7 @@ def parse_args():
     '''arguments to be parsed and passed to the OTU_Caller object'''
 
     # create argument parser
-    parser = argparse.ArgumentParser(description=util.banner, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(description="Smile Train: a 16S pipeline", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
     # add groups
     group1 = parser.add_argument_group('Pipeline')
