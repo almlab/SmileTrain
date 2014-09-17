@@ -94,7 +94,7 @@ def parse_args():
 
 
 class Ssub():
-    def __init__(self, cluster = 'coyote'):
+    def __init__(self, cluster='coyote'):
         
         # get command line arguments
         args = parse_args()
@@ -129,6 +129,12 @@ class Ssub():
             self.stat_cmd = ['qstat', '-x']
             # parse: match a string of integers then either [] or nothing
             self.parse_job = lambda x: re.match('\d+(\[\])?', x).group()
+            self.parse_status = lambda x: coyote_parse(x, username)
+
+        elif cluster == 'zcluster':
+            self.submit_cmd = 'qsub'
+            self.stat_cmd = ['qstat', '-x']
+            self.parse_job = lambda x: re.match('\d+(\[\])?', x.split()[2]).group()
             self.parse_status = lambda x: coyote_parse(x, username)
         
         # unrecognized cluster
