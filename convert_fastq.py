@@ -14,7 +14,7 @@ from Bio import SeqIO
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='convert a fastq from Illumina 1.3-1.7 format to 1.8 format', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('fastq', help='input')
-    parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'), help='output fastq (default: stdout)')
+    parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'), help='output fastq')
     args = parser.parse_args()
     
     for record in SeqIO.parse(args.fastq, 'fastq-illumina'):
