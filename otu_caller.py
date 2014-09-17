@@ -651,6 +651,11 @@ if __name__ == '__main__':
     if oc.primers == True:
         message('Removing primers')
         oc.remove_primers()
+
+    # Intersect reads
+    if oc.intersect:
+        message("Intersecting reads")
+        oc.intersect_reads()
     
     # Merge reads
     if oc.merge:
@@ -662,11 +667,6 @@ if __name__ == '__main__':
         oc.ci = oc.mi
     else:
         oc.ci = oc.fi
-
-    # Intersect reads
-    if oc.intersect:
-        message("Intersecting reads")
-        oc.intersect_reads()
     
     # Demultiplex
     if oc.demultiplex == True:
