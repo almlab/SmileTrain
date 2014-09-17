@@ -1,29 +1,33 @@
 #!/usr/bin/env python
 
 '''
-Check if a primer (or its reverse complement) actually appears in the target fastq file
+Script that checks for the presence of a primer in a fasta.
 '''
 
-import argparse, re, sys
-from SmileTrain import util, util_primer
-import Bio.Seq
+import argparse, itertools, sys, tempfile, subprocess
+import util, util_primer
 
 
 if __name__ == '__main__':
     # parse command line arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument('input', help='input fastq')
-    parser.add_argument('primer', help='input primer')
-    parser.add_argument('-c', '--reverse_complement', action='store_true', help='check for reverse complement instead?')
-    parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output fasta (default stdout)')
-    args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='Look at every Nth entry and try to find the primer', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('fastq', help='input fastq file')
+    parser.add_argument('primer', help='primer sequence')
+    parser.add_argument('-l', '--log_frac', type=int, default=4, help='negative logarithm of fraction of sequences to take')
+    parser.add_argument('-m', '--max_primer_diffs', default=0, type=int, help='maximum number of nucleotide mismatches in the primer')
+    parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'), help='output file')
     
-    with open(args.input) as f:
-        if args.reverse_complement:
-            primer = Bio.Seq.Seq(args.primer).reverse_complement().tostring()
-        else:
-            primer = args.primer
-            
-        p = util_primer.PrimerRemover(f, primer, 0)
-        p.check_entries()
-        print p.diagnostic_message()
+    args = parser.parse_args()
+
+    # get the number of entries in the original file
+    n_lines = int(subprocess.check_output(['wc', '-l', args.fastq]).split()[0])
+    n_entries = n_lines / 4
+    frac = 10 ** -args.log_frac
+    skip = int(frac * n_lines)
+    
+    print "of %s entries, taking ~%s, or every %s-th" %(n_entries, frac, skip)
+    
+    r = util_primer.PrimerRemover(args.fastq, args.primer, args.max_primer_diffs, skip=skip)
+    r.check_entries()
+    
+    args.output.write(r.diagnostic_message())
