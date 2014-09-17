@@ -88,6 +88,8 @@ class Submitter():
         cmds = [recast_cmd(cmd) for cmd in cmds]
 
         if self.method == 'submit':
+            # recast commands as single lines
+            cmds = [[" ".join(x) for x in cmd] for cmd in cmds]
             self.ssub.submit_and_wait(cmds)
         elif self.method == 'local':
             for cmd in cmds:
