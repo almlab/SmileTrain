@@ -84,14 +84,14 @@ def lookup_taxonomies(ids, tax_pkl_fh, no_match=None, no_match_label=None):
 
 if __name__ == '__main__':
     # parse command line arguments
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('table', help='input sequence table')
-    parser.add_argument('-s', '--sid', default='99', help='greengenes repset identity (default: 99)')
-    parser.add_argument('-i', '--fid', default='0.995', help='fractional identity to make hit (default: 0.995)')
-    parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output file (default stdout)')
+    parser.add_argument('-s', '--sid', default='99', help='greengenes repset identity')
+    parser.add_argument('-i', '--fid', default='0.995', help='fractional identity to make hit')
+    parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output file')
     parser.add_argument('--no_hit', default=None, help='get unmatched sequences as separate fasta?')
-    parser.add_argument('--no_match', '-n', default='*', help='no match indicator in uc (default: *)')
-    parser.add_argument('--no_match_label', '-l', default='k__; p__; c__; o__; f__; g__; s__', help='taxonomy for no match (default: Qiime empty)')
+    parser.add_argument('--no_match', '-n', default='*', help='no match indicator in uc')
+    parser.add_argument('--no_match_label', '-l', default='k__; p__; c__; o__; f__; g__; s__', help='taxonomy for no match')
     
     args = parser.parse_args()
     

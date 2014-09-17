@@ -105,12 +105,12 @@ def table_lines(fasta, derep, min_counts, samples=None):
 
 if __name__ == '__main__':
     # parse command line arguments
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='Make a sequence table (i.e., 100% identity OTUs)', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('fasta', help='full fasta file')
     parser.add_argument('derep', help='dereplicated fasta file')
     parser.add_argument('-s', '--samples', default=None, help='samples list (samples in first field; default: sorted names from fasta)')
-    parser.add_argument('-m', '--minimum_counts', type=int, default=2, help='minimum times a sequence is included, otherwise it gets thrown out (default: 2)')
-    parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'), help='output file (default stdout)')
+    parser.add_argument('-m', '--minimum_counts', type=int, default=2, help='minimum times a sequence is included, otherwise it gets thrown out')
+    parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'), help='output file')
     args = parser.parse_args()
     
     if args.samples is not None:

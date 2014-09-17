@@ -25,12 +25,12 @@ import util, util_primer
 
 if __name__ == '__main__':
     # parse command line arguments
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='Remove forward or forward+reverse primers', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('fastq', help='input fastq file')
     parser.add_argument('primer', help='primer sequence')
-    parser.add_argument('-m', '--max_primer_diffs', default=0, type=int, help='maximum number of nucleotide mismatches in the primer (default: 0)')
+    parser.add_argument('-m', '--max_primer_diffs', default=0, type=int, help='maximum number of nucleotide mismatches in the primer')
     parser.add_argument('-l', '--log', default=None, type=str, help='log file for successes, failures, and time elapsed')
-    parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output fastq (default stdout)')
+    parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output fastq')
     args = parser.parse_args()
 
     r = util_primer.PrimerRemover(args.fastq, args.primer, args.max_primer_diffs, out=args.output)

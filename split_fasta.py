@@ -50,7 +50,7 @@ def split_fasta_entries(fasta, fhs, by_hash=False):
 
         
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Split a fasta file foo.fasta into multiple fastq files foo.fasta.0, foo.fasta.1, etc.')
+    parser = argparse.ArgumentParser(description='Split a fasta file foo.fasta into multiple fastq files foo.fasta.0, foo.fasta.1, etc.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('fasta', help='input fasta')
     parser.add_argument('n_files', type=int, help='number of split files to output')
     parser.add_argument('-s', '--hash', action='store_true', help='split by hash')
