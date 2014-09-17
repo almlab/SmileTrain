@@ -132,7 +132,7 @@ class Ssub():
             self.parse_status = lambda x: coyote_parse(x, username)
 
         elif cluster == 'zcluster':
-            self.submit_cmd = 'qsub'
+            self.submit_cmd = 'qsub -q %s' % self.q
             self.stat_cmd = ['qstat', '-x']
             self.parse_job = lambda x: re.match('\d+(\[\])?', x.split()[2]).group()
             self.parse_status = lambda x: coyote_parse(x, username)
