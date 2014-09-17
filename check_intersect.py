@@ -37,7 +37,7 @@ def check_for_paired_ids(forward_fastq, reverse_fastq):
 
 if __name__ == '__main__':
     # parse command line arguments
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('forward', help='forward reads fastq')
     parser.add_argument('reverse', help='reverse reads fastq')
     args = parser.parse_args()

@@ -143,12 +143,11 @@ def renamed_fastq_records(fastq, barcode_map, max_barcode_diffs):
 
 
 if __name__ == '__main__':
-    # parse command line arguments
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='Demultiplex fastq entries by barcode', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('fastq', help='input fastq file')
     parser.add_argument('barcode', help='barcode mapping file')
-    parser.add_argument('-m', '--max_barcode_diffs', default=0, type=int, help='maximum number of nucleotide mismatches in the barcode (default: 0)')
-    parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output fastq (default stdout)')
+    parser.add_argument('-m', '--max_barcode_diffs', default=0, type=int, help='maximum number of nucleotide mismatches in the barcode')
+    parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output fastq')
     args = parser.parse_args()
 
     # parse the barcode mapping file

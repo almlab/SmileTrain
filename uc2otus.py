@@ -123,10 +123,10 @@ def otu_table(table, otus=None, samples=None):
 
 if __name__ == '__main__':
     # parse command line arguments
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='Dereplicated fasta and index to make OTU table', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('uc', help='input uc file')
     parser.add_argument('index', help='input index file')
-    parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output file (default stdout)')
+    parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output file')
     parser.add_argument('--samples', default=None, help='samples in order in the first field (e.g., a barcode file)')
     parser.add_argument('--otus', default=None, help='OTUs in order in the first field')
     args = parser.parse_args()

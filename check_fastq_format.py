@@ -100,7 +100,7 @@ def fastq_record_format(record):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Verify that fastq is in Illumina 1.3-1.7 format')
+    parser = argparse.ArgumentParser(description='Use quality scores to check if fastq is in Illumina 1.3-1.7 format or Illumina 1.8 format', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('fastq', help='input fastq')
     args = parser.parse_args()
     

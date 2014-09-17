@@ -52,7 +52,7 @@ def fastq_records_with_matching_ids(fastq, rids):
 
 if __name__ == '__main__':
     # parse command line arguments
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='Throw out unpaired reads', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('forward_in', help='input forward reads fastq file')
     parser.add_argument('reverse_in', help='input reverse reads fastq file')
     parser.add_argument('forward_out', help='output forward reads fastq file')

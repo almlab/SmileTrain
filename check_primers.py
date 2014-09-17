@@ -10,12 +10,12 @@ import util, util_primer
 
 if __name__ == '__main__':
     # parse command line arguments
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='Look at every Nth entry and try to find the primer', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('fastq', help='input fastq file')
     parser.add_argument('primer', help='primer sequence')
-    parser.add_argument('-l', '--log_frac', type=int, default=4, help='negative logarithm of fraction of sequences to take (default: 4')
-    parser.add_argument('-m', '--max_primer_diffs', default=0, type=int, help='maximum number of nucleotide mismatches in the primer (default: 0)')
-    parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'), help='output file (default stdout)')
+    parser.add_argument('-l', '--log_frac', type=int, default=4, help='negative logarithm of fraction of sequences to take')
+    parser.add_argument('-m', '--max_primer_diffs', default=0, type=int, help='maximum number of nucleotide mismatches in the primer')
+    parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'), help='output file')
     
     args = parser.parse_args()
 

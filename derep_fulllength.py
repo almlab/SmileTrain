@@ -116,10 +116,10 @@ class Dereplicator():
 
 if __name__ == '__main__':
     # parse command line arguments
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='Make a new fasta, keeping only one entry for every unique sequence', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('fasta', help='input fasta')
-    parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'), help='dereplicated fasta (default: stdout)')
-    parser.add_argument('-m', '--minimum_counts', type=int, default=2, help='minimum times a sequence is included, otherwise it gets thrown out (default: 2)')
+    parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'), help='dereplicated fasta')
+    parser.add_argument('-m', '--minimum_counts', type=int, default=2, help='minimum times a sequence is included, otherwise it gets thrown out')
     args = parser.parse_args()
 
     derep = Dereplicator(args.fasta, args.minimum_counts)

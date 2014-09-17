@@ -41,7 +41,7 @@ def split_fastq_entries(fastq, fhs):
         
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Split a fastq file foo.fastq into multiple fastq files foo.fastq.0, foo.fastq.1, etc.')
+    parser = argparse.ArgumentParser(description='Split a fastq file foo.fastq into multiple fastq files foo.fastq.0, foo.fastq.1, etc.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('fastq', help='input fastq')
     parser.add_argument('n_files', type=int, help='number of split files to output')
     args = parser.parse_args()

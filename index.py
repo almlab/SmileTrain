@@ -68,7 +68,7 @@ def index_lines(abundances):
 
 if __name__ == '__main__':
     # parse command line arguments
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='Count the number of times every sequence appears in each sample', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('orig', help='original fasta file')
     parser.add_argument('derep', help='dereplicated fasta file')
     parser.add_argument('--output', '-o', default=sys.stdout, type=argparse.FileType('w'), help='output file (default stdout)')
