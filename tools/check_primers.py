@@ -5,7 +5,8 @@ Script that checks for the presence of a primer in a fasta.
 '''
 
 import argparse, itertools, sys, tempfile, subprocess
-import util, util_primer
+from SmileTrain import util, util_primer
+from Bio import Seq
 
 
 if __name__ == '__main__':
@@ -15,6 +16,7 @@ if __name__ == '__main__':
     parser.add_argument('primer', help='primer sequence')
     parser.add_argument('-l', '--log_frac', type=int, default=4, help='negative logarithm of fraction of sequences to take')
     parser.add_argument('-m', '--max_primer_diffs', default=0, type=int, help='maximum number of nucleotide mismatches in the primer')
+    parser.add_argument('-c', '--reverse_complement', action='store_true', help='take reverse complement of primer?')
     parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'), help='output file')
     
     args = parser.parse_args()
@@ -24,6 +26,10 @@ if __name__ == '__main__':
     n_entries = n_lines / 4
     frac = 10 ** -args.log_frac
     skip = int(frac * n_lines)
+
+    # reverse complement if desired
+    if args.reverse_complement:
+        args.primer = str(Seq.Seq(args.primer).reverse_complement())
     
     print "of %s entries, taking ~%s, or every %s-th" %(n_entries, frac, skip)
     

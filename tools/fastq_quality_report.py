@@ -65,7 +65,7 @@ def fastq_quality_dist(fastq):
 
         for q, position in zip(quality, position_qualities):
             if q > max_q or q < min_q:
-                raise RuntimeError("Quality %d outside of expected range (%d, %d)" %(min_q, max_q))
+                raise RuntimeError("Quality %d outside of expected range (%d, %d)" %(q, min_q, max_q))
 
             position[q] += 1
 
