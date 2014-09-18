@@ -28,7 +28,6 @@ class Submitter():
             self.dry_run = False
 
             # set up the cluster submission object
-            username, cluster, queue, tmp_dir, n_cpus=1
             self.ssub = ssub.Ssub(username=config.get('User', 'username'), cluster=config.get('User', 'cluster'),
                 queue=config.get('User', 'queue'), tmp_dir=config.get('User', 'tmp_directory'), n_cpus=n_cpus)
         elif method == 'local':

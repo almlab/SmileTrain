@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, os, re, select, stat, subprocess, sys, tempfile, time, ConfigParser, re, time, itertools
+import argparse, os, re, select, stat, subprocess, sys, tempfile, time, re, time, itertools
 import xml.etree.ElementTree as ET
 from util import *
 
@@ -31,15 +31,6 @@ to create and run pipelines:
   print "done"
 
 '''
-
-# set global variables
-config = ConfigParser.ConfigParser()
-config.read(os.path.join(os.path.dirname(__file__), 'user.cfg'))
-username = config.get('User', 'username')
-tmp_dir = config.get('User', 'tmp_directory')
-bashrc = config.get('Scripts', 'bashrc')
-cluster = config.get('User', 'cluster')
-queue = config.get('User', 'queue')
 
 def coyote_parse(qstat_output, my_username):
     '''
