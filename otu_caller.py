@@ -139,9 +139,8 @@ def parse_args():
     group1.add_argument('--check', action='store_true', help='Check input file format and intersection?')
     group1.add_argument('--split', action='store_true', help='Split the fastq files?')
     group1.add_argument('--convert', action='store_true', help='Convert fastq format?')
-    group1.add_argument('--primers', action='store_true', help='Remove primers?')
-    group1.add_argument('--intersect', action='store_true', help='Remove unmatched reads?')
     group1.add_argument('--merge', action='store_true', help='Merge forward and reverse reads?')
+    group1.add_argument('--primers', action='store_true', help='Remove primers?')
     group1.add_argument('--demultiplex', default = False, action = 'store_true', help = 'Demultiplex?')
     group1.add_argument('--qfilter', default = False, action = 'store_true', help = 'Quality filter?')
     group1.add_argument('--ref_chimeras', action='store_true', help='Slay chimeras using reference database?')
@@ -162,7 +161,6 @@ def parse_args():
     group2.add_argument('--barcodes', '-b', default=None, help='Barcodes list')
     group4.add_argument('--p_mismatch', default=1, type=int, help='Number of mismatches allowed in primers')
     group6.add_argument('--b_mismatch', default=1, type=int, help='Number of mismatches allowed in barcodes')
-    group6.add_argument('--merged', action='store_true', help='Files were merged in a previous step?')
     group7.add_argument('--truncqual', default = 2, type = int, help = '')
     group7.add_argument('--maxee', default = 2., type = float, help = 'Maximum expected error (UPARSE)')
     group7.add_argument('--trunclen', default=0, type=int, help='truncate all sequences to some length?')   # 0 means no truncation
@@ -345,65 +343,7 @@ class OTU_Caller():
             self.sub.check_for_nonempty(self.Ri)
             self.sub.move_files(self.Ri, self.ri)
             self.sub.check_for_nonempty(self.ri)
-    
-    def remove_primers(self):
-        '''Remove diversity region + primer and discard reads with > 2 mismatches'''
 
-        # do forward only if there is a forward read file and a forward primer
-        # similar for reverse
-        do_forward = self.forward and self.p
-        do_reverse = self.reverse and self.q
-
-        # check that something is being done
-        if not (do_forward or do_reverse):
-            raise RuntimeError("remove primers called with bad input: a file or primer is missing")
-
-        # check for inputs and collisions of output
-        if do_forward:
-            self.sub.check_for_nonempty(self.fi)
-            self.sub.check_for_collisions(self.Fi)
-        if do_reverse:
-            self.sub.check_for_nonempty(self.ri)
-            self.sub.check_for_collisions(self.Ri)
-        
-        # get list of commands using forward, reverse, or both
-        cmds = []
-        for i in range(self.n_cpus):
-            if do_forward:
-                cmd = ['python', '%s/remove_primers.py' %(self.library), self.fi[i], self.p, '--max_primer_diffs', self.p_mismatch, '--output', self.Fi[i]]
-                cmds.append(cmd)
-            if do_reverse:
-                cmd = ['python', '%s/remove_primers.py' %(self.library), self.ri[i], self.q, '--max_primer_diffs', self.p_mismatch, '--output', self.Ri[i]]
-                cmds.append(cmd)
-        
-        # submit commands
-        self.sub.execute(cmds)
-
-        # validate output and move files
-        if do_forward:
-            self.sub.check_for_nonempty(self.Fi)
-            self.sub.move_files(self.Fi, self.fi)
-            self.sub.check_for_nonempty(self.fi)
-
-        if do_reverse:
-            self.sub.check_for_nonempty(self.Ri)
-            self.sub.move_files(self.Ri, self.ri)
-            self.sub.check_for_nonempty(self.ri)
-
-    def intersect_reads(self):
-        '''If one read is removed because of primers, remove its pair also'''
-        self.sub.check_for_collisions(self.Fi + self.Ri)
-
-        if not (self.forward and self.reverse):
-            raise RuntimeError("To intersect reads, forward and reverse fastq's must be specified")
-
-        cmds = [['python', '%s/intersect_reads.py' %(self.library), fi, ri, Fi, Ri] for fi, ri, Fi, Ri in zip(self.fi, self.ri, self.Fi, self.Ri)]
-        self.sub.execute(cmds)
-
-        self.sub.check_for_nonempty(self.Fi + self.Ri)
-        self.sub.move_files(self.Fi + self.Ri, self.fi + self.ri)
-        self.sub.check_for_nonempty(self.fi + self.ri)
-    
     def merge_reads(self):
         '''Merge forward and reverse reads using USEARCH'''
 
@@ -424,12 +364,45 @@ class OTU_Caller():
         # Merge reads
         cmds = []
         for i in range(self.n_cpus):
-            cmd = [self.usearch, '-fastq_mergepairs', self.fi[i], '-reverse', self.ri[i], '-fastq_truncqual', self.truncqual, '-fastqout', self.mi[i]]
+            cmd = [self.usearch, '-fastq_mergepairs', self.fi[i], '-reverse', self.ri[i], '-fastq_truncqual', self.truncqual, '-fastqout', self.Fi[i]]
             cmds.append(cmd)
         self.sub.execute(cmds)
         
-        self.sub.check_for_nonempty(self.mi)
+        self.sub.check_for_nonempty(self.Fi)
         self.sub.rm_files(self.fi + self.ri)
+        self.sub.move_files(self.Fi, self.fi)
+        self.sub.check_for_nonempty(self.fi)
+    
+    def remove_primers(self):
+        '''Remove diversity region + primer and discard reads with > 2 mismatches'''
+
+        # do forward only if there is a forward read file and a forward primer
+        # similar for reverse
+        both = self.p and self.q
+        if not both:
+            if self.p and not self.q:
+                forward_only = True
+            else:
+                raise RuntimeError("remove primers called with bad input: need -p or both -p and -q")
+
+        # check for inputs and collisions of output
+        self.sub.check_for_nonempty(self.fi)
+        self.sub.check_for_collisions(self.Fi)
+        
+        # get list of commands using forward only
+        cmds = [['python', '%s/remove_primers.py' %(self.library), fi, self.p, '--max_primer_diffs', self.p_mismatch, '--output', fo] for fi, fo in zip(self.fi, self.Fi)]
+
+        # add reverse primer if needed
+        if both:
+            cmds = [cmd + ['--reverse_primer', self.q] for cmd in cmds]
+        
+        # submit commands
+        self.sub.execute(cmds)
+
+        # validate output and move files
+        self.sub.check_for_nonempty(self.Fi)
+        self.sub.move_files(self.Fi, self.fi)
+        self.sub.check_for_nonempty(self.fi)
     
     def demultiplex_reads(self):
         '''Demultiplex samples using index and barcodes'''
@@ -655,27 +628,20 @@ if __name__ == '__main__':
     if oc.convert:
         message('Converting format')
         oc.convert_format()
+
+    # Merge reads
+    if oc.merge:
+        message('Merging reads')
+        oc.merge_reads()
     
     # Remove primers
     if oc.primers == True:
         message('Removing primers')
         oc.remove_primers()
-
-    # Intersect reads
-    if oc.intersect:
-        message("Intersecting reads")
-        oc.intersect_reads()
-    
-    # Merge reads
-    if oc.merge:
-        message('Merging reads')
-        oc.merge_reads()
         
     # Set current reads
-    if oc.merge or oc.merged:
-        oc.ci = oc.mi
-    else:
-        oc.ci = oc.fi
+    # swo> obsolete, now that there are no separate merged files
+    oc.ci = oc.fi
     
     # Demultiplex
     if oc.demultiplex == True:

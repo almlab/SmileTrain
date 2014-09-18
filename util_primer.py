@@ -1,5 +1,5 @@
 import re, string, sys, time, itertools, os, subprocess
-from Bio import SeqRecord, SeqIO
+from Bio import SeqRecord, SeqIO, Seq
 from SmileTrain import util
 import usearch_python.primer
 
@@ -30,9 +30,11 @@ def mismatches(seq, primer, w):
     return (I, D)
 
 class PrimerRemover():
-    def __init__(self, fastq, primer, max_primer_diffs, output_type='string', skip=1, out=sys.stdout):
+    def __init__(self, fastq, primer, max_primer_diffs, reverse_primer=None, skip=1, out=sys.stdout):
         '''
-        Remove well-matched primers from sequences in a fastq file
+        Remove well-matched primers from sequences in a fastq file. If given a reverse
+        primer, search from the beginning for the forward primer and from the end for
+        the revese primer.
 
         Parameters
         fastq : filename or filehandle
@@ -41,8 +43,8 @@ class PrimerRemover():
             the primer sequence to be removed
         max_primer_diffs : int
             the maximum number of mismatches allowed before throwing out the read
-        output_type : string 'string' or 'list' (default 'string')
-            output format for iterator. string is a single string; list is the 3-element list
+        reverse_primer : string
+            a primer to be trimmed from the end of the sequence
         skip : integer >= 1
             take only every n-th entry (so skip=1 means every entry)
         '''
@@ -52,7 +54,13 @@ class PrimerRemover():
         self.primer_length = len(self.primer)
         self.max_primer_diffs = max_primer_diffs
 
-        self.output_type = output_type
+        if reverse_primer is not None:
+            #self.reverse_primer = Seq.Seq(reverse_primer).reverse_complement()
+            self.reverse_primer = Seq.Seq(reverse_primer)
+            self.reverse_primer_length = len(self.reverse_primer)
+        else:
+            self.reverse_primer = None
+
         self.skip = skip
         self.out = out
         
@@ -72,15 +80,37 @@ class PrimerRemover():
             # take this entry if it's the n-th entry
             if self.position % self.skip == 0:
                 # find the best primer position in the sequence
-                primer_start_index, n_primer_diffs = mismatches(str(record.seq), self.primer, 15)
+                primer_start_index, n_primer_diffs = mismatches(record.seq, self.primer, 15)
+
+                quality = record.letter_annotations['phred_quality']
     
                 # if we find a good match, trim the sequence and the
                 # quality line and yield a single string
                 if n_primer_diffs <= self.max_primer_diffs:
                     primer_end_index = primer_start_index + self.primer_length
-                    new_record = SeqRecord.SeqRecord(seq=str(record.seq)[primer_end_index:], id=record.id, letter_annotations={'phred_quality': record.letter_annotations['phred_quality'][primer_end_index:]})
+                    trim_seq = record.seq[primer_end_index:]
+                    trim_quality = quality[primer_end_index:]
+                    success = True
+                else:
+                    success = False
+
+                if success and self.reverse_primer is not None:
+                    rc_trim_seq = trim_seq.reverse_complement()
+                    reverse_start_index, n_reverse_diffs = mismatches(rc_trim_seq, self.reverse_primer, 15)
+
+                    if n_reverse_diffs <= self.max_primer_diffs:
+                        reverse_end_index = reverse_start_index + self.reverse_primer_length
+                        rc_trim_seq = rc_trim_seq[reverse_end_index:]
+                        trim_seq = rc_trim_seq.reverse_complement()
+                        trim_quality = trim_quality[:-reverse_end_index]
+                        success = True
+                    else:
+                        success = False
+
+                if success:
+                    new_record = SeqRecord.SeqRecord(seq=str(trim_seq), id=record.id, letter_annotations={'phred_quality': trim_quality}, description="")
                     self.n_successes += 1
-                    
+
                     return new_record
                 else:
                     self.n_failures += 1
