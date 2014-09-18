@@ -29,7 +29,7 @@ class Submitter():
 
             # set up the cluster submission object
             self.ssub = ssub.Ssub(username=config.get('User', 'username'), cluster=config.get('User', 'cluster'),
-                queue=config.get('User', 'queue'), tmp_dir=config.get('User', 'tmp_directory'), bashrc=config.get('Scripts', 'bashrc'), n_cpus=n_cpus)
+                queue=config.get('User', 'queue'), tmp_dir=config.get('User', 'tmp_directory'), bashrc=config.get('Scripts', 'bashrc'), n_cpus=n_split)
         elif method == 'local':
             self.dry_run = False
 
@@ -171,7 +171,7 @@ def parse_args():
     group12.add_argument('--k_fold', default=0.0, type=float, help='k_fold change of OTU rep abundance over sequence to be merged')
     group12.add_argument('--pval', default=1e-4, type=float, help='p-value threshold for merge into existing OTU')
     group12.add_argument('--dbotu_chimeras', action='store_true', help='Remove chimeras de novo from dbOTUs?')
-    group13.add_argument('--n_cpus', '-n', default = 1, type = int, help='Number of CPUs')
+    group13.add_argument('--n_split', '-n', default=1, type=int, help='split upstream fastq into how many files?')
     group_run.add_argument('--dry_run', '-z', action='store_true', help='submit no jobs; suppress file checks; just print output commands')
     group_run.add_argument('--local', '-l', action='store_true', help='execute all tasks locally')
     
@@ -224,7 +224,7 @@ class OTU_Caller():
             method = 'submit'
 
         cluster = config.get('User', 'cluster')
-        self.sub = Submitter(method, cluster=cluster, n_cpus=self.n_cpus)
+        self.sub = Submitter(method, cluster=cluster, n_cpus=self.n_split)
     
     def get_filenames(self):
         '''Generate filenames to use in pipeline'''
@@ -234,14 +234,14 @@ class OTU_Caller():
         if self.reverse:
             r_base = os.path.basename(self.reverse)
             
-        self.fi = ['%s.%d' %(self.forward, i) for i in range(self.n_cpus)] # forward reads (split)
-        self.ri = ['%s.%d' %(self.reverse, i) for i in range(self.n_cpus)] # reverse reads (split)
-        self.mi = ['%s.%d.merge' %(self.forward, i) for i in range(self.n_cpus)] # merged reads (split)
-        self.Fi = ['%s.%d.tmp' %(self.forward, i) for i in range(self.n_cpus)] # forward reads (temp)
-        self.Ri = ['%s.%d.tmp' %(self.reverse, i) for i in range(self.n_cpus)] # reverse reads (temp)
-        self.Mi = ['%s.%d.tmp' %(self.forward, i) for i in range(self.n_cpus)] # merged reads (temp)
-        self.ci = ['q.%d.fst' %(i) for i in range(self.n_cpus)] # current reads
-        self.Ci = ['q.%d.tmp' %(i) for i in range(self.n_cpus)] # current reads (temp)
+        self.fi = ['%s.%d' %(self.forward, i) for i in range(self.n_split)] # forward reads (split)
+        self.ri = ['%s.%d' %(self.reverse, i) for i in range(self.n_split)] # reverse reads (split)
+        self.mi = ['%s.%d.merge' %(self.forward, i) for i in range(self.n_split)] # merged reads (split)
+        self.Fi = ['%s.%d.tmp' %(self.forward, i) for i in range(self.n_split)] # forward reads (temp)
+        self.Ri = ['%s.%d.tmp' %(self.reverse, i) for i in range(self.n_split)] # reverse reads (temp)
+        self.Mi = ['%s.%d.tmp' %(self.forward, i) for i in range(self.n_split)] # merged reads (temp)
+        self.ci = ['q.%d.fst' %(i) for i in range(self.n_split)] # current reads
+        self.Ci = ['q.%d.tmp' %(i) for i in range(self.n_split)] # current reads (temp)
         self.oi = ['otus.%d.fst' %(sid) for sid in self.sids] # otu representative sequences
         self.Oi = ['otus.%d.tmp' %(sid) for sid in self.sids] # otu representative sequences (temp)
         self.uc = ['otus.%d.uc' %(sid) for sid in self.sids] # uclust output files
@@ -288,18 +288,18 @@ class OTU_Caller():
         # check for inputs and collisions of output
         if do_forward:
             self.sub.check_for_nonempty(self.forward)
-            self.sub.check_for_collisions(['%s.%s' %(self.forward, i) for i in range(self.n_cpus)])
+            self.sub.check_for_collisions(['%s.%s' %(self.forward, i) for i in range(self.n_split)])
         if do_reverse:
             self.sub.check_for_nonempty(self.reverse)
-            self.sub.check_for_collisions(['%s.%s' %(self.reverse, i) for i in range(self.n_cpus)])
+            self.sub.check_for_collisions(['%s.%s' %(self.reverse, i) for i in range(self.n_split)])
         
         # Get list of commands
         cmds = []
         if do_forward:
-            cmd = ['python', '%s/split_fastq.py' %(self.library), self.forward, self.n_cpus]
+            cmd = ['python', '%s/split_fastq.py' %(self.library), self.forward, self.n_split]
             cmds.append(cmd)
         if do_reverse:
-            cmd = ['python', '%s/split_fastq.py' %(self.library), self.reverse, self.n_cpus]
+            cmd = ['python', '%s/split_fastq.py' %(self.library), self.reverse, self.n_split]
             cmds.append(cmd)
         
         # submit commands
@@ -323,7 +323,7 @@ class OTU_Caller():
             self.sub.check_for_collisions(self.Fi)
             
         cmds = []
-        for i in range(self.n_cpus):
+        for i in range(self.n_split):
             if self.forward:
                 cmd = ['python', '%s/convert_fastq.py' %(self.library), self.fi[i], '--output', self.Fi[i]]
                 cmds.append(cmd)
@@ -356,14 +356,14 @@ class OTU_Caller():
         
         # check that forward and reverse reads intersect
         cmds = []
-        for i in range(self.n_cpus):
+        for i in range(self.n_split):
             cmd = ['python', '%s/check_intersect.py' %(self.library), self.fi[i], self.ri[i]]
             cmds.append(cmd)
         self.sub.execute(cmds)
         
         # Merge reads
         cmds = []
-        for i in range(self.n_cpus):
+        for i in range(self.n_split):
             cmd = [self.usearch, '-fastq_mergepairs', self.fi[i], '-reverse', self.ri[i], '-fastq_truncqual', self.truncqual, '-fastqout', self.Fi[i]]
             cmds.append(cmd)
         self.sub.execute(cmds)
@@ -411,7 +411,7 @@ class OTU_Caller():
         self.sub.check_for_collisions(self.Ci)
 
         cmds = []
-        for i in range(self.n_cpus):
+        for i in range(self.n_split):
             cmd = ['python', '%s/map_barcodes.py' %(self.library), self.ci[i], self.barcodes, '--max_barcode_diffs', self.b_mismatch, '--output', self.Ci[i]]
             cmds.append(cmd)
         self.sub.execute(cmds)
@@ -438,7 +438,7 @@ class OTU_Caller():
             check_fastq_format.check_illumina_format(self.ci, ['illumina18', 'ambiguous'])
 
         cmds = []
-        for i in range(self.n_cpus):
+        for i in range(self.n_split):
             cmd = [self.usearch, '-fastq_filter', self.ci[i], '-fastq_truncqual', self.truncqual, '-fastq_maxee', self.maxee, '-fastaout', self.Ci[i]]
 
             if self.trunclen > 0:
