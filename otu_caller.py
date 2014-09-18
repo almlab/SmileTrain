@@ -26,8 +26,10 @@ class Submitter():
                 raise RuntimeError("submitting jobs to cluster, but no cluster specified")
 
             self.dry_run = False
-            self.ssub = ssub.Ssub(cluster=cluster)
-            self.ssub.n_cpus = n_cpus
+
+            # set up the cluster submission object
+            self.ssub = ssub.Ssub(username=config.get('User', 'username'), cluster=config.get('User', 'cluster'),
+                queue=config.get('User', 'queue'), tmp_dir=config.get('User', 'tmp_directory'), bashrc=config.get('Scripts', 'bashrc'), n_cpus=n_cpus)
         elif method == 'local':
             self.dry_run = False
 
@@ -71,6 +73,7 @@ class Submitter():
             raise RuntimeError("file %s should be executable, but it is not" %(fn))
 
     def move_files(self, start_fns, end_fns):
+        assert(len(start_fns) == len(end_fns))
         cmds = [['mv', x, y] for x, y in zip(start_fns, end_fns)]
         self.execute(cmds)
 
