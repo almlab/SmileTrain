@@ -133,7 +133,7 @@ class Ssub():
 
         elif cluster == 'zcluster':
             self.submit_cmd = 'qsub -q %s' % self.q
-            self.stat_cmd = ['qstat', '-x']
+            self.stat_cmd = ['qstat', '-xml']
             self.parse_job = lambda x: re.match('\d+(\[\])?', x.split()[2]).group()
             self.parse_status = lambda x: coyote_parse(x, username)
         
@@ -214,10 +214,11 @@ class Ssub():
         for fn in fns:
             if self.cluster == 'broad':
                 process = subprocess.Popen(['%s < %s' %(self.submit_cmd, fn)], stdout = subprocess.PIPE, shell=True)
-            elif self.cluster == 'coyote':
+            elif self.cluster in ['coyote', 'zcluster']:
                 process = subprocess.Popen(['%s %s' %(self.submit_cmd, fn)], stdout = subprocess.PIPE, shell=True)
             else:
-                quit()
+                raise RuntimeError("trying to submitting job on unsupported cluster")
+
             [out, error] = process.communicate()
 
             job_id = self.parse_job(out)
@@ -291,7 +292,7 @@ class Ssub():
         # write a job array (LSF or PBS)
         if self.cluster == 'broad':
             array_fn = self.write_LSF_array(fns)
-        elif self.cluster == 'coyote':
+        elif self.cluster in ['coyote', 'zcluster']:
             array_fn = self.write_PBS_array(fns)
         return array_fn
     
