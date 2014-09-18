@@ -29,7 +29,7 @@ class Submitter():
 
             # set up the cluster submission object
             self.ssub = ssub.Ssub(username=config.get('User', 'username'), cluster=config.get('User', 'cluster'),
-                queue=config.get('User', 'queue'), tmp_dir=config.get('User', 'tmp_directory'), n_cpus=n_cpus)
+                queue=config.get('User', 'queue'), tmp_dir=config.get('User', 'tmp_directory'), bashrc=config.get('Scripts', 'bashrc'), n_cpus=n_cpus)
         elif method == 'local':
             self.dry_run = False
 

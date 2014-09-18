@@ -7,10 +7,6 @@ from util import *
 '''
 ssub is a simple job submission script
 
-usage:
-  cat list_of_commands.txt | ssub.py -n 100 -q hour -G gscidfolk -m 8 --io 10
-  ssub -n 100 -q week -G broadfolk -m 8 --io 10 list_of_commands.txt
-
 to use it as a python library:
   import ssub
   ssub.args.n = 100
@@ -63,7 +59,7 @@ def coyote_parse(qstat_output, my_username):
 
 
 class Ssub():
-    def __init__(self, username, cluster, queue, tmp_dir, n_cpus=1, header='#!/bin/bash', l=200, m=4, group='', io=''):
+    def __init__(self, username, cluster, queue, tmp_dir, bashrc, n_cpus=1, header='#!/bin/bash', l=200, m=4, group='', io=''):
         # initialize cluster parameters
         self.cluster = cluster
         self.username = username
@@ -79,7 +75,8 @@ class Ssub():
         self.G = group  # broad specific?
         self.io = io    # broad specific?
 
-        self.source_line = 'source %s\n' % bashrc
+        self.bashrc = bashrc
+        self.source_line = 'source %s\n' % self.bashrc
         
         # broad parameters
         if self.cluster == 'broad':
@@ -185,7 +182,10 @@ class Ssub():
 
             [out, error] = process.communicate()
 
-            job_id = self.parse_job(out)
+            try:
+                job_id = self.parse_job(out)
+            except:
+                raise RuntimeError("could not parse output='%s' error='%s' with job parser" %(out, error))
 
             job_ids.append(job_id)
             message('Submitting job %s' %(fn), indent=4)
@@ -207,7 +207,7 @@ class Ssub():
         fh.write('#BSUB -G %s\n' %(self.G))
         fh.write('#BSUB -R "rusage[mem=%s:argon_io=%s]"\n' %(self.m, self.io))
         fh.write('#BSUB -P %s\n' %(array_fn))
-        fh.write('source %s\n' % bashrc)
+        fh.write('source %s\n' % self.bashrc)
         fh.write('cd $LS_SUBCWD\n')
         
         # write job array
@@ -232,9 +232,9 @@ class Ssub():
         # write header
         fh.write('#PBS -t 1-%d%%%s\n' %(len(fns), min(len(fns), int(self.l))))
         fh.write('#PBS -e %s.e\n' %(array_fn))
-        fh.write('#PBS -q %s\n' %(queue))
+        fh.write('#PBS -q %s\n' %(self.q))
         fh.write('#PBS -o %s.o\n' %(array_fn))
-        fh.write('source %s\n' % bashrc)
+        fh.write('source %s\n' % self.bashrc)
         fh.write('cd $PBS_O_WORKDIR\n')
         
         # write job array
@@ -283,15 +283,14 @@ class Ssub():
     
 
 if __name__ == '__main__':
-    # prepare usage statement
-    usage = "cat list_of_commands.txt | ssub.py -n 100 -q hour -G gscidfolk -m 8 --io 10\n"
-    usage +="ssub.py -n 100 -q week -G broadfolk -m 8 --io 10 list_of_commands.txt"
-    
-    # add command line arguments
-    parser = argparse.ArgumentParser(description="job submission helper", usage=usage, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(description="job submission helper", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('cluster')
+    parser.add_argument('queue')
+    parser.add_argument('username')
+    parser.add_argument('tmp_dir')
+    parser.add_argument('bashrc')
     parser.add_argument('--n_cpus', '-n', default=1, type=int, help='number of cpus')
-    parser.add_argument('-q', default=None, help='queue')
-    parser.add_argument('-G', default=None, help='group')
+    parser.add_argument('--group', '-G', default=None, help='group')
     parser.add_argument('-m', type=int, default=4, help='memory (gb)')
     parser.add_argument('-l', type=int, default=200, help='job array slot limit')
     parser.add_argument('--io', type=int, default=1, help='disk io (units)')
@@ -300,7 +299,8 @@ if __name__ == '__main__':
     # convert the arguments to a dictionary
     args = parser.parse_args()
     argdict = vars(args)
+    commands = [line for line in argdict.pop('commands')]
 
     # create the ssub object with the command line arguments. submit the commands!
     s = Ssub(**argdict)
-    s.submit(args.commands)
+    s.submit(commands)
