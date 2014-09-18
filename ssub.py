@@ -57,6 +57,24 @@ def coyote_parse(qstat_output, my_username):
 
     return job_ids
 
+def zcluster_parse(qstat_output, my_username):
+    '''parse output from `qstat -xml`'''
+    root = ET.fromstring(qstat_output)
+    job_ids = []
+
+    # root should have two children, either queue_info or job_info
+    for qinfo_or_jinfo in root:
+        # those children should have elements job_list
+        for job_list in qinfo_or_jinfo:
+            # job_list node should contain owner and job number info
+            username = job_list.get('JB_owner').text
+
+            if username == my_username:
+                job_id = job_list.get('JB_job_number').text
+                job_ids.append(job_id)
+
+    return job_ids
+
 
 class Ssub():
     def __init__(self, username, cluster, queue, tmp_dir, bashrc, n_cpus=1, header='#!/bin/bash', l=200, m=4, group='', io=''):
@@ -100,7 +118,7 @@ class Ssub():
             self.submit_cmd = 'qsub -q %s' % self.q
             self.stat_cmd = ['qstat', '-xml']
             self.parse_job = lambda x: re.match('\d+(\[\])?', x.split()[2]).group()
-            self.parse_status = lambda x: coyote_parse(x, username)
+            self.parse_status = lambda x: zcluster_parse(x, username)
         
         else:
             raise RuntimeError('unrecognized cluster %s' %(cluster))
