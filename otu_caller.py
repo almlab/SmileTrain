@@ -13,7 +13,7 @@ import check_fastq_format
 
 class Submitter():
     '''runs jobs on a cluster, locally, or in a dry run'''
-    def __init__(self, method, n_cpus=1):
+    def __init__(self, method, n_cpus=1, cluster=None):
         if method not in ['submit', 'local', 'dry_run']:
             raise ArgumentError("unexpcted method %s passed to Submitter" %(method))
 
@@ -22,8 +22,11 @@ class Submitter():
         if method == 'dry_run':
             self.dry_run = True
         elif method == 'submit':
+            if cluster is None:
+                raise RuntimeError("submitting jobs to cluster, but no cluster specified")
+
             self.dry_run = False
-            self.ssub = ssub.Ssub()
+            self.ssub = ssub.Ssub(cluster=cluster)
             self.ssub.n_cpus = n_cpus
         elif method == 'local':
             self.dry_run = False
@@ -219,7 +222,8 @@ class OTU_Caller():
         else:
             method = 'submit'
 
-        self.sub = Submitter(method, n_cpus=self.n_cpus)
+        cluster = config.get('User', 'cluster')
+        self.sub = Submitter(method, cluster=cluster, n_cpus=self.n_cpus)
     
     def get_filenames(self):
         '''Generate filenames to use in pipeline'''
