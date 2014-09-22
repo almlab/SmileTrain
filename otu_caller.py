@@ -5,11 +5,13 @@ Main script in the pipeline. Produces lists of commands and submits them using s
 Options allow the user to run individual parts of the pipeline or the entire thing.
 '''
 
-import argparse, os, ConfigParser, subprocess
+import argparse, os, ConfigParser, subprocess, pickle
 import ssub
 import util
 from util import *
 import check_fastq_format
+
+commands_fn = '.SmileTrain.commands.pkl'
 
 class Submitter():
     '''runs jobs on a cluster, locally, or in a dry run'''
@@ -29,7 +31,7 @@ class Submitter():
 
             # set up the cluster submission object
             self.ssub = ssub.Ssub(username=config.get('User', 'username'), cluster=config.get('User', 'cluster'),
-                queue=config.get('User', 'queue'), tmp_dir=config.get('User', 'tmp_directory'), bashrc=config.get('Scripts', 'bashrc'), n_cpus=n_split)
+                queue=config.get('User', 'queue'), tmp_dir=config.get('User', 'tmp_directory'), bashrc=config.get('Scripts', 'bashrc'), n_cpus=n_cpus)
         elif method == 'local':
             self.dry_run = False
 
@@ -135,6 +137,7 @@ def parse_args():
     group_run = parser.add_mutually_exclusive_group()
     
     # add arguments
+    group1.add_argument('--redo', action='store_true', help='Re-run with previously used options?')
     group1.add_argument('--all', action='store_true', help='Run primer, merge, demultiplex, filter, derep, index, ref_gg, and otu?')
     group1.add_argument('--check', action='store_true', help='Check input file format and intersection?')
     group1.add_argument('--split', action='store_true', help='Split the fastq files?')
@@ -180,19 +183,28 @@ def parse_args():
         args = parser.parse_args()
     else:
         args = parser.parse_args('')
-    
-    # process arguments
-    if args.all == True:
-        args.check = args.split = args.convert = args.primers = args.merge = args.demultiplex = args.qfilter = args.dereplicate = args.index = args.ref_gg = args.otu_table = True
-    args.sids = map(int, args.sids.split(','))
-    
-    # check combinations
-    if args.demultiplex and args.barcodes is None:
-        raise RuntimeError("--demultiplex selected but no barcode mapping file specified")
-    
-    if args.check or args.split or args.convert or args.primers or args.merge or args.demultiplex or args.qfilter:
-        if args.forward is None and args.reverse is None:
-            raise RuntimeError("no fastq files selected")
+
+    if args.redo:
+        # load command line arguments if available
+        with open(commands_fn, 'rb') as f:
+            args = pickle.load(f)
+    else:
+        # process arguments
+        if args.all == True:
+            args.check = args.split = args.convert = args.primers = args.merge = args.demultiplex = args.qfilter = args.dereplicate = args.index = args.ref_gg = args.otu_table = True
+        args.sids = map(int, args.sids.split(','))
+        
+        # check combinations
+        if args.demultiplex and args.barcodes is None:
+            raise RuntimeError("--demultiplex selected but no barcode mapping file specified")
+        
+        if args.check or args.split or args.convert or args.primers or args.merge or args.demultiplex or args.qfilter:
+            if args.forward is None and args.reverse is None:
+                raise RuntimeError("no fastq files selected")
+
+        # save arguments for use with redo
+        with open(command_fn, 'wb') as f:
+            pickle.dump(args, f)
         
     return args
 
