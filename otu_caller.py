@@ -5,11 +5,13 @@ Main script in the pipeline. Produces lists of commands and submits them using s
 Options allow the user to run individual parts of the pipeline or the entire thing.
 '''
 
-import argparse, os, ConfigParser, subprocess
+import argparse, os, ConfigParser, subprocess, pickle
 import ssub
 import util
 from util import *
 import check_fastq_format
+
+commands_fn = '.SmileTrain.commands.pkl'
 
 class Submitter():
     '''runs jobs on a cluster, locally, or in a dry run'''
@@ -135,13 +137,13 @@ def parse_args():
     group_run = parser.add_mutually_exclusive_group()
     
     # add arguments
+    group1.add_argument('--redo', action='store_true', help='Re-run with previously used options?')
     group1.add_argument('--all', action='store_true', help='Run primer, merge, demultiplex, filter, derep, index, ref_gg, and otu?')
     group1.add_argument('--check', action='store_true', help='Check input file format and intersection?')
     group1.add_argument('--split', action='store_true', help='Split the fastq files?')
     group1.add_argument('--convert', action='store_true', help='Convert fastq format?')
-    group1.add_argument('--primers', action='store_true', help='Remove primers?')
-    group1.add_argument('--intersect', action='store_true', help='Remove unmatched reads?')
     group1.add_argument('--merge', action='store_true', help='Merge forward and reverse reads?')
+    group1.add_argument('--primers', action='store_true', help='Remove primers?')
     group1.add_argument('--demultiplex', default = False, action = 'store_true', help = 'Demultiplex?')
     group1.add_argument('--qfilter', default = False, action = 'store_true', help = 'Quality filter?')
     group1.add_argument('--ref_chimeras', action='store_true', help='Slay chimeras using reference database?')
@@ -162,7 +164,6 @@ def parse_args():
     group2.add_argument('--barcodes', '-b', default=None, help='Barcodes list')
     group4.add_argument('--p_mismatch', default=1, type=int, help='Number of mismatches allowed in primers')
     group6.add_argument('--b_mismatch', default=1, type=int, help='Number of mismatches allowed in barcodes')
-    group6.add_argument('--merged', action='store_true', help='Files were merged in a previous step?')
     group7.add_argument('--truncqual', default = 2, type = int, help = '')
     group7.add_argument('--maxee', default = 2., type = float, help = 'Maximum expected error (UPARSE)')
     group7.add_argument('--trunclen', default=0, type=int, help='truncate all sequences to some length?')   # 0 means no truncation
@@ -173,7 +174,7 @@ def parse_args():
     group12.add_argument('--k_fold', default=0.0, type=float, help='k_fold change of OTU rep abundance over sequence to be merged')
     group12.add_argument('--pval', default=1e-4, type=float, help='p-value threshold for merge into existing OTU')
     group12.add_argument('--dbotu_chimeras', action='store_true', help='Remove chimeras de novo from dbOTUs?')
-    group13.add_argument('--n_cpus', '-n', default = 1, type = int, help='Number of CPUs')
+    group13.add_argument('--n_split', '-n', default=1, type=int, help='split upstream fastq into how many files?')
     group_run.add_argument('--dry_run', '-z', action='store_true', help='submit no jobs; suppress file checks; just print output commands')
     group_run.add_argument('--local', '-l', action='store_true', help='execute all tasks locally')
     
@@ -182,19 +183,28 @@ def parse_args():
         args = parser.parse_args()
     else:
         args = parser.parse_args('')
-    
-    # process arguments
-    if args.all == True:
-        args.check = args.split = args.convert = args.primers = args.merge = args.demultiplex = args.qfilter = args.dereplicate = args.index = args.ref_gg = args.otu_table = True
-    args.sids = map(int, args.sids.split(','))
-    
-    # check combinations
-    if args.demultiplex and args.barcodes is None:
-        raise RuntimeError("--demultiplex selected but no barcode mapping file specified")
-    
-    if args.check or args.split or args.convert or args.primers or args.merge or args.demultiplex or args.qfilter:
-        if args.forward is None and args.reverse is None:
-            raise RuntimeError("no fastq files selected")
+
+    if args.redo:
+        # load command line arguments if available
+        with open(commands_fn, 'rb') as f:
+            args = pickle.load(f)
+    else:
+        # process arguments
+        if args.all == True:
+            args.check = args.split = args.convert = args.primers = args.merge = args.demultiplex = args.qfilter = args.dereplicate = args.index = args.ref_gg = args.otu_table = True
+        args.sids = map(int, args.sids.split(','))
+        
+        # check combinations
+        if args.demultiplex and args.barcodes is None:
+            raise RuntimeError("--demultiplex selected but no barcode mapping file specified")
+        
+        if args.check or args.split or args.convert or args.primers or args.merge or args.demultiplex or args.qfilter:
+            if args.forward is None and args.reverse is None:
+                raise RuntimeError("no fastq files selected")
+
+        # save arguments for use with redo
+        with open(command_fn, 'wb') as f:
+            pickle.dump(args, f)
         
     return args
 
@@ -226,7 +236,7 @@ class OTU_Caller():
             method = 'submit'
 
         cluster = config.get('User', 'cluster')
-        self.sub = Submitter(method, cluster=cluster, n_cpus=self.n_cpus)
+        self.sub = Submitter(method, cluster=cluster, n_cpus=self.n_split)
     
     def get_filenames(self):
         '''Generate filenames to use in pipeline'''
@@ -236,14 +246,14 @@ class OTU_Caller():
         if self.reverse:
             r_base = os.path.basename(self.reverse)
             
-        self.fi = ['%s.%d' %(self.forward, i) for i in range(self.n_cpus)] # forward reads (split)
-        self.ri = ['%s.%d' %(self.reverse, i) for i in range(self.n_cpus)] # reverse reads (split)
-        self.mi = ['%s.%d.merge' %(self.forward, i) for i in range(self.n_cpus)] # merged reads (split)
-        self.Fi = ['%s.%d.tmp' %(self.forward, i) for i in range(self.n_cpus)] # forward reads (temp)
-        self.Ri = ['%s.%d.tmp' %(self.reverse, i) for i in range(self.n_cpus)] # reverse reads (temp)
-        self.Mi = ['%s.%d.tmp' %(self.forward, i) for i in range(self.n_cpus)] # merged reads (temp)
-        self.ci = ['q.%d.fst' %(i) for i in range(self.n_cpus)] # current reads
-        self.Ci = ['q.%d.tmp' %(i) for i in range(self.n_cpus)] # current reads (temp)
+        self.fi = ['%s.%d' %(self.forward, i) for i in range(self.n_split)] # forward reads (split)
+        self.ri = ['%s.%d' %(self.reverse, i) for i in range(self.n_split)] # reverse reads (split)
+        self.mi = ['%s.%d.merge' %(self.forward, i) for i in range(self.n_split)] # merged reads (split)
+        self.Fi = ['%s.%d.tmp' %(self.forward, i) for i in range(self.n_split)] # forward reads (temp)
+        self.Ri = ['%s.%d.tmp' %(self.reverse, i) for i in range(self.n_split)] # reverse reads (temp)
+        self.Mi = ['%s.%d.tmp' %(self.forward, i) for i in range(self.n_split)] # merged reads (temp)
+        self.ci = ['q.%d.fst' %(i) for i in range(self.n_split)] # current reads
+        self.Ci = ['q.%d.tmp' %(i) for i in range(self.n_split)] # current reads (temp)
         self.oi = ['otus.%d.fst' %(sid) for sid in self.sids] # otu representative sequences
         self.Oi = ['otus.%d.tmp' %(sid) for sid in self.sids] # otu representative sequences (temp)
         self.uc = ['otus.%d.uc' %(sid) for sid in self.sids] # uclust output files
@@ -290,18 +300,18 @@ class OTU_Caller():
         # check for inputs and collisions of output
         if do_forward:
             self.sub.check_for_nonempty(self.forward)
-            self.sub.check_for_collisions(['%s.%s' %(self.forward, i) for i in range(self.n_cpus)])
+            self.sub.check_for_collisions(['%s.%s' %(self.forward, i) for i in range(self.n_split)])
         if do_reverse:
             self.sub.check_for_nonempty(self.reverse)
-            self.sub.check_for_collisions(['%s.%s' %(self.reverse, i) for i in range(self.n_cpus)])
+            self.sub.check_for_collisions(['%s.%s' %(self.reverse, i) for i in range(self.n_split)])
         
         # Get list of commands
         cmds = []
         if do_forward:
-            cmd = ['python', '%s/split_fastq.py' %(self.library), self.forward, self.n_cpus]
+            cmd = ['python', '%s/split_fastq.py' %(self.library), self.forward, self.n_split]
             cmds.append(cmd)
         if do_reverse:
-            cmd = ['python', '%s/split_fastq.py' %(self.library), self.reverse, self.n_cpus]
+            cmd = ['python', '%s/split_fastq.py' %(self.library), self.reverse, self.n_split]
             cmds.append(cmd)
         
         # submit commands
@@ -325,7 +335,7 @@ class OTU_Caller():
             self.sub.check_for_collisions(self.Fi)
             
         cmds = []
-        for i in range(self.n_cpus):
+        for i in range(self.n_split):
             if self.forward:
                 cmd = ['python', '%s/convert_fastq.py' %(self.library), self.fi[i], '--output', self.Fi[i]]
                 cmds.append(cmd)
@@ -345,65 +355,7 @@ class OTU_Caller():
             self.sub.check_for_nonempty(self.Ri)
             self.sub.move_files(self.Ri, self.ri)
             self.sub.check_for_nonempty(self.ri)
-    
-    def remove_primers(self):
-        '''Remove diversity region + primer and discard reads with > 2 mismatches'''
 
-        # do forward only if there is a forward read file and a forward primer
-        # similar for reverse
-        do_forward = self.forward and self.p
-        do_reverse = self.reverse and self.q
-
-        # check that something is being done
-        if not (do_forward or do_reverse):
-            raise RuntimeError("remove primers called with bad input: a file or primer is missing")
-
-        # check for inputs and collisions of output
-        if do_forward:
-            self.sub.check_for_nonempty(self.fi)
-            self.sub.check_for_collisions(self.Fi)
-        if do_reverse:
-            self.sub.check_for_nonempty(self.ri)
-            self.sub.check_for_collisions(self.Ri)
-        
-        # get list of commands using forward, reverse, or both
-        cmds = []
-        for i in range(self.n_cpus):
-            if do_forward:
-                cmd = ['python', '%s/remove_primers.py' %(self.library), self.fi[i], self.p, '--max_primer_diffs', self.p_mismatch, '--output', self.Fi[i]]
-                cmds.append(cmd)
-            if do_reverse:
-                cmd = ['python', '%s/remove_primers.py' %(self.library), self.ri[i], self.q, '--max_primer_diffs', self.p_mismatch, '--output', self.Ri[i]]
-                cmds.append(cmd)
-        
-        # submit commands
-        self.sub.execute(cmds)
-
-        # validate output and move files
-        if do_forward:
-            self.sub.check_for_nonempty(self.Fi)
-            self.sub.move_files(self.Fi, self.fi)
-            self.sub.check_for_nonempty(self.fi)
-
-        if do_reverse:
-            self.sub.check_for_nonempty(self.Ri)
-            self.sub.move_files(self.Ri, self.ri)
-            self.sub.check_for_nonempty(self.ri)
-
-    def intersect_reads(self):
-        '''If one read is removed because of primers, remove its pair also'''
-        self.sub.check_for_collisions(self.Fi + self.Ri)
-
-        if not (self.forward and self.reverse):
-            raise RuntimeError("To intersect reads, forward and reverse fastq's must be specified")
-
-        cmds = [['python', '%s/intersect_reads.py' %(self.library), fi, ri, Fi, Ri] for fi, ri, Fi, Ri in zip(self.fi, self.ri, self.Fi, self.Ri)]
-        self.sub.execute(cmds)
-
-        self.sub.check_for_nonempty(self.Fi + self.Ri)
-        self.sub.move_files(self.Fi + self.Ri, self.fi + self.ri)
-        self.sub.check_for_nonempty(self.fi + self.ri)
-    
     def merge_reads(self):
         '''Merge forward and reverse reads using USEARCH'''
 
@@ -416,20 +368,53 @@ class OTU_Caller():
         
         # check that forward and reverse reads intersect
         cmds = []
-        for i in range(self.n_cpus):
+        for i in range(self.n_split):
             cmd = ['python', '%s/check_intersect.py' %(self.library), self.fi[i], self.ri[i]]
             cmds.append(cmd)
         self.sub.execute(cmds)
         
         # Merge reads
         cmds = []
-        for i in range(self.n_cpus):
-            cmd = [self.usearch, '-fastq_mergepairs', self.fi[i], '-reverse', self.ri[i], '-fastq_truncqual', self.truncqual, '-fastqout', self.mi[i]]
+        for i in range(self.n_split):
+            cmd = [self.usearch, '-fastq_mergepairs', self.fi[i], '-reverse', self.ri[i], '-fastq_truncqual', self.truncqual, '-fastqout', self.Fi[i]]
             cmds.append(cmd)
         self.sub.execute(cmds)
         
-        self.sub.check_for_nonempty(self.mi)
+        self.sub.check_for_nonempty(self.Fi)
         self.sub.rm_files(self.fi + self.ri)
+        self.sub.move_files(self.Fi, self.fi)
+        self.sub.check_for_nonempty(self.fi)
+    
+    def remove_primers(self):
+        '''Remove diversity region + primer and discard reads with > 2 mismatches'''
+
+        # do forward only if there is a forward read file and a forward primer
+        # similar for reverse
+        both = self.p and self.q
+        if not both:
+            if self.p and not self.q:
+                forward_only = True
+            else:
+                raise RuntimeError("remove primers called with bad input: need -p or both -p and -q")
+
+        # check for inputs and collisions of output
+        self.sub.check_for_nonempty(self.fi)
+        self.sub.check_for_collisions(self.Fi)
+        
+        # get list of commands using forward only
+        cmds = [['python', '%s/remove_primers.py' %(self.library), fi, self.p, '--max_primer_diffs', self.p_mismatch, '--output', fo] for fi, fo in zip(self.fi, self.Fi)]
+
+        # add reverse primer if needed
+        if both:
+            cmds = [cmd + ['--reverse_primer', self.q] for cmd in cmds]
+        
+        # submit commands
+        self.sub.execute(cmds)
+
+        # validate output and move files
+        self.sub.check_for_nonempty(self.Fi)
+        self.sub.move_files(self.Fi, self.fi)
+        self.sub.check_for_nonempty(self.fi)
     
     def demultiplex_reads(self):
         '''Demultiplex samples using index and barcodes'''
@@ -438,7 +423,7 @@ class OTU_Caller():
         self.sub.check_for_collisions(self.Ci)
 
         cmds = []
-        for i in range(self.n_cpus):
+        for i in range(self.n_split):
             cmd = ['python', '%s/map_barcodes.py' %(self.library), self.ci[i], self.barcodes, '--max_barcode_diffs', self.b_mismatch, '--output', self.Ci[i]]
             cmds.append(cmd)
         self.sub.execute(cmds)
@@ -465,7 +450,7 @@ class OTU_Caller():
             check_fastq_format.check_illumina_format(self.ci, ['illumina18', 'ambiguous'])
 
         cmds = []
-        for i in range(self.n_cpus):
+        for i in range(self.n_split):
             cmd = [self.usearch, '-fastq_filter', self.ci[i], '-fastq_truncqual', self.truncqual, '-fastq_maxee', self.maxee, '-fastaout', self.Ci[i]]
 
             if self.trunclen > 0:
@@ -655,27 +640,20 @@ if __name__ == '__main__':
     if oc.convert:
         message('Converting format')
         oc.convert_format()
+
+    # Merge reads
+    if oc.merge:
+        message('Merging reads')
+        oc.merge_reads()
     
     # Remove primers
     if oc.primers == True:
         message('Removing primers')
         oc.remove_primers()
-
-    # Intersect reads
-    if oc.intersect:
-        message("Intersecting reads")
-        oc.intersect_reads()
-    
-    # Merge reads
-    if oc.merge:
-        message('Merging reads')
-        oc.merge_reads()
         
     # Set current reads
-    if oc.merge or oc.merged:
-        oc.ci = oc.mi
-    else:
-        oc.ci = oc.fi
+    # swo> obsolete, now that there are no separate merged files
+    oc.ci = oc.fi
     
     # Demultiplex
     if oc.demultiplex == True:
