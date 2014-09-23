@@ -203,7 +203,7 @@ def parse_args():
                 raise RuntimeError("no fastq files selected")
 
         # save arguments for use with redo
-        with open(command_fn, 'wb') as f:
+        with open(commands_fn, 'wb') as f:
             pickle.dump(args, f)
         
     return args
