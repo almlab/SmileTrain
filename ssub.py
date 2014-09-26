@@ -67,10 +67,10 @@ def zcluster_parse(qstat_output, my_username):
         # those children should have elements job_list
         for job_list in qinfo_or_jinfo:
             # job_list node should contain owner and job number info
-            username = job_list.get('JB_owner').text
+            username = job_list.find('JB_owner').text
 
             if username == my_username:
-                job_id = job_list.get('JB_job_number').text
+                job_id = job_list.find('JB_job_number').text
                 job_ids.append(job_id)
 
     return job_ids
@@ -115,10 +115,10 @@ class Ssub():
             self.parse_status = lambda x: coyote_parse(x, username)
 
         elif self.cluster == 'zcluster':
-            self.submit_cmd = 'qsub -q %s' % self.q
+            self.submit_cmd = 'qsub' 
             self.stat_cmd = ['qstat', '-xml']
-            self.parse_job = lambda x: re.match('\d+(\[\])?', x.split()[2]).group()
-            self.parse_status = lambda x: zcluster_parse(x, username)
+            self.parse_job = lambda x: re.match('(\d+)\.', x.split()[2]).group(1)
+	    self.parse_status = lambda x: zcluster_parse(x, username)
         
         else:
             raise RuntimeError('unrecognized cluster %s' %(cluster))
@@ -266,12 +266,45 @@ class Ssub():
         os.chmod(array_fn, stat.S_IRWXU)
         message('Writing array %s' %(array_fn))
         return array_fn
-    
+   
+
+    def write_SGE_array(self, fns):
+        '''write an SGE job array from args and filenames'''
+
+        # initialize output file
+        fh, array_fn = self.mktemp(suffix='.sh')
+        array_fn = os.path.abspath(array_fn)
+
+        # write header
+        fh.write('#$ -t 1-%d%s\n' %(len(fns), min(len(fns), int(self.l))))
+        fh.write('#$ -e %s.e\n' %(array_fn))
+        fh.write('#$ -q %s\n' %(self.q))
+        fh.write('#$ -o %s.o\n' %(array_fn))
+        fh.write('source %s\n' % self.bashrc)
+        fh.write('cd $SGE_O_WORKDIR\n')
+
+        # write job array
+        for i, fn in enumerate(fns):
+            os.chmod(fn, stat.S_IRWXU)
+            fh.write('job_array[%d]=%s\n' %(i+1, os.path.abspath(fn)))
+        fh.write('${job_array[$SGE_TASK_ID]};\n')
+        fh.close()
+
+        # make executable and print message
+        os.chmod(array_fn, stat.S_IRWXU)
+        message('Writing array %s' %(array_fn))
+        return array_fn
+
+
+
+ 
     def write_job_array(self, fns):
         '''write a job array (LSF or PBS)'''
         if self.cluster == 'broad':
             array_fn = self.write_LSF_array(fns)
-        elif self.cluster in ['coyote', 'zcluster']:
+	elif self.cluster == 'zcluster':
+	    array_fn = self.write_SGE_array(fns)
+        elif self.cluster == 'coyote':
             array_fn = self.write_PBS_array(fns)
         return array_fn
     
