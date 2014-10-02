@@ -118,7 +118,7 @@ class Ssub():
             self.submit_cmd = 'qsub' 
             self.stat_cmd = ['qstat', '-xml']
             self.parse_job = lambda x: re.match('(\d+)\.', x.split()[2]).group(1)
-	    self.parse_status = lambda x: zcluster_parse(x, username)
+            self.parse_status = lambda x: zcluster_parse(x, username)
         
         else:
             raise RuntimeError('unrecognized cluster %s' %(cluster))
@@ -302,7 +302,7 @@ class Ssub():
         '''write a job array (LSF or PBS)'''
         if self.cluster == 'broad':
             array_fn = self.write_LSF_array(fns)
-	elif self.cluster == 'zcluster':
+        elif self.cluster == 'zcluster':
 	    array_fn = self.write_SGE_array(fns)
         elif self.cluster == 'coyote':
             array_fn = self.write_PBS_array(fns)

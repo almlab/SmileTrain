@@ -1,21 +1,21 @@
 [User]
-username=lancaste
+username=user
 cluster=zcluster
-tmp_directory=/home/mwalab/lancaste/tmp
+tmp_directory=/home/PIlab/user/tmp
 usearch=/usr/local/usearch/latest/usearch
 queue=rcc-30d
 
 [Scripts]
-library=/home/mwalab/lancaste/lib/SmileTrain
-bashrc=/home/mwalab/lancaste/lib/SmileTrain/bashrcs/zcluster.sh
+library=/home/PIlab/user/lib/SmileTrain
+bashrc=/home/PIlab/user/lib/SmileTrain/bashrcs/zcluster.sh
 
 [Data]
-greengenes=/home/mwalab/lancaste/gg_13_5_otus/rep_set
-greengenes_taxonomy=/home/mwalab/lancaste/gg_13_5_otus/taxonomy/taxonomy.pkl
-gold=/home/mwalab/lancaste/gold.fasta
+greengenes=/path/to/gg_13_5_otus/rep_set
+greengenes_taxonomy=/path/to/gg_13_5_otus/taxonomy/taxonomy.pkl
+gold=/path/to/gold.fasta
 
 [dbOTU]
-alignref=/home/mwalab/lancaste/silva.bacteria.m45.25434.11887.m668.filter.fasta
-perllib=/home/mwalab/lancaste/lib/dbOTUcaller/perllib
-caller=/home/mwalab/lancaste/lib/dbOTUcaller/dbOTUcaller.py
+alignref=/path/to/silva.bacteria.m45.25434.11887.m668.filter.fasta
+perllib=/path/to/dbOTUcaller/perllib
+caller=/path/to/dbOTUcaller/dbOTUcaller.py
 mothur=/usr/local/mothur/latest/mothur
