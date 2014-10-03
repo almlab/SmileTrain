@@ -512,7 +512,7 @@ class OTU_Caller():
        cmds = []
 
        cmds.append(['perl', '%s/find_replace_seq_dash-period.pl' % perllib, 'unique.good.align', 'unique.good.align.ng'])
-       cmd.append(['perl', '%s/fasta2uchime_size.pl' % perllib, 'unique.f0.good.mat', 'unique.good.align.ng', 'unique.good.align.ng.size'])
+       cmds.append(['perl', '%s/fasta2uchime_size.pl' % perllib, 'unique.f0.good.mat', 'unique.good.align.ng', 'unique.good.align.ng.size'])
        cmds.append([self.usearch, '-cluster_otus', 'unique.good.align.ng.size', '--uc', 'unique.97.uc', '-otus', 'unique.97.otus.fa', '-fastaout', 'unique.97.fastaout.fa'])
        cmds.append(['perl', '%s/USEARCH_fastaout2list.pl' % perllib, 'unique.97.fastaout.fa', 'unique.97.uc.list'])
        cmds.append([self.usearch, '-sortbylength', 'unique.97.otus.fa', '-output', 'unique.97.sorted.fa'])
