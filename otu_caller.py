@@ -174,6 +174,7 @@ def parse_args():
     group12.add_argument('--k_fold', default=0.0, type=float, help='k_fold change of OTU rep abundance over sequence to be merged')
     group12.add_argument('--pval', default=1e-4, type=float, help='p-value threshold for merge into existing OTU')
     group12.add_argument('--dbotu_chimeras', action='store_true', help='Remove chimeras de novo from dbOTUs?')
+    group12.add_argument('--dbotu_split', action='store_true', help='Search within 90 percent clusters for dbOTUs?')
     group13.add_argument('--n_split', '-n', default=1, type=int, help='split upstream fastq into how many files?')
     group_run.add_argument('--dry_run', '-z', action='store_true', help='submit no jobs; suppress file checks; just print output commands')
     group_run.add_argument('--local', '-l', action='store_true', help='execute all tasks locally')
@@ -505,6 +506,31 @@ class OTU_Caller():
             self.sub.move_files(self.Oi, self.oi)
             self.sub.check_for_nonempty(self.oi)
     
+    def dbotu_progressive_clustering(self):
+       '''Denovo clustering with USEARCH'''
+       perllib = config.get('dbOTU', 'perllib')
+       cmds = []
+
+       cmds.append(['perl', '%s/find_replace_seq_dash-period.pl' % perllib, 'unique.good.align', 'unique.good.align.ng'])
+       cmds.append(['perl', '%s/fasta2uchime_size.pl' % perllib, 'unique.f0.good.mat', 'unique.good.align.ng', 'unique.good.align.ng.size'])
+       cmds.append([self.usearch, '-cluster_otus', 'unique.good.align.ng.size', '--uc', 'unique.97.uc', '-otus', 'unique.97.otus.fa', '-fastaout', 'unique.97.fastaout.fa'])
+       cmds.append(['perl', '%s/USEARCH_fastaout2list.pl' % perllib, 'unique.97.fastaout.fa', 'unique.97.uc.list'])
+       cmds.append([self.usearch, '-sortbylength', 'unique.97.otus.fa', '-output', 'unique.97.sorted.fa'])
+
+       uc_lists = ['unique.97.uc.list']
+       for i in range(96, 89, -1):
+           previous = i + 1
+           cmds.append([self.usearch, '-cluster_smallmem', 'unique.%d.sorted.fa' % previous, '-id', '0.%d' % i, '--uc', 'unique.%d.uc' % i, '-centroids', 'unique.%d.otus.fa' % i])
+           cmds.append(['perl', '%s/UC2list3.pl' % perllib, 'unique.%d.uc' % i, 'unique.%d.uc.list' % i])
+           cmds.append([self.usearch, '-sortbylength', 'unique.%d.otus.fa' % i, '-output', 'unique.%d.sorted.fa' % i])
+           uc_lists.append('unique.%d.uc.list' % i)
+
+       input_lists = ",".join([str(x) for x in uc_lists])
+       cmds.append(['perl', '%s/merge_progressive_clustering4.pl'% perllib, input_lists, 'unique.PC.final.list'])
+
+       self.sub.execute(cmds)
+       self.sub.check_for_nonempty('unique.PC.final.list')       
+ 
     def remove_reference_chimeras(self):
         '''Remove chimeras using gold database'''
         cmds = []
@@ -518,7 +544,7 @@ class OTU_Caller():
         self.sub.move_files(self.Oi, self.oi)
         self.sub.check_for_nonempty(self.oi)
 
-    def remove_dbotu_chimeras(self):
+    def dbotu_remove_chimeras(self):
         '''remove dbotu chimeras de novo'''
         perllib = config.get('dbOTU', 'perllib')
 
@@ -563,7 +589,7 @@ class OTU_Caller():
             message("unmatches sequences left in following files. move them to a new work folder for de novo clustering.")
             print "\n".join(self.open_fst)
 
-    def call_dbotus(self):
+    def dbotu_alignment(self):
         '''Call otus using dbotu algorithm'''
         perllib = config.get('dbOTU', 'perllib')
         mothur = config.get('dbOTU', 'mothur')
@@ -574,7 +600,20 @@ class OTU_Caller():
         cmds.append(['%s "#align.seqs(fasta=unique.fa, reference=%s)"' %(mothur, self.alignref)])
         cmds.append(['%s "#screen.seqs(fasta=unique.align, start=5, minlength=%d)"' %(mothur, self.minlength)])
         cmds.append('perl %s/filter_mat_from_fasta.pl unique.f0.mat unique.good.align > unique.f0.good.mat' %(perllib))
-        cmds.append(['python', caller, 'unique.f0.good.mat', 'unique.good.align', 'unique.dbOTU', '-k', str(self.k_fold), '-p', str(self.pval)])
+
+        self.sub.execute(cmds)
+        self.sub.check_for_nonempty(['unique.good.align', 'unique.f0.good.mat'])
+        
+    def dbotu_call_otus(self):
+        '''Remove redundancy and errors with dbotus'''
+        mothur = config.get('dbOTU', 'mothur')
+        caller = config.get('dbOTU', 'caller')
+        cmds = []
+        if oc.dbotu_split:
+            cmds.append(['python', caller, 'unique.f0.good.mat', 'unique.good.align', 'unique.dbOTU', '-k', str(self.k_fold), '-p', str(self.pval), '-s', 'unique.PC.final.list'])
+        else:
+            cmds.append(['python', caller, 'unique.f0.good.mat', 'unique.good.align', 'unique.dbOTU', '-k', str(self.k_fold), '-p', str(self.pval)])
+
         cmds.append(['%s "#degap.seqs(fasta=unique.dbOTU.fasta)"' %(mothur)])
 
         self.sub.execute(cmds)
@@ -687,8 +726,15 @@ if __name__ == '__main__':
 
     # Call dbOTUs
     if oc.dbotu:
+        message("dbOTU: aligning sequences")
+        oc.dbotu_alignment()
+
+        if oc.dbotu_split:
+            message("dbOTU: progressive clustering")
+            oc.dbotu_progressive_clustering()
+
         message("Calling dbOTUs")
-        oc.call_dbotus()
+        oc.dbotu_call_otus()
 
     # Chimera removal
     if oc.ref_chimeras:
@@ -701,7 +747,7 @@ if __name__ == '__main__':
 
     if oc.dbotu_chimeras:
         message("Removing chimeras from dbOTUs de novo")
-        oc.remove_dbotu_chimeras()
+        oc.dbotu_remove_chimeras()
         
     # Make sequence tables
     if oc.seq_table:
