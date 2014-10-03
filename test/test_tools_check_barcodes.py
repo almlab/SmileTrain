@@ -1,5 +1,5 @@
 import unittest, tempfile, subprocess, os, shutil
-from SmileTrain import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index
+from SmileTrain import util, remove_primers, derep_fulllength, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index
 from SmileTrain.tools import check_barcodes
 from SmileTrain.test import fake_fh
 from Bio import SeqIO
@@ -12,7 +12,7 @@ class TestCountBarcodes(unittest.TestCase):
     
     def test_correct(self):
         '''should count up barcodes correctly'''
-        counts = check_barcodes.count_barcodes(self.fastq, self.barcode_map)
+        counts = check_barcodes.count_barcodes(self.fastq, self.barcode_map, max_entries=100)
         self.assertEqual(counts, {'total': 3, 'mapped': 2, 'sampleA': 1, 'sampleT': 1, 'sampleC': 0})
 
 

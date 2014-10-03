@@ -12,10 +12,17 @@ class TestParseIndexLine(unittest.TestCase):
    
 class TestCounts(unittest.TestCase):
     '''tests for function counts'''
+
+    def setUp(self):
+        self.table = {'sample1': {'otu1': 1, 'otu2': 2}, 'sample2': {'otu1': 2, 'otu2': 5}}
     
-    def test_correct(self):
+    def test_correct_present(self):
         '''should parse the counts table structure'''
-        raise RuntimeError("test not implemented")
+        self.assertEqual(util_index.counts(self.table, 'sample2', 'otu2'), 5)
+
+    def test_correct_absent(self):
+        '''should give 0 if can't find sample and otu'''
+        self.assertEqual(util_index.counts(self.table, 'sample2', 'otu3'), 0)
     
 
 class TestParseSeqSid(unittest.TestCase):

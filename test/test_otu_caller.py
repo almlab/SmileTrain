@@ -8,7 +8,7 @@ from SmileTrain.test import fake_fh
 import unittest, tempfile, subprocess, os, shutil, StringIO
 from Bio import SeqIO, Seq
 
-from SmileTrain import util, remove_primers, derep_fulllength, intersect, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index, otu_caller
+from SmileTrain import util, remove_primers, derep_fulllength, check_fastq_format, convert_fastq, map_barcodes, derep_fulllength, uc2otus, index, otu_caller
 
 tmp_dir = 'tmp'
 
