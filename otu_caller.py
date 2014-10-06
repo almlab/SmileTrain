@@ -174,7 +174,10 @@ def parse_args():
     group12.add_argument('--k_fold', default=0.0, type=float, help='k_fold change of OTU rep abundance over sequence to be merged')
     group12.add_argument('--pval', default=1e-4, type=float, help='p-value threshold for merge into existing OTU')
     group12.add_argument('--dbotu_chimeras', action='store_true', help='Remove chimeras de novo from dbOTUs?')
-    group12.add_argument('--dbotu_split', action='store_true', help='Search within 90 percent clusters for dbOTUs?')
+    group12.add_argument('--dbotu_split', action='store_true', help='Search for dbOTUs within pre-clustered sequences?')
+    group12.add_argument('--JS', action='store_true', help='Merge statitically significantly different sequences if Jensen-Shannon divergence is below cut-off?')
+    group12.add_argument('--JS_cutoff', default=0.02, type=float, help='Jensen-Shannon divergence cut-off value used with --JS (default=0.02)')
+    group12.add_argument('--dbotu_id', default=0.1, type=float, help='Distance used for dbOTUs and/or pre-clustering (default=0.1)')
     group13.add_argument('--n_split', '-n', default=1, type=int, help='split upstream fastq into how many files?')
     group_run.add_argument('--dry_run', '-z', action='store_true', help='submit no jobs; suppress file checks; just print output commands')
     group_run.add_argument('--local', '-l', action='store_true', help='execute all tasks locally')
@@ -522,7 +525,9 @@ class OTU_Caller():
        cmds.append(cmd)
        listlist=[]
        listlist.append('unique.97.uc.list')
-       for i in range(96, 89, -1):
+       upper=96
+       lower=int(100*(1-self.dbotu_id)) - 1
+       for i in range(upper, lower, -1):
            previous=i+1
            cmd = [self.usearch, '-cluster_smallmem', 'unique.%d.sorted.fa' % previous, '-id', '0.%d' % i, '--uc', 'unique.%d.uc' % i, '-centroids', 'unique.%d.otus.fa' % i]
            cmds.append(cmd)
@@ -616,11 +621,16 @@ class OTU_Caller():
         mothur = config.get('dbOTU', 'mothur')
         caller = config.get('dbOTU', 'caller')
         cmds = []
+        dbcmd = ['python', caller, 'unique.f0.good.mat', 'unique.good.align', 'unique.dbOTU', '-k', str(self.k_fold), '-p', str(self.pval), '-d', str(self.dbotu_id)]
         if oc.dbotu_split:
-            cmds.append(['python', caller, 'unique.f0.good.mat', 'unique.good.align', 'unique.dbOTU', '-k', str(self.k_fold), '-p', str(self.pval), '-s', 'unique.PC.final.list'])
-        else:
-            cmds.append(['python', caller, 'unique.f0.good.mat', 'unique.good.align', 'unique.dbOTU', '-k', str(self.k_fold), '-p', str(self.pval)])
+            dbcmd.append('-s')
+            dbcmd.append('unique.PC.final.list')
+        if oc.JS:
+            dbcmd.append('--useJS')
+            dbcmd.append(str(self.JS_cutoff))
 
+        
+        cmds.append(dbcmd)
         cmds.append(['%s "#degap.seqs(fasta=unique.dbOTU.fasta)"' %(mothur)])
 
         self.sub.execute(cmds)
