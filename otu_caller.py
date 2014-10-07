@@ -175,8 +175,8 @@ def parse_args():
     group12.add_argument('--pval', default=1e-4, type=float, help='p-value threshold for merge into existing OTU')
     group12.add_argument('--dbotu_chimeras', action='store_true', help='Remove chimeras de novo from dbOTUs?')
     group12.add_argument('--dbotu_split', action='store_true', help='Search for dbOTUs within pre-clustered sequences?')
-    group12.add_argument('--JS', action='store_true', help='Merge statitically significantly different sequences if Jensen-Shannon divergence is below cut-off?')
-    group12.add_argument('--JS_cutoff', default=0.02, type=float, help='Jensen-Shannon divergence cut-off value used with --JS (default=0.02)')
+    group12.add_argument('--dbotu_js', action='store_true', help='Merge statitically significantly different sequences if Jensen-Shannon divergence is below cut-off?')
+    group12.add_argument('--dbotu_jscutoff', default=0.02, type=float, help='Jensen-Shannon divergence cut-off value used with --dbotu_js (default=0.02)')
     group12.add_argument('--dbotu_id', default=0.1, type=float, help='Distance used for dbOTUs and/or pre-clustering (default=0.1)')
     group13.add_argument('--n_split', '-n', default=1, type=int, help='split upstream fastq into how many files?')
     group_run.add_argument('--dry_run', '-z', action='store_true', help='submit no jobs; suppress file checks; just print output commands')
@@ -615,9 +615,9 @@ class OTU_Caller():
         if oc.dbotu_split:
             dbcmd.append('-s')
             dbcmd.append('unique.PC.final.list')
-        if oc.JS:
+        if oc.dbotu_js:
             dbcmd.append('--useJS')
-            dbcmd.append(str(self.JS_cutoff))
+            dbcmd.append(str(self.dbotu_jscutoff))
 
         
         cmds.append(dbcmd)
