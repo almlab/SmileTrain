@@ -8,15 +8,16 @@ from SmileTrain.test import fake_fh
 import unittest, tempfile, subprocess, os, shutil, StringIO
 from Bio import SeqIO, Seq
 
-from SmileTrain import util, intersect
+from SmileTrain import util
+from SmileTrain.tools import intersect_reads
 
 
 class TestFastqIDToReadID(unittest.TestCase):
     def test_correct(self):
-        self.assertEqual(intersect.fastq_id_to_read_id("@MISEQ578:1:1101:17145:1691#TTCAGA/1"), "@MISEQ578:1:1101:17145:1691#TTCAGA")
+        self.assertEqual(intersect_reads.fastq_id_to_read_id("@MISEQ578:1:1101:17145:1691#TTCAGA/1"), "@MISEQ578:1:1101:17145:1691#TTCAGA")
         
     def test_error(self):
-        self.assertRaises(RuntimeError, intersect.fastq_id_to_read_id, "@MISEQ:crap")
+        self.assertRaises(RuntimeError, intersect_reads.fastq_id_to_read_id, "@MISEQ:crap")
 
 
 class TestWithFastqs(unittest.TestCase):
@@ -27,12 +28,12 @@ class TestWithFastqs(unittest.TestCase):
 
 class TestFastqIDs(TestWithFastqs):
     def test_correct(self):
-        self.assertEqual(intersect.fastq_ids(self.fq_for), ['MISEQ578:1:1101:17145:1691#TTCAGA', 'MISEQ578:1:1101:18716:1699#CCTGAG', 'MISEQ578:1:1101:16445:1701#CCTGAG', 'MISEQ578:1:1101:12954:1727#AATGTC'])
+        self.assertEqual(intersect_reads.fastq_ids(self.fq_for), ['MISEQ578:1:1101:17145:1691#TTCAGA', 'MISEQ578:1:1101:18716:1699#CCTGAG', 'MISEQ578:1:1101:16445:1701#CCTGAG', 'MISEQ578:1:1101:12954:1727#AATGTC'])
 
 
 class TestCommonIDs(TestWithFastqs):
     def test_correct(self):
-        self.assertEqual(intersect.common_ids(self.fq_for, self.fq_rev), set(['MISEQ578:1:1101:17145:1691#TTCAGA', 'MISEQ578:1:1101:16445:1701#CCTGAG', 'MISEQ578:1:1101:12954:1727#AATGTC']))
+        self.assertEqual(intersect_reads.common_ids(self.fq_for, self.fq_rev), set(['MISEQ578:1:1101:17145:1691#TTCAGA', 'MISEQ578:1:1101:16445:1701#CCTGAG', 'MISEQ578:1:1101:12954:1727#AATGTC']))
 
 
 if __name__ == '__main__':

@@ -29,8 +29,13 @@ from Bio import SeqIO
 def barcode_file_to_dictionary(barcode_lines):
     '''parse a barcode mapping file into a dictionary {barcode: sample}'''
     barcode_map = {}
-    for line in barcode_lines:
-        sample, barcode = line.split()
+    for i, line in enumerate(barcode_lines):
+        fields = line.split()
+
+        if len(fields) != 2:
+            raise RuntimeError("every line in barcode file should have two fields; found %d in line %d" %(len(fields), i))
+
+        sample, barcode = fields
         barcode_map[barcode] = sample
 
     return barcode_map
