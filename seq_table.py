@@ -12,95 +12,113 @@ import sys, argparse, re
 from Bio import SeqIO
 import util, util_index
 
-def fasta_to_dict(fasta):
-    '''
-    Create a hash {sequence => ID}
+class SeqTableWriter:
+    def __init__(self, fasta, derep, output, samples=None, min_counts=0, assert_same_seqs=False, run=True):
+        self.fasta = fasta
+        self.derep = derep
+        self.output = output
+        self.samples = samples
+        self.min_counts = min_counts
+        self.assert_same_seqs = assert_same_seqs
 
-    fasta : fasta fh or fn
-        lines in the fasta
+        if run:
+            self.run()
 
-    returns : dict
-        {sequence => ID}
-    '''
+    def run(self):
+        self.derep_names = self.fasta_to_dict(self.derep)
+        self.table, self.abund = self.fasta_to_abund(self.fasta, self.derep_names, self.assert_same_seqs)
 
-    names = {str(record.seq): record.id for record in SeqIO.parse(fasta, 'fasta')}
-    return names
+        if self.samples is None:
+            self.samples = self.table_to_samples(self.table)
 
-def fasta_to_table_and_abund(fasta):
-    '''
-    Count the abundance of each sequence in each sample.
-    
-    fasta : fasta fh or fn
-        lines in the big fasta file
+        self.write_table(self.table, self.abund, self.samples, self.min_counts, self.output)
+
+    @staticmethod
+    def fasta_to_dict(fasta):
+        '''
+        Create a hash {sequence => ID}
+
+        fasta : fasta fh or fn
+            lines in the fasta
+
+        returns : dict
+            {sequence => ID}
+        '''
+
+        names = {str(record.seq): util_index.parse_seq_sid(record.id) for record in SeqIO.parse(fasta, 'fasta')}
+        return names
+
+    @staticmethod
+    def fasta_to_abund(fasta, names, assert_same=False):
+        '''
+        Count the abundance of each sequence in each sample.
         
-    returns : dict of dicts
-        {sequence => {samples => counts}, ...}
-    '''
-    
-    table = {}
-    abund = {}
-    for record in SeqIO.parse(fasta, 'fasta'):
-        sample = util_index.sid_to_sample(record.id)
-        seq = str(record.seq)
-        
-        if seq in abund:
-            abund[seq] += 1
-        else:
-            abund[seq] = 1
-        
-        if seq in table:
-            if sample in table[seq]:
-                table[seq][sample] += 1
-            else:
-                table[seq][sample] = 1
-        else:
-            table[seq] = {sample: 1}
+        fasta : fasta fh or fn
+            lines in the big fasta file
+        names : dict
+            {seq => name}
+        assert_same : bool
+            if true, make sure each seq in the fasta is in names
             
-    return table, abund
-
-def table_to_samples(table):
-    '''get sorted list of sample names'''
-    samples = []
-    for seq in table:
-        for sample in table[seq]:
-            if sample not in samples:
-                samples.append(sample)
+        returns : dict of dicts
+            {name => {samples => counts}, ...}
+        '''
     
-    samples = sorted(samples)
-    return samples
+        table = {}
+        abund = {}
+        for record in SeqIO.parse(fasta, 'fasta'):
+            sample = util_index.sid_to_sample(record.id)
+            seq = str(record.seq)
 
-def table_lines(fasta, derep, min_counts, samples=None):
-    '''fasta lines to seq table lines'''
+            if seq in names:
+                name = names[seq]
+            else:
+                if assert_same:
+                    raise RuntimeError("sequence %s found in fasta but not dereplicated fasta" %(seq))
 
-    # read in the dereplicated fasta
-    names = fasta_to_dict(derep)
+            if seq in abund:
+                abund[name] += 1
+            else:
+                abund[name] = 1
+            
+            if name in table:
+                if sample in table[name]:
+                    table[name][sample] += 1
+                else:
+                    table[name][sample] = 1
+            else:
+                table[name] = {sample: 1}
+                
+        return table, abund
 
-    table, abund = fasta_to_table_and_abund(fasta)
+    @staticmethod
+    def table_to_samples(table):
+        '''get sorted list of sample names'''
+        samples = []
+        for seq in table:
+            for sample in table[seq]:
+                if sample not in samples:
+                    samples.append(sample)
+        
+        samples = sorted(samples)
+        return samples
 
-    # check that all the sequences in the big file are in the dereplicated and vice versa
-    for seq in table:
-        if seq not in names:
-            raise RuntimeError("sequence found in full but no dereplicated fasta:\n%s" %(seq))
+    @staticmethod
+    def write_table(table, abund, samples, min_counts, output):
+        '''fasta lines to seq table lines'''
 
-    for seq_id, seq in names.items():
-        if seq not in table:
-            raise RuntimeError("sequence %s found in dereplicated but not full fasta" %(seq))
-    
-    if samples is None:
-        samples = table_to_samples(table)
-    
-    # get the sequences in abundance order
-    all_seqs = sorted(table.keys(), key=lambda seq: abund[seq], reverse=True)
-    
-    # throw out sequences below minimum
-    seqs = [seq for seq in all_seqs if abund[seq] >= min_counts]
-    
-    # write the header
-    yield "sequence_id\t" + "\t".join(samples)
-    
-    for seq in seqs:
-        counts = [table[seq].get(sample, 0) for sample in samples]
-        yield names[seq] + "\t" + "\t".join([str(x) for x in counts])
+        # get the seq ids in abundance order
+        all_seq_ids = sorted(table.keys(), key=lambda i: abund[i], reverse=True)
+        
+        # throw out sequences below minimum
+        seq_ids = [i for i in all_seq_ids if abund[i] >= min_counts]
+        
+        # write the header
+        output.write("sequence_id\t" + "\t".join(samples) + "\n")
+        
+        for i in seq_ids:
+            counts = [table[i].get(sample, 0) for sample in samples]
+            output.write(i + "\t" + "\t".join([str(x) for x in counts]) + "\n")
 
 
 if __name__ == '__main__':
@@ -109,15 +127,10 @@ if __name__ == '__main__':
     parser.add_argument('fasta', help='full fasta file')
     parser.add_argument('derep', help='dereplicated fasta file')
     parser.add_argument('-s', '--samples', default=None, help='samples list (samples in first field; default: sorted names from fasta)')
-    parser.add_argument('-m', '--minimum_counts', type=int, default=2, help='minimum times a sequence is included, otherwise it gets thrown out')
+    parser.add_argument('-m', '--min_counts', type=int, default=0, help='minimum times a sequence is included, otherwise it gets thrown out')
+    parser.add_argument('-a', '--assert_same_seqs', action='store_true', help='assert that every seq in fasta is in dereplicated fasta?')
     parser.add_argument('-o', '--output', default=sys.stdout, type=argparse.FileType('w'), help='output file')
     args = parser.parse_args()
-    
-    if args.samples is not None:
-        with open(args.samples) as f:
-            samples = [line.split()[0] for line in f]
-    else:
-        samples = None
-        
-    for line in table_lines(args.fasta, args.derep, args.minimum_counts, samples):
-        args.output.write(line + "\n")
+
+    opts = vars(args)
+    SeqTableWriter(**opts)
