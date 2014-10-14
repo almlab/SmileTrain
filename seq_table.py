@@ -76,7 +76,7 @@ class SeqTableWriter:
                 if assert_same:
                     raise RuntimeError("sequence %s found in fasta but not dereplicated fasta" %(seq))
 
-            if seq in abund:
+            if name in abund:
                 abund[name] += 1
             else:
                 abund[name] = 1
