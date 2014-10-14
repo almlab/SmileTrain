@@ -14,7 +14,7 @@ class TestBarcodeDictionary(unittest.TestCase):
     def test_incomplete_line(self):
         '''should raise an error for an incomplete line'''
         mapping_lines = ['donor1\tACGT', 'donor2\t']
-        self.assertRaises(ValueError, map_barcodes.barcode_file_to_dictionary, mapping_lines)
+        self.assertRaises(RuntimeError, map_barcodes.barcode_file_to_dictionary, mapping_lines)
 
 
 class TestBestBarcode(unittest.TestCase):
