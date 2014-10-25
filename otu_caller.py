@@ -174,7 +174,10 @@ def parse_args():
     group12.add_argument('--k_fold', default=0.0, type=float, help='k_fold change of OTU rep abundance over sequence to be merged')
     group12.add_argument('--pval', default=1e-4, type=float, help='p-value threshold for merge into existing OTU')
     group12.add_argument('--dbotu_chimeras', action='store_true', help='Remove chimeras de novo from dbOTUs?')
-    group12.add_argument('--dbotu_split', action='store_true', help='Search within 90 percent clusters for dbOTUs?')
+    group12.add_argument('--dbotu_split', action='store_true', help='Search for dbOTUs within pre-clustered sequences?')
+    group12.add_argument('--dbotu_js', action='store_true', help='Merge statitically significantly different sequences if Jensen-Shannon divergence is below cut-off?')
+    group12.add_argument('--dbotu_jscutoff', default=0.02, type=float, help='Jensen-Shannon divergence cut-off value used with --dbotu_js (default=0.02)')
+    group12.add_argument('--dbotu_id', default=0.1, type=float, help='Distance used for dbOTUs and/or pre-clustering (default=0.1)')
     group13.add_argument('--n_split', '-n', default=1, type=int, help='split upstream fastq into how many files?')
     group_run.add_argument('--dry_run', '-z', action='store_true', help='submit no jobs; suppress file checks; just print output commands')
     group_run.add_argument('--local', '-l', action='store_true', help='execute all tasks locally')
@@ -510,22 +513,21 @@ class OTU_Caller():
        '''Denovo clustering with USEARCH'''
        perllib = config.get('dbOTU', 'perllib')
        cmds = []
-
        cmds.append(['perl', '%s/find_replace_seq_dash-period.pl' % perllib, 'unique.good.align', 'unique.good.align.ng'])
        cmds.append(['perl', '%s/fasta2uchime_size.pl' % perllib, 'unique.f0.good.mat', 'unique.good.align.ng', 'unique.good.align.ng.size'])
        cmds.append([self.usearch, '-cluster_otus', 'unique.good.align.ng.size', '--uc', 'unique.97.uc', '-otus', 'unique.97.otus.fa', '-fastaout', 'unique.97.fastaout.fa'])
        cmds.append(['perl', '%s/USEARCH_fastaout2list.pl' % perllib, 'unique.97.fastaout.fa', 'unique.97.uc.list'])
        cmds.append([self.usearch, '-sortbylength', 'unique.97.otus.fa', '-output', 'unique.97.sorted.fa'])
-
-       uc_lists = ['unique.97.uc.list']
-       for i in range(96, 89, -1):
-           previous = i + 1
+       uc_list=['unique.97.uc.list']
+       upper=96
+       lower=int(100*(1-self.dbotu_id)) - 1
+       for i in range(upper, lower, -1):
+           previous= i + 1
            cmds.append([self.usearch, '-cluster_smallmem', 'unique.%d.sorted.fa' % previous, '-id', '0.%d' % i, '--uc', 'unique.%d.uc' % i, '-centroids', 'unique.%d.otus.fa' % i])
            cmds.append(['perl', '%s/UC2list3.pl' % perllib, 'unique.%d.uc' % i, 'unique.%d.uc.list' % i])
            cmds.append([self.usearch, '-sortbylength', 'unique.%d.otus.fa' % i, '-output', 'unique.%d.sorted.fa' % i])
-           uc_lists.append('unique.%d.uc.list' % i)
-
-       input_lists = ",".join([str(x) for x in uc_lists])
+           uc_list.append(str('unique.%d.uc.list' % i))
+       input_lists=",".join([str(x) for x in  uc_list])
        cmds.append(['perl', '%s/merge_progressive_clustering4.pl'% perllib, input_lists, 'unique.PC.final.list'])
 
        self.sub.execute(cmds)
@@ -609,11 +611,16 @@ class OTU_Caller():
         mothur = config.get('dbOTU', 'mothur')
         caller = config.get('dbOTU', 'caller')
         cmds = []
+        dbcmd = ['python', caller, 'unique.f0.good.mat', 'unique.good.align', 'unique.dbOTU', '-k', str(self.k_fold), '-p', str(self.pval), '-d', str(self.dbotu_id)]
         if oc.dbotu_split:
-            cmds.append(['python', caller, 'unique.f0.good.mat', 'unique.good.align', 'unique.dbOTU', '-k', str(self.k_fold), '-p', str(self.pval), '-s', 'unique.PC.final.list'])
-        else:
-            cmds.append(['python', caller, 'unique.f0.good.mat', 'unique.good.align', 'unique.dbOTU', '-k', str(self.k_fold), '-p', str(self.pval)])
+            dbcmd.append('-s')
+            dbcmd.append('unique.PC.final.list')
+        if oc.dbotu_js:
+            dbcmd.append('--useJS')
+            dbcmd.append(str(self.dbotu_jscutoff))
 
+        
+        cmds.append(dbcmd)
         cmds.append(['%s "#degap.seqs(fasta=unique.dbOTU.fasta)"' %(mothur)])
 
         self.sub.execute(cmds)

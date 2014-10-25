@@ -18,3 +18,4 @@ gold=/net/radiodurans/alm/lab/db/gold/gold.fasta
 alignref=/path/to/silva.bacteria.m45.25434.11887.m668.filter.fasta
 perllib=/path/to/dbOTUcaller/perllib/
 caller=/path/to/dbOTUcaller/dbOTUcaller.py
+mothur=/home/spacocha/bin/mothur/mothur
