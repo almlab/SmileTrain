@@ -145,6 +145,7 @@ def parse_args():
     group1.add_argument('--merge', action='store_true', help='Merge forward and reverse reads?')
     group1.add_argument('--primers', action='store_true', help='Remove primers?')
     group1.add_argument('--demultiplex', default = False, action = 'store_true', help = 'Demultiplex?')
+    group1.add_argument('--demultiplexed_files', default = False, action = 'store_true', help = 'Already have seperate demultiplexed files?')
     group1.add_argument('--qfilter', default = False, action = 'store_true', help = 'Quality filter?')
     group1.add_argument('--ref_chimeras', action='store_true', help='Slay chimeras using reference database?')
     group1.add_argument('--chimeras', action='store_true', help='Slay chimeras de novo with usearch?')
@@ -201,9 +202,15 @@ def parse_args():
         # check combinations
         if args.demultiplex and args.barcodes is None:
             raise RuntimeError("--demultiplex selected but no barcode mapping file specified")
+
+        if args.demultiplexed_files and args.barcodes is None:
+            raise RuntimeError("--demultiplexed_files selected but no mapping file specified")
+
+        if args.demultiplexed_files and (args.forward or args.reverse):
+            raise RuntimeError("--demultiplexed_files selected, cannot also specify forward or reverse file")
         
         if args.check or args.split or args.convert or args.primers or args.merge or args.demultiplex or args.qfilter:
-            if args.forward is None and args.reverse is None:
+            if args.forward is None and args.reverse is None and not args.demultiplexed_files:
                 raise RuntimeError("no fastq files selected")
 
         # save arguments for use with redo
@@ -245,37 +252,38 @@ class OTU_Caller():
     def get_filenames(self):
         '''Generate filenames to use in pipeline'''
 
-        if self.forward:
-            f_base = os.path.basename(self.forward)
-        if self.reverse:
-            r_base = os.path.basename(self.reverse)
+        if self.forward or self.reverse:
+            if self.forward:
+                f_base = os.path.basename(self.forward)
+            if self.reverse:
+                r_base = os.path.basename(self.reverse)
+                
+            self.fi = ['%s.%d' %(self.forward, i) for i in range(self.n_split)] # forward reads (split)
+            self.ri = ['%s.%d' %(self.reverse, i) for i in range(self.n_split)] # reverse reads (split)
+            self.mi = ['%s.%d.merge' %(self.forward, i) for i in range(self.n_split)] # merged reads (split)
+            self.Fi = ['%s.%d.tmp' %(self.forward, i) for i in range(self.n_split)] # forward reads (temp)
+            self.Ri = ['%s.%d.tmp' %(self.reverse, i) for i in range(self.n_split)] # reverse reads (temp)
+            self.Mi = ['%s.%d.tmp' %(self.forward, i) for i in range(self.n_split)] # merged reads (temp)
+            self.ci = ['q.%d.fst' %(i) for i in range(self.n_split)] # current reads
+            self.Ci = ['q.%d.tmp' %(i) for i in range(self.n_split)] # current reads (temp)
+            self.oi = ['otus.%d.fst' %(sid) for sid in self.sids] # otu representative sequences
+            self.Oi = ['otus.%d.tmp' %(sid) for sid in self.sids] # otu representative sequences (temp)
+            self.uc = ['otus.%d.uc' %(sid) for sid in self.sids] # uclust output files
+            self.xi = ['otus.%d.counts' %(sid) for sid in self.sids] # otu tables (counts)
             
-        self.fi = ['%s.%d' %(self.forward, i) for i in range(self.n_split)] # forward reads (split)
-        self.ri = ['%s.%d' %(self.reverse, i) for i in range(self.n_split)] # reverse reads (split)
-        self.mi = ['%s.%d.merge' %(self.forward, i) for i in range(self.n_split)] # merged reads (split)
-        self.Fi = ['%s.%d.tmp' %(self.forward, i) for i in range(self.n_split)] # forward reads (temp)
-        self.Ri = ['%s.%d.tmp' %(self.reverse, i) for i in range(self.n_split)] # reverse reads (temp)
-        self.Mi = ['%s.%d.tmp' %(self.forward, i) for i in range(self.n_split)] # merged reads (temp)
-        self.ci = ['q.%d.fst' %(i) for i in range(self.n_split)] # current reads
-        self.Ci = ['q.%d.tmp' %(i) for i in range(self.n_split)] # current reads (temp)
-        self.oi = ['otus.%d.fst' %(sid) for sid in self.sids] # otu representative sequences
-        self.Oi = ['otus.%d.tmp' %(sid) for sid in self.sids] # otu representative sequences (temp)
-        self.uc = ['otus.%d.uc' %(sid) for sid in self.sids] # uclust output files
-        self.xi = ['otus.%d.counts' %(sid) for sid in self.sids] # otu tables (counts)
-        
-        self.open_fst = ['q.%d.no_match.fst' %(sid) for sid in self.sids] # unmatched seqs from ref mapping
-        self.seq_tax_fn = 'seq.tax'
-        
-        # if reference-based clustering at 97%, make sure reads are 98.5% dissimilar
-        self.reference_map_sids = [0.5*(100.0+float(sid)) for sid in self.sids]
-        self.reference_map_pcts = [100.0 - sid for sid in self.reference_map_sids]
-        
-        # Get database for read mapping
-        if self.denovo == True:
-            self.db = self.oi
-        elif self.ref_gg or self.open_ref_gg:
-            self.db = ['%s/%d_otus.fasta' %(self.ggdb, sid) for sid in self.sids]
+            self.open_fst = ['q.%d.no_match.fst' %(sid) for sid in self.sids] # unmatched seqs from ref mapping
+            self.seq_tax_fn = 'seq.tax'
             
+            # if reference-based clustering at 97%, make sure reads are 98.5% dissimilar
+            self.reference_map_sids = [0.5*(100.0+float(sid)) for sid in self.sids]
+            self.reference_map_pcts = [100.0 - sid for sid in self.reference_map_sids]
+            
+            # Get database for read mapping
+            if self.denovo == True:
+                self.db = self.oi
+            elif self.ref_gg or self.open_ref_gg:
+                self.db = ['%s/%d_otus.fasta' %(self.ggdb, sid) for sid in self.sids]
+                
     def check_format(self):
         '''Make sure we have the correct input format'''
         files = []
@@ -435,6 +443,35 @@ class OTU_Caller():
         self.sub.check_for_nonempty(self.Ci)
         self.sub.move_files(self.Ci, self.ci)
         self.sub.check_for_nonempty(self.ci)
+
+    def format_demultiplexed_files(self):
+        '''Put sample name in sequence headers and concatenate files'''
+        output_name = '%s.cat.fastq' %(self.barcodes)
+        self.sub.check_for_collisions(output_name)
+
+        cmd = ['python', '%s/format_demultiplexed_files.py' %(self.library), self.barcodes, '--output', output_name]
+        cmds = [cmd]
+        self.sub.execute(cmds)
+
+        
+        self.sub.check_for_nonempty(output_name)
+        self.forward = output_name 
+        self.get_filenames()
+
+    def reformat_headers(self):
+        self.sub.check_for_nonempty(self.ci)
+        self.sub.check_for_collisions(self.Ci)
+
+        cmds = []
+        for i in range(self.n_split):
+            cmd = ['python', '%s/reformat_headers.py' %(self.library), self.ci[i],'--output', self.Ci[i]]
+            cmds.append(cmd)
+        self.sub.execute(cmds)
+        
+        self.sub.check_for_nonempty(self.Ci)
+        self.sub.move_files(self.Ci, self.ci)
+        self.sub.check_for_nonempty(self.ci)
+
     
     def quality_filter(self):
         '''Quality filter with truncqual and maximum expected error'''
@@ -672,6 +709,11 @@ class OTU_Caller():
 if __name__ == '__main__':
     # Initialize OTU caller
     oc = OTU_Caller()
+
+    # Preformat and concatenate files seperated by sample
+    if oc.demultiplexed_files == True:
+        message('Concatenating demultiplexed files')
+        oc.format_demultiplexed_files()
     
     # Check fastq format
     if oc.check:
@@ -705,6 +747,10 @@ if __name__ == '__main__':
     if oc.demultiplex == True:
         message('Demultiplexing')
         oc.demultiplex_reads()
+
+    if oc.demultiplexed_files == True:
+        message('Reformatting sequence headers')
+        oc.reformat_headers()
     
     # Quality filter
     if oc.qfilter == True:
