@@ -126,7 +126,7 @@ def parse_args():
     group3 = parser.add_argument_group('Convert format')
     group4 = parser.add_argument_group('Remove primers')
     group5 = parser.add_argument_group('Merge reads')
-    group6 = parser.add_argument_group('Demultiplex')
+    group6 = parser.add_argument_group('Demultiplexing Options')
     group7 = parser.add_argument_group('Quality filtering')
     group8 = parser.add_argument_group('Dereplicate')
     group9 = parser.add_argument_group('Chimeras')
@@ -134,6 +134,7 @@ def parse_args():
     group11 = parser.add_argument_group('Clustering')
     group12 = parser.add_argument_group('dbOTU options')
     group13 = parser.add_argument_group('Options')
+    group14 = parser.add_mutually_exclusive_group()
     group_run = parser.add_mutually_exclusive_group()
     
     # add arguments
@@ -144,8 +145,6 @@ def parse_args():
     group1.add_argument('--convert', action='store_true', help='Convert fastq format?')
     group1.add_argument('--merge', action='store_true', help='Merge forward and reverse reads?')
     group1.add_argument('--primers', action='store_true', help='Remove primers?')
-    group1.add_argument('--demultiplex', default = False, action = 'store_true', help = 'Demultiplex?')
-    group1.add_argument('--demultiplexed_files', default = False, action = 'store_true', help = 'Already have seperate demultiplexed files?')
     group1.add_argument('--qfilter', default = False, action = 'store_true', help = 'Quality filter?')
     group1.add_argument('--ref_chimeras', action='store_true', help='Slay chimeras using reference database?')
     group1.add_argument('--chimeras', action='store_true', help='Slay chimeras de novo with usearch?')
@@ -180,6 +179,8 @@ def parse_args():
     group12.add_argument('--dbotu_jscutoff', default=0.02, type=float, help='Jensen-Shannon divergence cut-off value used with --dbotu_js (default=0.02)')
     group12.add_argument('--dbotu_id', default=0.1, type=float, help='Distance used for dbOTUs and/or pre-clustering (default=0.1)')
     group13.add_argument('--n_split', '-n', default=1, type=int, help='split upstream fastq into how many files?')
+    group14.add_argument('--demultiplex', default = False, action = 'store_true', help = 'Demultiplex?')
+    group14.add_argument('--already_demultiplexed', default = False, action = 'store_true', help = 'Already have seperate demultiplexed files?')
     group_run.add_argument('--dry_run', '-z', action='store_true', help='submit no jobs; suppress file checks; just print output commands')
     group_run.add_argument('--local', '-l', action='store_true', help='execute all tasks locally')
     
@@ -203,14 +204,14 @@ def parse_args():
         if args.demultiplex and args.barcodes is None:
             raise RuntimeError("--demultiplex selected but no barcode mapping file specified")
 
-        if args.demultiplexed_files and args.barcodes is None:
+        if args.already_demultiplexed and args.barcodes is None:
             raise RuntimeError("--demultiplexed_files selected but no mapping file specified")
 
-        if args.demultiplexed_files and (args.forward or args.reverse):
+        if args.already_demultiplexed and (args.forward or args.reverse):
             raise RuntimeError("--demultiplexed_files selected, cannot also specify forward or reverse file")
         
         if args.check or args.split or args.convert or args.primers or args.merge or args.demultiplex or args.qfilter:
-            if args.forward is None and args.reverse is None and not args.demultiplexed_files:
+            if args.forward is None and args.reverse is None and not args.already_demultiplexed:
                 raise RuntimeError("no fastq files selected")
 
         # save arguments for use with redo
@@ -711,7 +712,7 @@ if __name__ == '__main__':
     oc = OTU_Caller()
 
     # Preformat and concatenate files seperated by sample
-    if oc.demultiplexed_files == True:
+    if oc.already_demultiplexed == True:
         message('Concatenating demultiplexed files')
         oc.format_demultiplexed_files()
     
@@ -748,7 +749,7 @@ if __name__ == '__main__':
         message('Demultiplexing')
         oc.demultiplex_reads()
 
-    if oc.demultiplexed_files == True:
+    if oc.already_demultiplexed == True:
         message('Reformatting sequence headers')
         oc.reformat_headers()
     
