@@ -454,10 +454,16 @@ class OTU_Caller():
         cmds = [cmd]
         self.sub.execute(cmds)
 
-        
-        self.sub.check_for_nonempty(output_name)
-        self.forward = output_name 
-        self.get_filenames()
+        try:
+            self.sub.check_for_nonempty(output_name)
+            self.forward = output_name 
+            self.get_filenames()
+        except RuntimeError:
+            self.sub.check_for_nonempty('f.'+output_name)
+            self.sub.check_for_nonempty('r.'+output_name)
+            self.forward = 'f.'+output_name
+            self.reverse = 'r.'+output_name
+            self.get_filenames()
 
     def reformat_headers(self):
         self.sub.check_for_nonempty(self.ci)
