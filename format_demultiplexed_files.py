@@ -107,10 +107,10 @@ if __name__ == '__main__':
     if type(barcode_map) is tuple:
         barcode_map_forward, barcode_map_reverse = barcode_map
         with open('f.'+args.output, 'w') as outputFile:
-            for filename in barcode_map_forward.keys():
+            for filename in sorted(barcode_map_forward, key=barcode_map_forward.get):
                 for record in renamed_fastq_records(filename, barcode_map_forward):
                     SeqIO.write(record, outputFile, 'fastq')
         with open('r.'+args.output, 'w') as outputFile:
-            for filename in barcode_map_reverse.keys():
+            for filename in sorted(barcode_map_reverse, key=barcode_map_reverse.get):
                 for record in renamed_fastq_records(filename, barcode_map_reverse, reverse=True):
                     SeqIO.write(record, outputFile, 'fastq')
