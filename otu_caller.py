@@ -178,6 +178,7 @@ def parse_args():
     group12.add_argument('--dbotu_js', action='store_true', help='Merge statitically significantly different sequences if Jensen-Shannon divergence is below cut-off?')
     group12.add_argument('--dbotu_jscutoff', default=0.02, type=float, help='Jensen-Shannon divergence cut-off value used with --dbotu_js (default=0.02)')
     group12.add_argument('--dbotu_id', default=0.1, type=float, help='Distance used for dbOTUs and/or pre-clustering (default=0.1)')
+    group13.add_argument('--align_start',  default=5, type=int, help='split upstream fastq into how many files?')
     group13.add_argument('--n_split', '-n', default=1, type=int, help='split upstream fastq into how many files?')
     group14.add_argument('--demultiplex', default = False, action = 'store_true', help = 'Demultiplex?')
     group14.add_argument('--already_demultiplexed', default = False, action = 'store_true', help = 'Already have seperate demultiplexed files?')
@@ -201,17 +202,8 @@ def parse_args():
         args.sids = map(int, args.sids.split(','))
         
         # check combinations
-        if args.demultiplex and args.barcodes is None:
-            raise RuntimeError("--demultiplex selected but no barcode mapping file specified")
-
-        if args.already_demultiplexed and args.barcodes is None:
-            raise RuntimeError("--demultiplexed_files selected but no mapping file specified")
-
-        if args.already_demultiplexed and (args.forward or args.reverse):
-            raise RuntimeError("--demultiplexed_files selected, cannot also specify forward or reverse file")
-        
         if args.check or args.split or args.convert or args.primers or args.merge or args.demultiplex or args.qfilter:
-            if args.forward is None and args.reverse is None and not args.already_demultiplexed:
+            if args.forward is None and args.reverse is None:
                 raise RuntimeError("no fastq files selected")
 
         # save arguments for use with redo
@@ -445,26 +437,6 @@ class OTU_Caller():
         self.sub.move_files(self.Ci, self.ci)
         self.sub.check_for_nonempty(self.ci)
 
-    def format_demultiplexed_files(self):
-        '''Put sample name in sequence headers and concatenate files'''
-        output_name = '%s.cat.fastq' %(self.barcodes)
-        self.sub.check_for_collisions(output_name)
-
-        cmd = ['python', '%s/format_demultiplexed_files.py' %(self.library), self.barcodes, '--output', output_name]
-        cmds = [cmd]
-        self.sub.execute(cmds)
-
-        try:
-            self.sub.check_for_nonempty(output_name)
-            self.forward = output_name 
-            self.get_filenames()
-        except RuntimeError:
-            self.sub.check_for_nonempty('f.'+output_name)
-            self.sub.check_for_nonempty('r.'+output_name)
-            self.forward = 'f.'+output_name
-            self.reverse = 'r.'+output_name
-            self.get_filenames()
-
     def reformat_headers(self):
         self.sub.check_for_nonempty(self.ci)
         self.sub.check_for_collisions(self.Ci)
@@ -644,7 +616,7 @@ class OTU_Caller():
         cmds = []
         cmds.append(['perl', '%s/temp_071514.pl' % perllib, 'q.derep.fst', 'q.index', 'unique'])
         cmds.append(['%s "#align.seqs(fasta=unique.fa, reference=%s)"' %(mothur, self.alignref)])
-        cmds.append(['%s "#screen.seqs(fasta=unique.align, start=5, minlength=%d)"' %(mothur, self.minlength)])
+        cmds.append(['%s "#screen.seqs(fasta=unique.align, start=%d, minlength=%d)"' %(mothur, self.align_start, self.minlength)])
         cmds.append('perl %s/filter_mat_from_fasta.pl unique.f0.mat unique.good.align > unique.f0.good.mat' %(perllib))
 
         self.sub.execute(cmds)
@@ -717,11 +689,6 @@ if __name__ == '__main__':
     # Initialize OTU caller
     oc = OTU_Caller()
 
-    # Preformat and concatenate files seperated by sample
-    if oc.already_demultiplexed == True:
-        message('Concatenating demultiplexed files')
-        oc.format_demultiplexed_files()
-    
     # Check fastq format
     if oc.check:
         message('Checking input formats')
@@ -756,7 +723,7 @@ if __name__ == '__main__':
         oc.demultiplex_reads()
 
     if oc.already_demultiplexed == True:
-        message('Reformatting sequence headers')
+        message('Already demultiplexed: reformatting sequence headers')
         oc.reformat_headers()
     
     # Quality filter
