@@ -715,7 +715,8 @@ if __name__ == '__main__':
         
     # Set current reads
     # swo> obsolete, now that there are no separate merged files
-    oc.ci = oc.fi
+    if hasattr(oc, 'fi'):
+        oc.ci = oc.fi
     
     # Demultiplex
     if oc.demultiplex == True:
