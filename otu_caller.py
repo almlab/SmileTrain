@@ -531,9 +531,9 @@ class OTU_Caller():
        cmds = []
        cmds.append(['perl', '%s/find_replace_seq_dash-period.pl' % perllib, 'unique.good.align', 'unique.good.align.ng'])
        cmds.append(['perl', '%s/fasta2uchime_size.pl' % perllib, 'unique.f0.good.mat', 'unique.good.align.ng', 'unique.good.align.ng.size'])
-       cmds.append([self.usearch, '-cluster_otus', 'unique.good.align.ng.size', '--uc', 'unique.97.uc', '-otus', 'unique.97.otus.fa', '-fastaout', 'unique.97.fastaout.fa'])
-       cmds.append(['perl', '%s/USEARCH_fastaout2list.pl' % perllib, 'unique.97.fastaout.fa', 'unique.97.uc.list'])
-       cmds.append([self.usearch, '-sortbylength', 'unique.97.otus.fa', '-output', 'unique.97.sorted.fa'])
+       cmds.append([self.usearch, '-cluster_otus', 'unique.good.align.ng.size', '-uparseout', 'unique.97.uc', '-otus', 'unique.97.otus.fa'])
+       cmds.append(['perl', '%s/UC2list4.pl' % perllib, 'unique.97.uc', 'unique.97.uc.list'])
+       cmds.append([self.usearch, '-sortbylength', 'unique.97.otus.fa', '-fastaout', 'unique.97.sorted.fa'])
        uc_list=['unique.97.uc.list']
        upper=96
        lower=int(100*(1-self.dbotu_id)) - 1
@@ -541,7 +541,7 @@ class OTU_Caller():
            previous= i + 1
            cmds.append([self.usearch, '-cluster_smallmem', 'unique.%d.sorted.fa' % previous, '-id', '0.%d' % i, '--uc', 'unique.%d.uc' % i, '-centroids', 'unique.%d.otus.fa' % i])
            cmds.append(['perl', '%s/UC2list3.pl' % perllib, 'unique.%d.uc' % i, 'unique.%d.uc.list' % i])
-           cmds.append([self.usearch, '-sortbylength', 'unique.%d.otus.fa' % i, '-output', 'unique.%d.sorted.fa' % i])
+           cmds.append([self.usearch, '-sortbylength', 'unique.%d.otus.fa' % i, '-fastaout', 'unique.%d.sorted.fa' % i])
            uc_list.append(str('unique.%d.uc.list' % i))
        input_lists=",".join([str(x) for x in  uc_list])
        cmds.append(['perl', '%s/merge_progressive_clustering4.pl'% perllib, input_lists, 'unique.PC.final.list'])
@@ -569,7 +569,7 @@ class OTU_Caller():
         cmds = []
         cmd = 'perl %s/fasta2filter_from_mat_SmileTrain.pl unique.dbOTU.mat q.derep.fst > unique.dbOTU.ng.fasta' % perllib
         cmds.append(cmd)
-        cmd = '%s -uchime_denovo unique.dbOTU.ng.fasta -nonchimeras unique.dbOTU.nonchimera.fasta -strand plus' % self.usearch
+        cmd = '%s -uchime_denovo unique.dbOTU.ng.fasta -nonchimeras unique.dbOTU.nonchimera.fasta' % self.usearch
         cmds.append(cmd)
         cmd = 'perl %s/filter_mat_from_fasta_SmileTrain.pl unique.dbOTU.mat unique.dbOTU.nonchimera.fasta > unique.dbOTU.nonchimera.mat' % perllib
         cmds.append(cmd)
